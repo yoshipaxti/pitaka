@@ -1,0 +1,65 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install Capacitor
+        run: npm ci
+
+      - name: Copy the app into the Android project
+        run: npx cap sync android
+
+      # Every APK must be signed with the same key, or Android refuses to install updates over the old app.
+      # The key lives in the DEBUG_KEYSTORE_B64 secret. On the very first run there is none yet, so one is made.
+      - name: Signing key
+        env:
+          KEY: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: |
+          mkdir -p ~/.android
+          if [ -n "$KEY" ]; then
+            echo "$KEY" | base64 -d > ~/.android/debug.keystore
+          else
+            keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey \
+              -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Pitaka"
+            cp ~/.android/debug.keystore new-signing-key.keystore
+          fi
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pitaka-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Hand over a newly made key (first run only)
+        if: hashFiles('new-signing-key.keystore') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: new-signing-key
+          path: new-signing-key.keystore
+          retention-days: 1

@@ -1,0 +1,814 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style><title>Pitaka</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#1d5c63">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: phone-first single column (max 560px), sticky month bar on top, fixed tab bar at bottom, sheets slide up for every form. */
+:root{
+  --bg:#edf1ef; --surface:#ffffff; --surface-2:#f4f7f5; --line:#d8e0dc; --fg:#14201c; --muted:#5b6964;
+  --accent:#1d5c63; --accent-fg:#ffffff; --accent-soft:#dbeae8;
+  --pos:#1a7a48; --pos-soft:#e0f1e7; --neg:#bf3a2a; --neg-soft:#fae5e1;
+  --warn:#a86e06; --warn-soft:#f9eed3; --owed:#3a48a8; --owed-soft:#e4e7f7;
+  --c1:#2e9d6b; --c2:#2f7fd1; --c3:#e0503f; --c4:#8a5bd6; --c5:#e8892a; --c6:#14a3a3; --c7:#d6a21e; --c8:#d1479a;
+  --font-display:"Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body:system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-data:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d1312; --surface:#151d1b; --surface-2:#1b2522; --line:#2a3633; --fg:#e4ece9; --muted:#93a39e;
+  --accent:#62b5ae; --accent-fg:#0b1513; --accent-soft:#1e3532;
+  --pos:#5cc98e; --pos-soft:#17322a; --neg:#f07a69; --neg-soft:#3a1f1c; --warn:#e7b54a; --warn-soft:#352b14; --owed:#9aa6f2; --owed-soft:#22264a;
+  --c1:#4cc48d; --c2:#5aa3ee; --c3:#f0705f; --c4:#a882ec; --c5:#f2a256; --c6:#3cc2c2; --c7:#e6bd4a; --c8:#e872b5;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1312; --surface:#151d1b; --surface-2:#1b2522; --line:#2a3633; --fg:#e4ece9; --muted:#93a39e;
+  --accent:#62b5ae; --accent-fg:#0b1513; --accent-soft:#1e3532;
+  --pos:#5cc98e; --pos-soft:#17322a; --neg:#f07a69; --neg-soft:#3a1f1c; --warn:#e7b54a; --warn-soft:#352b14; --owed:#9aa6f2; --owed-soft:#22264a;
+  --c1:#4cc48d; --c2:#5aa3ee; --c3:#f0705f; --c4:#a882ec; --c5:#f2a256; --c6:#3cc2c2; --c7:#e6bd4a; --c8:#e872b5;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--font-body);-webkit-tap-highlight-color:transparent;overscroll-behavior-y:contain}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.mono,.amt{font-family:var(--font-data);font-variant-numeric:tabular-nums}
+.pos{color:var(--pos)} .neg{color:var(--neg)} .warn{color:var(--warn)} .owed{color:var(--owed)} .muted{color:var(--muted)}
+
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--surface);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:10px;padding-block:10px}
+.brand{display:flex;align-items:center;gap:8px;font:700 19px/1 var(--font-display);letter-spacing:-.01em}
+.brand i{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--accent);color:var(--accent-fg);font-style:normal;font-size:17px}
+.month{margin-left:auto;display:flex;align-items:center;gap:2px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:2px}
+.month b{font:600 14px/1 var(--font-display);min-width:76px;text-align:center}
+.icon-btn{display:grid;place-items:center;width:34px;height:34px;border:0;background:none;border-radius:999px;color:var(--muted)}
+.icon-btn:active{background:var(--line)}
+.icon-btn svg,.tab svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+main.wrap{padding-block:14px 150px;display:flex;flex-direction:column;gap:14px}
+
+/* KPI grid */
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.kpi{background:var(--surface);padding:9px 10px;min-width:0}
+.kpi span{display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.kpi b{display:block;font:500 13.5px/1.3 var(--font-data);font-variant-numeric:tabular-nums;margin-top:2px;overflow-wrap:anywhere}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;min-width:0}
+.card h2{font:600 15px/1.2 var(--font-display);margin:0 0 10px;display:flex;align-items:center;gap:8px;text-wrap:balance}
+.card h2 .right{margin-left:auto;font:500 12px var(--font-data);color:var(--muted)}
+.eyebrow{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.big{font:700 26px/1.1 var(--font-display);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.sub{font-size:12.5px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:380px){.grid2{grid-template-columns:1fr}}
+.rows{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:13px}
+.rows div{display:flex;justify-content:space-between;gap:8px}
+.rows div b{font:500 12.5px var(--font-data);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.notice{border-radius:var(--r);padding:12px 14px;border:1px solid;display:flex;flex-direction:column;gap:4px;font-size:13.5px}
+.notice b{font:600 14px var(--font-display)}
+.notice.bad{background:var(--neg-soft);border-color:color-mix(in srgb,var(--neg) 35%,transparent)}
+.notice.warn{background:var(--warn-soft);border-color:color-mix(in srgb,var(--warn) 35%,transparent)}
+.notice.good{background:var(--pos-soft);border-color:color-mix(in srgb,var(--pos) 35%,transparent)}
+.notice.info{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
+.notice .acts{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+
+.bar{height:8px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px}
+.brk{display:flex;flex-direction:column;gap:12px}
+.brk .lbl{display:flex;justify-content:space-between;gap:8px;font-size:13px;margin-bottom:5px}
+.brk .lbl b{font:500 12.5px var(--font-data);white-space:nowrap}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 12px;font-size:13.5px;font-weight:600}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.sm{padding:5px 9px;font-size:12.5px;border-radius:8px}
+.btn.danger{color:var(--neg)}
+.btn:active{transform:translateY(1px)}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+
+.pill{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.03em;padding:2px 7px;border-radius:99px;white-space:nowrap}
+.pill.neg{background:var(--neg-soft)} .pill.pos{background:var(--pos-soft)} .pill.warn{background:var(--warn-soft)} .pill.zero{background:var(--surface-2);color:var(--muted)} .pill.owed{background:var(--owed-soft)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;flex:none}
+
+/* table (trend only) */
+.tscroll{overflow-x:auto;margin-inline:-14px;padding-inline:14px}
+table{border-collapse:collapse;width:100%;font:12px var(--font-data);font-variant-numeric:tabular-nums}
+th{font:600 10px var(--font-body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-align:right;padding:6px 8px;white-space:nowrap;border-bottom:1px solid var(--line)}
+td{text-align:right;padding:7px 8px;white-space:nowrap;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left;font-family:var(--font-body);font-weight:600}
+tr.on td{background:var(--accent-soft)}
+
+/* wallets */
+.wgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.wcard .head{display:flex;align-items:center;gap:8px;font-weight:600}
+.wcard .head .pill{margin-left:auto}
+
+/* list rows */
+.list{display:flex;flex-direction:column}
+.item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);background:none;border-left:0;border-right:0;border-top:0;text-align:left;width:100%}
+.item:last-child{border-bottom:0}
+.item .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font:600 13px var(--font-display);color:#fff;flex:none}
+.item .mid{flex:1;min-width:0}
+.item .t{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .m{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .r{text-align:right;flex:none}
+.item .r b{font:500 13.5px var(--font-data);font-variant-numeric:tabular-nums;display:block}
+.item .r small{font-size:11px;color:var(--muted)}
+.empty{padding:18px 4px;text-align:center;color:var(--muted);font-size:13.5px}
+
+/* chips & segmented */
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:5px 11px;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.chip.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.search{width:100%;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:9px 12px}
+
+/* donut */
+.donut{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;align-items:center}
+@media (max-width:380px){.donut{grid-template-columns:1fr;justify-items:center}}
+.donut svg{width:150px;height:150px;max-width:100%}
+.donut circle{cursor:pointer}
+.legend{display:flex;flex-direction:column;gap:7px;width:100%;min-width:0}
+.legend button{display:flex;align-items:center;gap:8px;border:0;background:none;padding:2px 0;text-align:left;font-size:13px;min-width:0}
+.legend button span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.legend button b{font:500 12px var(--font-data);white-space:nowrap}
+.legend button.dim{opacity:.4}
+
+/* bottom nav */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabs .wrap{display:grid;grid-template-columns:repeat(5,1fr)}
+.tab{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 7px;font-size:11px;font-weight:600;color:var(--muted)}
+.tab.on{color:var(--accent)}
+.fab{position:fixed;z-index:7;right:max(16px,calc(env(safe-area-inset-right,0px) + 16px));bottom:calc(72px + env(safe-area-inset-bottom,0px));width:56px;height:56px;border-radius:18px;border:0;background:var(--accent);color:var(--accent-fg);font-size:28px;line-height:1;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+@media (min-width:600px){.fab{right:calc(50% - 280px + 16px)}}
+
+/* sheet */
+.sheet-wrap{position:fixed;inset:0;z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.scrim{position:absolute;inset:0;background:rgba(5,12,10,.45)}
+.sheet{position:relative;width:100%;max-width:560px;max-height:92%;overflow:auto;background:var(--surface);border-radius:20px 20px 0 0;padding:8px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));animation:up .18s ease-out}
+@keyframes up{from{transform:translateY(24px);opacity:.6}}
+@media (prefers-reduced-motion:reduce){.sheet{animation:none}}
+.grab{width:40px;height:4px;border-radius:9px;background:var(--line);margin:4px auto 10px}
+.sheet h3{font:700 19px var(--font-display);margin:0 0 12px}
+.form{display:flex;flex-direction:column;gap:12px}
+.form label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+.form input,.form select,.form textarea{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:10px 12px;font-size:16px;color:var(--fg);width:100%;min-width:0}
+.form .amtin{font:600 26px var(--font-data);padding:8px 12px}
+.form .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form .row2>label{min-width:0}
+.hint{font-size:12px;color:var(--accent);font-weight:600;min-height:16px}
+.actions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.act{border:1px solid var(--line);background:var(--surface-2);border-radius:14px;padding:14px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12.5px;font-weight:600}
+.act i{font-style:normal;width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font:700 17px var(--font-display);color:#fff}
+
+/* AI chat */
+.chat{display:flex;flex-direction:column;gap:10px}
+.msg{max-width:88%;padding:10px 12px;border-radius:14px;font-size:14px;line-height:1.5}
+.msg.me{align-self:flex-end;background:var(--accent);color:var(--accent-fg);border-bottom-right-radius:4px}
+.msg.bot{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg.bot ul{margin:6px 0 0;padding-left:18px}
+.msg.bot li{margin:2px 0}
+.msg .draft{margin-top:8px;padding:10px;border:1px dashed var(--accent);border-radius:10px;background:var(--surface-2);display:flex;flex-direction:column;gap:6px}
+.msg .draft .btns{margin-top:2px}
+.ai-head{display:flex;gap:12px;align-items:center}
+.ai-head .orb{width:42px;height:42px;border-radius:14px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font:700 20px var(--font-display);flex:none}
+.composer{position:fixed;left:0;right:0;bottom:calc(54px + env(safe-area-inset-bottom,0px));z-index:6;background:var(--bg);border-top:1px solid var(--line)}
+.composer .wrap{padding-block:8px;display:flex;flex-direction:column;gap:8px}
+.composer form{display:flex;gap:8px}
+.composer input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:11px 12px;font-size:16px}
+.composer .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.composer .chips::-webkit-scrollbar{display:none}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--fg);color:var(--bg);padding:9px 14px;border-radius:10px;font-size:13.5px;font-weight:600;max-width:calc(100% - 32px)}
+.kv{display:flex;justify-content:space-between;gap:8px;font-size:13px}
+.split{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.cv{content-visibility:auto;contain-intrinsic-size:auto 400px}
+</style>
+
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="brand"><i>₱</i>Pitaka</div>
+  <div class="month">
+    <button class="icon-btn" data-act="month" data-k="-1" aria-label="Previous month"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <b id="mlabel"></b>
+    <button class="icon-btn" data-act="month" data-k="1" aria-label="Next month"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+  </div>
+  <button class="icon-btn" data-act="settings" aria-label="Settings and backup"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+</div></header>
+
+<main class="wrap" id="view"></main>
+
+<button class="fab" id="fab" data-act="add" aria-label="Add a record">+</button>
+
+<div class="composer" id="composer" hidden><div class="wrap">
+  <div class="chips" id="aichips"></div>
+  <form id="aiform" autocomplete="off"><input id="aiinput" placeholder="Ask, or type “lunch 120 gcash”" aria-label="Message the assistant"><button class="btn pri" type="submit">Send</button></form>
+</div></div>
+
+<nav class="tabs" aria-label="Sections"><div class="wrap" id="tabs"></div></nav>
+
+<div class="sheet-wrap" id="sheet" hidden><div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div><div id="sheetBody"></div></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+/* ================= utils ================= */
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const pad=n=>String(n).padStart(2,'0');
+const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const today=()=>iso(new Date());
+const parseISO=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const addDays=(s,k)=>{const d=parseISO(s);d.setDate(d.getDate()+k);return iso(d)};
+const addM=(m,k)=>{let[y,mo]=m.split('-').map(Number);mo+=k;while(mo>12){mo-=12;y++}while(mo<1){mo+=12;y--}return y+'-'+pad(mo)};
+const nextM=m=>addM(m,1);
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const mLabel=m=>MN[+m.slice(5,7)-1]+' '+m.slice(0,4);
+const dLabel=s=>s?MN[+s.slice(5,7)-1]+' '+(+s.slice(8,10)):'—';
+const dim=m=>new Date(+m.slice(0,4),+m.slice(5,7),0).getDate();
+const num=v=>{const n=parseFloat(String(v??'').replace(/[₱,\s]/g,''));return isFinite(n)?Math.round(n*100)/100:NaN};
+const nf=new Intl.NumberFormat('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const nf0=new Intl.NumberFormat('en-PH',{maximumFractionDigits:0});
+const peso=n=>(n<-0.004?'-':'')+'₱'+nf.format(Math.abs(n)||0);
+const pesoS=n=>(n<-0.5?'-':'')+'₱'+nf0.format(Math.abs(n)||0);
+const pct=(a,b)=>b?Math.round(a/b*100)+'%':'0%';
+const sum=(arr,f=x=>x.a)=>arr.reduce((s,x)=>s+f(x),0);
+const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
+
+/* ================= data ================= */
+const KEY='pitaka.v1';
+const CATS=[
+  {id:'food',name:'Food',col:7},{id:'transpo',name:'Transportation',col:2},{id:'bills',name:'Bills & Utilities',col:4},
+  {id:'load',name:'Load & Internet',col:6},{id:'shop',name:'Personal & Shopping',col:8},{id:'health',name:'Health',col:1},
+  {id:'edu',name:'Education',col:5},{id:'other',name:'Other Expenses',col:3}];
+const CAT=Object.fromEntries(CATS.map(c=>[c.id,c]));
+const catName=id=>(CAT[id]||CAT.other).name;
+const catCol=id=>`var(--c${(CAT[id]||CAT.other).col})`;
+
+function blank(){return{v:1,demo:false,
+  wallets:[{id:'cash',name:'Cash',col:1,init:0},{id:'gcash',name:'GCash',col:2,init:0},{id:'cimb',name:'CIMB (GSave)',col:3,init:0},
+    {id:'uno',name:'UNO Digital',col:4,init:0},{id:'mari',name:'Maribank',col:5,init:0},{id:'gotyme',name:'GoTyme',col:6,init:0}],
+  cards:['Credit Card','SPayLater'],tx:[],cc:[],goal:{amt:20000,w:'gotyme'}}}
+
+function demo(){
+  const s=blank();s.demo=true;s.wallets[0].init=2000;s.wallets[1].init=3500;s.wallets[5].init=12000;
+  const m=today().slice(0,7),pm=addM(m,-1),td=+today().slice(8);
+  const D=(mm,d)=>mm+'-'+pad(mm===m?Math.min(d,td):Math.min(d,dim(mm)));
+  const E=(mm,d,x,a,c,w)=>s.tx.push({id:uid(),t:'exp',d:D(mm,d),a,s:x,c,w});
+  const I=(mm,d,x,a,w,k='Salary')=>s.tx.push({id:uid(),t:'inc',d:D(mm,d),a,s:x,k,w});
+  [[2,'Jeep + trike to work',82,'transpo','cash'],[3,'Carinderia lunch',95,'food','cash'],[5,'Globe load 30 days',299,'load','gcash'],
+   [8,'Puregold groceries',1680,'food','gcash'],[12,'Converge wifi',1500,'load','gcash'],[15,'Meralco bill',1320,'bills','gcash'],
+   [18,'Grab to Makati',260,'transpo','gcash'],[22,'Mercury Drug vitamins',410,'health','cash'],[26,'Jollibee dinner',345,'food','cash']]
+   .forEach(r=>E(pm,...r));
+  I(pm,15,'Salary (1st half)',16000,'gcash');I(pm,30,'Salary (2nd half)',16000,'gcash');
+  s.tx.push({id:uid(),t:'xfer',d:D(pm,16),a:3000,w:'gcash',to:'gotyme',s:'Ipon'});
+  [[1,'Jeep + trike to work',82,'transpo','cash'],[1,'Carinderia lunch',95,'food','cash'],[2,'Lalamove delivery',180,'other','cash'],
+   [3,'Globe load 30 days',299,'load','gcash'],[5,'MRT + bus fare',126,'transpo','cash'],[6,'Puregold groceries',1240,'food','gcash'],
+   [8,'Grab to Makati',284,'transpo','gcash'],[9,'Jollibee dinner',380,'food','cash'],[12,'Converge wifi',1500,'load','gcash'],
+   [15,'Meralco bill',1141,'bills','gcash'],[16,'Watsons toiletries',436,'shop','gcash'],[18,'Spring rolls + sushi',584,'food','gcash'],
+   [19,'Move It ride',149,'transpo','gcash'],[20,'Penshoppe shirt',799,'shop','gcash'],[21,'Mercury Drug vitamins',520,'health','gcash'],
+   [22,'Milk tea',140,'food','cash'],[24,'Haircut',150,'other','cash'],[25,'Jeep fare for the week',260,'transpo','cash'],[26,'Tuition share',3000,'edu','gcash']]
+   .forEach(r=>E(m,...r));
+  I(m,15,'Salary (1st half)',16000,'gcash');I(m,20,'Freelance project',8500,'gotyme','Freelance');
+  s.tx.push({id:uid(),t:'xfer',d:D(m,17),a:1000,w:'gcash',to:'cash',s:''},{id:uid(),t:'xfer',d:D(m,22),a:1000,w:'gcash',to:'cash',s:''});
+  const L=(d,p,x,a,w,due)=>{const id=uid();s.tx.push({id,t:'lend',d:D(m,d),a,p,s:x,w,due:due?D(m,due):''});return id};
+  L(5,'Kuya','Phone repair',869,'gcash',25);const ate=L(9,'Ate','Pamasahe',200,'cash');L(21,'Mama','Groceries',2500,'gcash');
+  L(3,'Papa','Kuryente share',1000,'gcash');
+  s.tx.push({id:uid(),t:'repay',d:D(m,24),a:200,ref:ate,p:'Ate',w:'cash'});
+  const nm=nextM(m);
+  s.cc.push({id:uid(),d:D(m,1),s:'Dunkin',a:449,card:'Credit Card',who:'Me',due:nm+'-02',paid:false},
+            {id:uid(),d:D(m,6),s:'Savemore groceries',a:5396.70,card:'Credit Card',who:'Family',due:nm+'-02',paid:false},
+            {id:uid(),d:D(m,10),s:'Shopee rice cooker',a:1899,card:'SPayLater',who:'Me',due:nm+'-05',paid:false});
+  const pc={id:uid(),d:D(pm,21),s:'DALI groceries',a:3000,card:'Credit Card',who:'Me',due:D(m,10),paid:true};
+  const pt={id:uid(),t:'ccpay',d:D(m,10),a:3000,w:'gcash',ref:pc.id,s:'Paid card: DALI groceries'};pc.pay=pt.id;
+  s.cc.push(pc);s.tx.push(pt);
+  return s;
+}
+
+let S,FRESH=false;
+function load(){try{const r=localStorage.getItem(KEY);if(r){S=JSON.parse(r);return}}catch(e){}S=demo();FRESH=true}
+function save(){MODEL=null;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Could not save on this device. Copy a backup from Settings.')}writePhone()}
+const W=id=>S.wallets.find(w=>w.id===id)||{id,name:id||'—',col:3};
+
+/* ================= money math ================= */
+function apply(b,t){const a=t.a;switch(t.t){
+  case 'inc':case 'repay':b[t.w]=(b[t.w]||0)+a;break;
+  case 'exp':case 'lend':case 'ccpay':b[t.w]=(b[t.w]||0)-a;break;
+  case 'xfer':b[t.w]=(b[t.w]||0)-a;b[t.to]=(b[t.to]||0)+a;break}}
+function balances(before){const b={};S.wallets.forEach(w=>b[w.id]=+w.init||0);for(const t of S.tx){if(before&&t.d>=before)continue;apply(b,t)}return b}
+const sumBal=b=>Object.values(b).reduce((s,x)=>s+x,0);
+function monthStats(m){
+  const r={inc:0,rep:0,exp:0,lent:0,ccp:0,cats:{},n:0};
+  for(const t of S.tx){if(t.d.slice(0,7)!==m)continue;
+    if(t.t==='inc')r.inc+=t.a;else if(t.t==='repay')r.rep+=t.a;else if(t.t==='lend')r.lent+=t.a;else if(t.t==='ccpay')r.ccp+=t.a;
+    else if(t.t==='exp'){r.exp+=t.a;r.cats[t.c]=(r.cats[t.c]||0)+t.a;r.n++}}
+  r.in=r.inc+r.rep;r.out=r.exp+r.lent+r.ccp;r.net=r.in-r.out;r.ccCharged=sum(S.cc.filter(c=>c.d.slice(0,7)===m));return r}
+function loans(before){
+  return S.tx.filter(t=>t.t==='lend'&&(!before||t.d<before)).map(l=>{
+    const rp=S.tx.filter(t=>t.t==='repay'&&t.ref===l.id&&(!before||t.d<before));const paid=sum(rp);
+    return{...l,paid,owed:Math.max(0,l.a-paid)}}).sort((a,b)=>(b.owed>0)-(a.owed>0)||b.d.localeCompare(a.d))}
+const owedTotal=before=>sum(loans(before),l=>l.owed);
+function ccPaidDate(c){if(!c.paid)return null;const t=S.tx.find(x=>x.id===c.pay);return t?t.d:c.d}
+function ccOpen(before){return S.cc.filter(c=>(!before||c.d<before)&&(!c.paid||(before&&ccPaidDate(c)>=before)))}
+const ccUnpaid=before=>sum(ccOpen(before));
+function forecast(m){
+  const st=monthStats(m),t=today(),days=dim(m);
+  if(m!==t.slice(0,7))return{live:false,exp:st.exp,days,avg:st.exp/days,proj:st.exp};
+  const el=+t.slice(8);const avg=st.exp/el;return{live:true,exp:st.exp,days:el,total:days,avg,proj:avg*days,left:days-el}}
+
+/* ================= on-device AI ================= */
+/* 1) Naive Bayes category model, trained on seed words + your own past entries. Rebuilt only when data changes. */
+const SEED={
+  food:'food lunch dinner breakfast merienda snack snacks kain ulam rice kanin jollibee mcdo mcdonalds chowking kfc greenwich inasal sushi pizza burger fries coffee starbucks dunkin donut milktea tea grocery groceries palengke puregold savemore dali market bread pandesal rolls bake cake fruit fruits drinks softdrinks samgyup carinderia restaurant cafe icecream cream foodpanda grabfood chicken pork beef fish eggs noodles pancit lugaw siomai siopao shawarma bakery 7eleven alfamart ministop',
+  transpo:'transportation transpo jeep jeepney tricycle trike bus mrt lrt grab angkas joyride moveit taxi gas gasoline diesel fare pamasahe pitx toll parking uv express ferry beep commute ride move',
+  bills:'bills bill meralco electric electricity kuryente maynilad tubig rent upa renta aircon condo dues association insurance philhealth sss pagibig netflix spotify subscription youtube icloud',
+  load:'load globe smart tnt dito gomo wifi data promo prepaid postpaid converge pldt internet fiber unli',
+  shop:'shopping shopee lazada tiktok penshoppe bench uniqlo clothes shirt shoes pants bag oxygen watsons toiletries shampoo soap skincare makeup perfume gadget case accessories',
+  health:'health medicine gamot pharmacy mercury drug doctor checkup clinic hospital dentist dental vitamins laboratory xray optical eyeglasses',
+  edu:'education tuition school books book notebook project printing print xerox photocopy exam enrollment course seminar training uniform',
+  other:'other misc lalamove gift regalo donation abuloy offering haircut barber pet vet laundry'};
+const STOP=new Set('the a an and or for to at in on of my ko sa ng na po with from via using paid pay bayad php peso pesos'.split(' '));
+const tok=s=>(s||'').toLowerCase().replace(/[^a-z0-9ñ]+/g,' ').split(' ').filter(w=>w.length>1&&!STOP.has(w)&&!/^\d+$/.test(w));
+let MODEL=null;
+function model(){if(MODEL)return MODEL;
+  const M={cnt:{},tot:{},udocs:{},uN:0,V:new Set(),exact:{}};
+  const add=(c,ws,w)=>{const cc=M.cnt[c]=M.cnt[c]||{};for(const t of ws){cc[t]=(cc[t]||0)+w;M.tot[c]=(M.tot[c]||0)+w;M.V.add(t)}};
+  for(const c in SEED)add(c,SEED[c].split(' '),1);
+  for(const t of S.tx)if(t.t==='exp'&&t.s){add(t.c,tok(t.s),3);M.udocs[t.c]=(M.udocs[t.c]||0)+1;M.uN++;M.exact[t.s.trim().toLowerCase()]=t.c}
+  return MODEL=M}
+function predict(text){
+  const M=model(),k=(text||'').trim().toLowerCase();if(!k)return null;
+  if(M.exact[k])return{c:M.exact[k],p:.99,why:'Same as a past entry'};
+  const ws=tok(text).filter(w=>M.V.has(w));if(!ws.length)return null;
+  const V=M.V.size,K=CATS.length,sc={};let mx=-Infinity;
+  for(const{id}of CATS){const cc=M.cnt[id]||{},tot=M.tot[id]||0;
+    let s=Math.log(((M.udocs[id]||0)+1)/(M.uN+K));for(const w of ws)s+=Math.log(((cc[w]||0)+.5)/(tot+V*.5));sc[id]=s;if(s>mx)mx=s}
+  let z=0;for(const id in sc){sc[id]=Math.exp(sc[id]-mx);z+=sc[id]}
+  const best=Object.keys(sc).sort((a,b)=>sc[b]-sc[a])[0];
+  return{c:best,p:sc[best]/z,why:'Matched “'+ws.slice(0,3).join(', ')+'”'}}
+
+/* 2) Natural-language parser: turns “lunch 150 gcash yesterday” into a record. */
+const WALIAS={cash:['cash','pera','hand','cash on hand'],gcash:['gcash','gc','g cash','g-cash'],gotyme:['gotyme','go tyme','tyme'],mari:['maribank','mari','seabank'],
+  cimb:['cimb','gsave'],uno:['uno','uno digital']};
+function walletHits(q){const hits=[];
+  for(const w of S.wallets){const al=new Set([w.name.toLowerCase(),w.name.toLowerCase().replace(/\s*\(.*?\)/g,''),...(WALIAS[w.id]||[])]);
+    (w.name.match(/\((.*?)\)/)||[]).slice(1).forEach(x=>al.add(x.toLowerCase()));
+    for(const a of al){if(!a)continue;const re=new RegExp('(^|[^a-z])'+a.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?![a-z])','g');let mm;
+      while((mm=re.exec(q))){hits.push({id:w.id,i:mm.index+mm[1].length,len:a.length})}}}
+  hits.sort((a,b)=>a.i-b.i||b.len-a.len);const out=[];let end=-1;
+  for(const h of hits){if(h.i<end)continue;out.push(h);end=h.i+h.len}return out}
+function parseDate(q){
+  const t=today();let d=null,rm=[];
+  const R=(re,f)=>{const mm=q.match(re);if(mm&&!d){d=f(mm);rm.push(mm[0])}};
+  R(/\b(today|ngayon|kanina)\b/,()=>t);
+  R(/\b(yesterday|kahapon)\b/,()=>addDays(t,-1));
+  R(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})\b/,mm=>{const mo=MN.findIndex(x=>x.toLowerCase()===mm[1])+1;const y=+t.slice(0,4);return y+'-'+pad(mo)+'-'+pad(+mm[2])});
+  R(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/,mm=>{let y=mm[3]?+mm[3]:+t.slice(0,4);if(y<100)y+=2000;return y+'-'+pad(+mm[1])+'-'+pad(+mm[2])});
+  return{d,rm}}
+function parseAmounts(q){const out=[];const re=/(₱|php\s?)?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?\s*(k\b)?/g;let mm;
+  while((mm=re.exec(q))){let v=parseFloat(mm[2].replace(/,/g,'')+(mm[3]?'.'+mm[3]:''));if(mm[4])v*=1000;out.push({v,s:mm[0],cur:!!mm[1]})}return out}
+const RX={
+  q:/(\?\s*$)|^(how|what|who|whom|when|where|why|which|show|list|magkano|ilan|sino|kailan|saan|can|could|should|is|am|are|do|does|did|give|tell|summary|summari[sz]e|forecast|predict|tips?|advice|help|compare|top|biggest|largest|balance|report|kamusta|kumusta|paano|ano)\b/,
+  inc:/\b(salary|sahod|sweldo|income|received|got paid|bonus|allowance|commission|payout|freelance|kita|13th month|refund|cashback|sideline)\b/,
+  lend:/\b(lent|lend|loaned|loan to|pinahiram|pahiram|hiniram|borrowed|nangutang|inutang|utang ni)\b/,
+  repay:/\b(paid back|repaid|repay|returned|binayaran|nagbayad|bayad ni|ibinalik|binalik)\b/,
+  xfer:/\b(transfer(?:red)?|moved?|lipat|cash ?in|cash ?out|withdr[ae]w|withdrawal)\b/,
+  cc:/\b(credit ?card|cc|spaylater|s ?pay ?later|charged? to|charge|utang sa card)\b/};
+const FILL=/\b(to|kay|ni|si|for|from|sa|with|via|using|my|ko|po|the|a|an|php|peso|pesos|pera|bought|buy|bili|binili|spent|paid|pay|bayad|i|on)\b/g;
+function knownPeople(){const m={};S.tx.forEach(t=>{if(t.p)m[t.p.toLowerCase()]=t.p});return m}
+function parseCommand(raw){
+  let q=' '+raw.toLowerCase().replace(/\s+/g,' ').trim()+' ';
+  const{d,rm}=parseDate(q);rm.forEach(x=>q=q.replace(x,' '));
+  const amts=parseAmounts(q);if(!amts.length)return null;
+  const amt=(amts.find(a=>a.cur)||amts.reduce((a,b)=>b.v>a.v?b:a)).v;amts.forEach(a=>q=q.replace(a.s,' '));
+  const wh=walletHits(q);let rest=q;wh.slice().sort((a,b)=>b.i-a.i).forEach(h=>rest=rest.slice(0,h.i)+' '+rest.slice(h.i+h.len));
+  const date=d||today();const w0=wh[0]&&wh[0].id;
+  const clean=s=>s.replace(RX.inc,' ').replace(RX.lend,' ').replace(RX.repay,' ').replace(RX.xfer,' ').replace(RX.cc,' ').replace(FILL,' ').replace(/[^a-z0-9ñ+&' -]/g,' ').replace(/\s+/g,' ').trim();
+  const people=knownPeople();
+  const personFrom=s=>{const ws=clean(s).split(' ').filter(Boolean);
+    for(let i=0;i<ws.length;i++){for(const k in people){const kw=k.split(' ');if(ws.slice(i,i+kw.length).join(' ')===k)return{p:people[k],rest:[...ws.slice(0,i),...ws.slice(i+kw.length)].join(' ')}}}
+    return{p:cap(ws[0]||''),rest:ws.slice(1).join(' ')}};
+  if(RX.xfer.test(q)){const nc=(wh.find(h=>h.id!=='cash')||{}).id||'gcash';let from,to;
+    if(/cash ?out|withdr/.test(q)){from=nc;to='cash'}else if(/cash ?in/.test(q)){from='cash';to=nc}else if(wh.length>=2){from=wh[0].id;to=wh[1].id}
+    if(from&&to&&from!==to)return{t:'xfer',a:amt,d:date,w:from,to,s:/cash ?out|withdr/.test(q)?'Cash out':/cash ?in/.test(q)?'Cash in':cap(clean(rest))}}
+  if(RX.repay.test(q)){const{p}=personFrom(rest);const open=loans().filter(l=>l.owed>0&&l.p.toLowerCase()===p.toLowerCase());
+    return{t:'repay',a:amt,d:date,w:w0||(open[0]&&open[0].w)||'cash',p:open[0]?open[0].p:p,ref:open[0]&&open[0].id,warn:open.length?'':`No open loan found for ${p||'that person'}.`}}
+  if(RX.lend.test(q)){const{p,rest:r}=personFrom(rest);return{t:'lend',a:amt,d:date,w:w0||'gcash',p:p||'Someone',s:cap(r)}}
+  if(RX.inc.test(q)){const k=/freelance|sideline|commission/.test(q)?'Freelance':/bonus|13th/.test(q)?'Bonus':/allowance/.test(q)?'Allowance':/refund|cashback/.test(q)?'Refund':'Salary';
+    return{t:'inc',a:amt,d:date,w:w0||'gcash',k,s:cap(clean(rest))||k}}
+  if(RX.cc.test(q)){const card=/spay|s pay/.test(q)?(S.cards.find(c=>/spay/i.test(c))||'SPayLater'):(S.cards[0]||'Credit Card');
+    return{t:'cc',a:amt,d:date,card,s:cap(clean(rest))||'Card purchase',who:'Me',due:''}}
+  const s=cap(clean(rest))||'Expense';const pr=predict(s);
+  return{t:'exp',a:amt,d:date,w:w0||'cash',s,c:pr&&pr.p>.3?pr.c:'other',conf:pr}}
+
+/* 3) Question answering over your own ledger. */
+const CATQ={food:/food|pagkain|kain|eat|meal|grocer/,transpo:/transpo|transport|fare|commute|pamasahe|grab|jeep|travel/,bills:/bill|utilit|kuryente|electric|water|rent/,
+  load:/load|internet|wifi|data/,shop:/shop|personal|cloth|damit/,health:/health|medic|gamot|doctor/,edu:/educ|school|tuition|aral/,other:/other|misc/};
+function rangeOf(q){const t=today(),cur=STATE.m;
+  if(/last month|nakaraang buwan|previous month/.test(q)){const m=addM(cur,-1);return{f:m+'-01',to:nextM(m)+'-01',l:mLabel(m)}}
+  if(/this year|\byear\b|ngayong taon/.test(q)){const y=cur.slice(0,4);return{f:y+'-01-01',to:(+y+1)+'-01-01',l:y}}
+  if(/\btoday\b|ngayon/.test(q))return{f:t,to:addDays(t,1),l:'today'};
+  if(/\bweek\b|linggo/.test(q))return{f:addDays(t,-6),to:addDays(t,1),l:'the last 7 days'};
+  if(/all time|ever|lahat/.test(q))return{f:'0000',to:'9999',l:'all time'};
+  return{f:cur+'-01',to:nextM(cur)+'-01',l:mLabel(cur)}}
+const inR=(t,r)=>t.d>=r.f&&t.d<r.to;
+const li=a=>'<ul>'+a.map(x=>'<li>'+x+'</li>').join('')+'</ul>';
+function answer(raw){
+  const q=raw.toLowerCase().trim();
+  const r=rangeOf(q);const cat=Object.keys(CATQ).find(k=>CATQ[k].test(q));
+  const exps=S.tx.filter(t=>t.t==='exp'&&inR(t,r));
+  if(/^(hi|hello|hey|help)\b|what can you do|paano/.test(q))return help();
+  if(/who owes|owes me|owe me|receivable|utang (nila|sa akin)|may utang|pinahiram/.test(q)){
+    const by={};loans().forEach(l=>{if(l.owed>0)by[l.p]=(by[l.p]||0)+l.owed});const k=Object.keys(by).sort((a,b)=>by[b]-by[a]);
+    if(!k.length)return'Nobody owes you money right now.';
+    return`<b>${peso(sumBal(by))}</b> is still owed to you by ${k.length} ${k.length>1?'people':'person'}:`+li(k.map(p=>`${esc(p)}: <span class="mono">${peso(by[p])}</span>`))}
+  if(/how much do i owe|my debt|credit card|\bcc\b|spaylater|liabilit|bayarin|\bdue\b|utang ko/.test(q)){
+    const open=ccOpen();if(!open.length)return'All card and SPayLater items are paid. Nice.';
+    const by={};open.forEach(c=>by[c.card]=(by[c.card]||0)+c.a);const nx=open.filter(c=>c.due).sort((a,b)=>a.due.localeCompare(b.due))[0];
+    return`You owe <b>${peso(sum(open))}</b> on cards:`+li(Object.keys(by).map(k=>`${esc(k)}: <span class="mono">${peso(by[k])}</span>`))+(nx?`Next due: ${esc(nx.s)} on ${dLabel(nx.due)}.`:'')}
+  const afford=q.match(/afford|kaya ko|can i (buy|spend|get)/)&&parseAmounts(q)[0];
+  if(afford){const x=afford.v,f=forecast(STATE.m),now=sumBal(balances());
+    const remaining=f.live?f.avg*f.left:0,due=sum(ccOpen().filter(c=>!c.due||c.due<=addDays(today(),31)));const left=now-remaining-due-x;
+    const verdict=left>now*.2?['pos','Yes, comfortably.']:left>=0?['warn','Yes, but it gets tight.']:['neg','Not yet.'];
+    return`<b class="${verdict[0]}">${verdict[1]}</b> Here is the math:`+li([`All wallets now: <span class="mono">${peso(now)}</span>`,
+      `Expected spending for the rest of the month: <span class="mono">${peso(remaining)}</span>`,`Card bills due within 31 days: <span class="mono">${peso(due)}</span>`,
+      `After buying this (<span class="mono">${peso(x)}</span>): <b class="mono">${peso(left)}</b>`])}
+  if(/forecast|predict|project|end of (the )?month|aabot|will i|pace/.test(q)){const f=forecast(STATE.m),st=monthStats(STATE.m);
+    if(!f.live)return`${mLabel(STATE.m)} is not the current month. Its day-to-day spending was <b>${peso(st.exp)}</b>, about ${peso(f.avg)} per day.`;
+    const projOut=f.proj+st.lent+st.ccp,projNet=st.in-projOut;
+    return`You have spent <b>${peso(f.exp)}</b> in ${f.days} days, about <span class="mono">${peso(f.avg)}</span> a day. At this pace:`+li([
+      `Day-to-day spending by month end: <b class="mono">${peso(f.proj)}</b>`,`Projected net cashflow: <b class="mono ${projNet<0?'neg':'pos'}">${peso(projNet)}</b> (if no more income or loans)`,
+      `To break even, keep daily spending under <span class="mono">${peso(Math.max(0,(st.in-st.lent-st.ccp-f.exp)/Math.max(1,f.left)))}</span> for the last ${f.left} days`])}
+  if(/compare|\bvs\b|versus|than last/.test(q)){const a=monthStats(STATE.m),b=monthStats(addM(STATE.m,-1));
+    const rows=CATS.map(c=>[c,(a.cats[c.id]||0)-(b.cats[c.id]||0)]).filter(x=>Math.abs(x[1])>0.5).sort((x,y)=>Math.abs(y[1])-Math.abs(x[1])).slice(0,5);
+    return`${mLabel(STATE.m)} vs ${mLabel(addM(STATE.m,-1))}: day-to-day spending <b class="mono">${peso(a.exp)}</b> vs <span class="mono">${peso(b.exp)}</span> (${a.exp>=b.exp?'up':'down'} ${peso(Math.abs(a.exp-b.exp))}).`+
+      (rows.length?li(rows.map(([c,d])=>`${c.name}: <span class="mono ${d>0?'neg':'pos'}">${d>0?'+':'-'}${peso(Math.abs(d))}</span>`)):'')}
+  if(/biggest|largest|highest|most expensive|\btop\b|pinakamalaki|pinakamahal/.test(q)){const top=exps.filter(t=>!cat||t.c===cat).sort((a,b)=>b.a-a.a).slice(0,5);
+    if(!top.length)return`No expenses found for ${r.l}.`;return`Biggest ${cat?catName(cat).toLowerCase()+' ':''}expenses for ${r.l}:`+li(top.map(t=>`${esc(t.s)} <span class="muted">(${dLabel(t.d)})</span>: <span class="mono">${peso(t.a)}</span>`))}
+  const wq=walletHits(q);
+  if(/balance|how much (money )?do i have|natitira|my wallets?|pera ko|money left/.test(q)||(wq.length&&!/spen|gastos|expense/.test(q))){const b=balances();
+    const list=wq.length?wq.map(h=>W(h.id)):S.wallets;
+    return(wq.length?'':`All wallets together: <b>${peso(sumBal(b))}</b>`)+li(list.map(w=>`${esc(w.name)}: <span class="mono ${b[w.id]<0?'neg':''}">${peso(b[w.id])}</span>${b[w.id]<0?' (below zero, check for a missing income or transfer)':''}`))}
+  if(/income|earn|salary|sahod|sweldo|kita|received|cash in/.test(q)){const inc=S.tx.filter(t=>(t.t==='inc'||t.t==='repay')&&inR(t,r));
+    if(!inc.length)return`No income recorded for ${r.l}.`;
+    return`Money in for ${r.l}: <b>${peso(sum(inc))}</b>`+li(inc.map(t=>`${esc(t.t==='repay'?'Repaid by '+t.p:t.s)} <span class="muted">(${dLabel(t.d)}, ${esc(W(t.w).name)})</span>: <span class="mono">${peso(t.a)}</span>`))}
+  if(/tip|advice|save|savings|ipon|budget|reduce|bawas|cut/.test(q))return tips();
+  if(/summary|overview|report|kamusta|kumusta|how am i doing|status|recap/.test(q))return summary();
+  if(/spen|spent|gastos|ginastos|gumastos|expense|magkano|how much|where.*money|saan napunta/.test(q)||cat){
+    let list=exps,label='';
+    if(cat){list=exps.filter(t=>t.c===cat);label=' on '+catName(cat)}
+    else{const mm=q.match(/\b(?:on|for|sa|at)\s+([a-z0-9ñ ]{2,30}?)(?:\s+(?:this|last|in|today|ngayon)\b|\?|$)/);
+      if(mm){const term=mm[1].trim();const hit=exps.filter(t=>t.s.toLowerCase().includes(term));if(hit.length){list=hit;label=` on “${esc(term)}”`}
+        else{const pr=predict(term);if(pr&&pr.p>.5){list=exps.filter(t=>t.c===pr.c);label=' on '+catName(pr.c)}}}}
+    if(!label&&/where|saan|napunta|breakdown/.test(q)||(!label&&!cat)){const by={};exps.forEach(t=>by[t.c]=(by[t.c]||0)+t.a);const k=Object.keys(by).sort((a,b)=>by[b]-by[a]);
+      if(!k.length)return`No expenses recorded for ${r.l}.`;
+      return`You spent <b>${peso(sum(exps))}</b> on day-to-day items in ${r.l}:`+li(k.map(c=>`${catName(c)}: <span class="mono">${peso(by[c])}</span> (${pct(by[c],sum(exps))})`))}
+    if(!list.length)return`Nothing spent${label} in ${r.l}.`;
+    const big=list.slice().sort((a,b)=>b.a-a.a)[0];
+    return`You spent <b>${peso(sum(list))}</b>${label} in ${r.l}, across ${list.length} entr${list.length>1?'ies':'y'} (${pct(sum(list),sum(exps))} of all spending). Biggest: ${esc(big.s)}, <span class="mono">${peso(big.a)}</span> on ${dLabel(big.d)}.`}
+  return'I did not catch that. '+help()}
+function help(){return`I run fully on your phone, so nothing leaves it. Try:`+li([
+  '<b>Add things:</b> “lunch 120 gcash”, “jeep 13 yesterday”, “salary 16000 gotyme”, “lent mama 500 for tuition”, “ate paid back 200”, “transfer 1000 gcash to cash”, “shopee 899 spaylater”',
+  '<b>Ask:</b> “how much on food?”, “who owes me?”, “forecast”, “can I afford 2500?”, “compare vs last month”, “biggest expenses”, “tips”'])}
+function summary(){const m=STATE.m,st=monthStats(m),end=nextM(m)+'-01';const top=Object.keys(st.cats).sort((a,b)=>st.cats[b]-st.cats[a])[0];
+  return`<b>${mLabel(m)} so far</b>`+li([`Money in: <span class="mono pos">${peso(st.in)}</span>, money out: <span class="mono">${peso(st.out)}</span>`,
+    `Net: <b class="mono ${st.net<0?'neg':'pos'}">${peso(st.net)}</b>`,top?`Top category: ${catName(top)} at <span class="mono">${peso(st.cats[top])}</span>`:'No day-to-day spending yet',
+    `Lent out this month: <span class="mono">${peso(st.lent)}</span>; still owed to you: <span class="mono">${peso(owedTotal(end))}</span>`,
+    `Unpaid cards: <span class="mono warn">${peso(ccUnpaid(end))}</span>`,`All wallets at month end: <span class="mono">${peso(sumBal(balances(end)))}</span>`])}
+function tips(){const m=STATE.m,st=monthStats(m),f=forecast(m),out=[];const tot=st.exp||1;
+  if(st.out&&st.lent/st.out>.25)out.push(`Lending took ${pct(st.lent,st.out)} of your cash out. Set a monthly lending cap (for example ${pesoS(st.in*.1)}, 10% of income) and log due dates so repayments get chased.`);
+  const tr=st.cats.transpo||0,trn=S.tx.filter(t=>t.t==='exp'&&t.c==='transpo'&&t.d.slice(0,7)===m).length;
+  if(trn>=6)out.push(`You logged ${trn} transport rides (${peso(tr)}). A fixed weekly fare budget of ${pesoS(tr/Math.max(1,f.days)*7)} keeps this predictable.`);
+  if((st.cats.food||0)/tot>.3)out.push(`Food is ${pct(st.cats.food,tot)} of spending. Cooking or baon two extra days a week usually trims 10 to 15%.`);
+  const cc=ccUnpaid(nextM(m)+'-01');if(cc>0)out.push(`${peso(cc)} is unpaid on cards. Pay the earliest due date first to avoid interest and late fees.`);
+  const gw=S.goal&&S.goal.w,gb=gw?balances()[gw]:0;if(S.goal&&S.goal.amt>gb)out.push(`You are ${pesoS(S.goal.amt-gb)} away from your ${pesoS(S.goal.amt)} savings goal. Moving ${pesoS((S.goal.amt-gb)/3)} on each payday closes it in about 3 months.`);
+  if(st.net<0)out.push(`This month is in a deficit of ${peso(-st.net)}. Pause non-essential shopping until the next payday.`);
+  if(!out.length)out.push('Your month looks balanced. Keep logging daily so the forecast stays accurate.');
+  return'Based on your own numbers:'+li(out)}
+function insights(m){const st=monthStats(m),end=nextM(m)+'-01',b=balances(end),out=[];
+  if(st.in||st.out){if(st.net<0){const dr=[['money lent to others',st.lent],['day-to-day expenses',st.exp],['card payments',st.ccp]].sort((a,b)=>b[1]-a[1])[0];
+      out.push({lv:'bad',t:`Deficit of ${peso(-st.net)}`,x:`${peso(st.in)} came in and ${peso(st.out)} went out. The biggest outflow is ${dr[0]} at ${peso(dr[1])} (${pct(dr[1],st.out)} of cash out).`})}
+    else out.push({lv:'good',t:`Surplus of ${peso(st.net)}`,x:`You kept ${pct(st.net,st.in)} of the money that came in.`})}
+  const od=S.wallets.filter(w=>b[w.id]<-0.004);if(od.length)out.push({lv:'warn',t:`${od.length} wallet${od.length>1?'s are':' is'} below zero`,x:od.map(w=>`${w.name} ${peso(b[w.id])}`).join(', ')+'. Usually an income or transfer was not logged.'});
+  const soon=ccOpen().filter(c=>c.due&&c.due<=addDays(today(),7));if(soon.length)out.push({lv:'warn',t:`${peso(sum(soon))} in card bills due within 7 days`,x:soon.map(c=>`${c.s} (${dLabel(c.due)})`).join(', ')});
+  const late=loans().filter(l=>l.owed>0&&l.due&&l.due<today());if(late.length)out.push({lv:'info',t:`${late.length} loan${late.length>1?'s':''} past the due date`,x:late.map(l=>`${l.p} owes ${peso(l.owed)}`).join(', ')});
+  const f=forecast(m);if(f.live&&f.exp)out.push({lv:'info',t:`On pace for ${pesoS(f.proj)} of spending`,x:`You average ${peso(f.avg)} a day across ${f.days} days.`});
+  return out}
+
+/* ================= UI state ================= */
+const STATE={m:today().slice(0,7),tab:'home',filter:{cat:null,type:'all',q:'',limit:40},chat:[],drafts:[]};
+try{const t=localStorage.getItem('pitaka.tab');if(t)STATE.tab=t}catch(e){}
+const TABS=[['home','Home','<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'],
+  ['wallets','Wallets','<path d="M3 7h15a3 3 0 0 1 3 3v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l12-3v3M16 14h2"/>'],
+  ['spend','Spending','<path d="M12 3v9h9A9 9 0 1 1 12 3zM15 3.5A9 9 0 0 1 20.5 9H15z"/>'],
+  ['debts','Debts','<path d="M7 7h12l-3-3M17 17H5l3 3"/>'],
+  ['ai','Assistant','<path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8zM19 15l.8 2.2 2.2.8-2.2.8L19 21l-.8-2.2-2.2-.8 2.2-.8z"/>']];
+
+function render(){
+  $('#mlabel').textContent=mLabel(STATE.m);
+  $('#tabs').innerHTML=TABS.map(([id,l,ic])=>`<button class="tab${STATE.tab===id?' on':''}" data-act="tab" data-id="${id}" aria-current="${STATE.tab===id}"><svg viewBox="0 0 24 24">${ic}</svg>${l}</button>`).join('');
+  const v=VIEWS[STATE.tab]||VIEWS.home;$('#view').innerHTML=v();
+  $('#composer').hidden=STATE.tab!=='ai';$('#fab').hidden=STATE.tab==='ai';
+  if(STATE.tab==='ai'){renderChips();const c=$('#chat');if(c)window.scrollTo(0,document.body.scrollHeight)}}
+
+function kpis(){const st=monthStats(STATE.m),end=nextM(STATE.m)+'-01',bal=sumBal(balances(end));
+  const k=[['Net cashflow',st.net,st.net<0?'neg':'pos'],['Cash in',st.in,'pos'],['Cash out',st.out,''],['Cards unpaid',ccUnpaid(end),'warn'],['Owed to me',owedTotal(end),'owed'],['All wallets',bal,bal<0?'neg':'']];
+  return`<section class="kpis" aria-label="Month summary">${k.map(([l,v,c])=>`<div class="kpi"><span>${l}</span><b class="${c}">${peso(v)}</b></div>`).join('')}</section>`}
+
+const VIEWS={
+home(){const m=STATE.m,st=monthStats(m),end=nextM(m)+'-01',ins=insights(m);
+  const gw=W(S.goal.w),gb=balances(end)[S.goal.w]||0,gp=Math.max(0,Math.min(1,gb/(S.goal.amt||1)));
+  const outs=[['Money lent to others',st.lent,'var(--c3)'],['Day-to-day expenses',st.exp,'var(--c2)'],['Card & SPayLater paid',st.ccp,'var(--c4)']];
+  const mx=Math.max(st.out,st.ccCharged,1);
+  return(S.demo?`<div class="notice info"><b>You are viewing sample data</b><span>Explore freely, then start with your own numbers. Sample entries are examples, not your records.</span><div class="acts"><button class="btn sm pri" data-act="fresh">Start fresh</button><button class="btn sm" data-act="settings">Set wallet balances</button></div></div>`:'')+
+  kpis()+
+  (ins.length?`<div class="notice ${ins[0].lv}"><b>${esc(ins[0].t)}</b><span>${esc(ins[0].x)}</span>${ins.length>1?`<span class="sub">${ins.length-1} more insight${ins.length>2?'s':''} from the assistant</span>`:''}<div class="acts"><button class="btn sm" data-act="ask" data-q="Give me tips">Get tips</button><button class="btn sm" data-act="ask" data-q="forecast">Forecast</button></div></div>`:'')+
+  `<div class="grid2">
+    <section class="card"><p class="eyebrow">Cash in</p><div class="big pos">${peso(st.in)}</div><div class="rows"><div><span>Income</span><b>${peso(st.inc)}</b></div><div><span>Paid back to me</span><b>${peso(st.rep)}</b></div></div></section>
+    <section class="card"><p class="eyebrow">Cash out</p><div class="big">${peso(st.out)}</div><div class="rows"><div><span>Day-to-day</span><b>${peso(st.exp)}</b></div><div><span>Lent out</span><b class="neg">${peso(st.lent)}</b></div><div><span>Cards paid</span><b>${peso(st.ccp)}</b></div></div></section>
+  </div>
+  <section class="card"><div class="split"><p class="eyebrow">Savings goal · ${esc(gw.name)}</p><span class="sub mono">Goal ${peso(S.goal.amt)}</span></div>
+    <div class="big">${peso(gb)}</div><div class="bar" style="margin-top:10px"><i style="width:${gp*100}%;background:var(--accent)"></i></div>
+    <div class="split sub" style="margin-top:6px"><span>${Math.round(gp*100)}% reached</span><span class="mono">${gb>=S.goal.amt?'Goal reached':'Remaining '+peso(S.goal.amt-gb)}</span></div></section>
+  <section class="card"><h2>Where the cash went</h2><div class="brk">
+    ${outs.map(([l,v,c])=>`<div><div class="lbl"><span>${l}</span><b>${peso(v)} · ${pct(v,st.out)}</b></div><div class="bar"><i style="width:${v/mx*100}%;background:${c}"></i></div></div>`).join('')}
+    <div><div class="lbl"><span>Charged to cards <span class="sub">(debt, not cash)</span></span><b class="warn">${peso(st.ccCharged)}</b></div><div class="bar"><i style="width:${st.ccCharged/mx*100}%;background:var(--warn)"></i></div></div>
+  </div></section>
+  <section class="card cv"><h2>Month by month</h2><div class="tscroll"><table><thead><tr><th>Month</th><th>Income</th><th>Spent</th><th>Lent</th><th>Out</th><th>Net</th><th>Cards left</th><th>Wallets</th></tr></thead><tbody>${trendRows()}</tbody></table></div></section>`},
+
+wallets(){const m=STATE.m,start=m+'-01',end=nextM(m)+'-01',open=balances(start);const flows={};
+  S.wallets.forEach(w=>flows[w.id]={in:0,out:0,xf:0});
+  const xfers=[];for(const t of S.tx){if(t.d<start||t.d>=end)continue;const f=flows[t.w]||(flows[t.w]={in:0,out:0,xf:0});
+    if(t.t==='inc'||t.t==='repay')f.in+=t.a;else if(t.t==='xfer'){f.xf-=t.a;(flows[t.to]||(flows[t.to]={in:0,out:0,xf:0})).xf+=t.a;xfers.push(t)}else f.out+=t.a}
+  const close=balances(end),tot=sumBal(close);
+  return kpis()+`<div class="split"><h2 style="font:600 17px var(--font-display);margin:0">Wallets at month end</h2><button class="btn sm pri" data-act="form" data-t="xfer">Transfer</button></div>
+  <div class="wgrid">${S.wallets.map(w=>{const c=close[w.id]||0,f=flows[w.id];const st=c<-0.004?['neg','Overdrawn']:c>0.004?['pos','Positive']:['zero','Zero'];
+    return`<section class="card wcard"><div class="head"><span class="dot" style="background:var(--c${w.col})"></span>${esc(w.name)}<span class="pill ${st[0]}">${st[1]}</span></div>
+    <div class="big ${c<0?'neg':''}" style="margin-top:8px">${peso(c)}</div>
+    <div class="rows"><div><span>Opening</span><b>${peso(open[w.id]||0)}</b></div><div><span>Money in</span><b class="pos">+${peso(f.in)}</b></div><div><span>Money out</span><b class="neg">-${peso(f.out)}</b></div><div><span>Net transfers</span><b>${peso(f.xf)}</b></div></div></section>`}).join('')}</div>
+  <section class="notice ${tot<0?'bad':'info'}"><span class="eyebrow">All wallets combined</span><span class="big ${tot<0?'neg':''}">${peso(tot)}</span><span class="sub">Opened at ${peso(sumBal(open))}, with ${peso(monthStats(m).in)} in and ${peso(monthStats(m).out)} out.</span></section>
+  <section class="card"><h2>Transfers between wallets<span class="right">${xfers.length} this month</span></h2><div class="list">
+    ${xfers.length?xfers.sort((a,b)=>b.d.localeCompare(a.d)).map(txRow).join(''):'<div class="empty">No transfers this month. Transfers move money between wallets without changing your totals.</div>'}</div></section>`},
+
+spend(){const m=STATE.m,st=monthStats(m),F=STATE.filter;const cats=CATS.filter(c=>st.cats[c.id]).sort((a,b)=>st.cats[b.id]-st.cats[a.id]);
+  let acc=0;const arcs=cats.map(c=>{const p=st.cats[c.id]/(st.exp||1)*100;const s=`<circle r="15.915" cx="21" cy="21" fill="none" stroke="${catCol(c.id)}" stroke-width="6" stroke-dasharray="${Math.max(0,p-.4)} ${100-Math.max(0,p-.4)}" stroke-dashoffset="${25-acc}" data-act="cat" data-id="${c.id}" opacity="${F.cat&&F.cat!==c.id?.3:1}"><title>${c.name}</title></circle>`;acc+=p;return s}).join('');
+  let list=S.tx.filter(t=>t.d.slice(0,7)===m);
+  if(F.type!=='all')list=list.filter(t=>F.type==='loan'?(t.t==='lend'||t.t==='repay'):t.t===F.type);
+  if(F.cat)list=list.filter(t=>t.t==='exp'&&t.c===F.cat);
+  if(F.q){const q=F.q.toLowerCase();list=list.filter(t=>((t.s||'')+' '+(t.n||'')+' '+(t.p||'')+' '+W(t.w).name).toLowerCase().includes(q))}
+  list.sort((a,b)=>b.d.localeCompare(a.d));const shown=list.slice(0,F.limit);
+  return`<section class="card"><h2>Spending by category<span class="right">${st.n} entries</span></h2>
+    ${st.exp?`<div class="donut"><svg viewBox="0 0 42 42" role="img" aria-label="Category donut chart"><circle r="15.915" cx="21" cy="21" fill="none" stroke="var(--surface-2)" stroke-width="6"/>${arcs}
+      <text x="21" y="20" text-anchor="middle" font-size="3" fill="var(--muted)" font-family="var(--font-body)">TOTAL</text><text x="21" y="24.5" text-anchor="middle" font-size="4.2" font-weight="700" fill="var(--fg)" font-family="var(--font-display)">${pesoS(st.exp)}</text></svg>
+      <div class="legend">${cats.map(c=>`<button data-act="cat" data-id="${c.id}" class="${F.cat&&F.cat!==c.id?'dim':''}"><i class="dot" style="background:${catCol(c.id)}"></i><span>${c.name}</span><b>${pesoS(st.cats[c.id])} · ${pct(st.cats[c.id],st.exp)}</b></button>`).join('')}</div></div>`
+      :'<div class="empty">No expenses this month yet. Tap + to add one, or tell the assistant “lunch 120 gcash”.</div>'}</section>
+  <section class="card"><h2>Transactions${F.cat?`<span class="pill zero">${catName(F.cat)}</span>`:''}<span class="right">${list.length} shown</span></h2>
+    <div style="display:flex;flex-direction:column;gap:10px"><input class="search" id="search" type="search" placeholder="Search description, person, wallet" value="${esc(F.q)}" aria-label="Search transactions">
+    <div class="chips">${[['all','All'],['exp','Expenses'],['inc','Income'],['xfer','Transfers'],['loan','Loans'],['ccpay','Card payments']].map(([k,l])=>`<button class="chip${F.type===k?' on':''}" data-act="type" data-id="${k}">${l}</button>`).join('')}${F.cat?`<button class="chip" data-act="cat" data-id="${F.cat}">Clear category ✕</button>`:''}</div></div>
+    <div class="list" style="margin-top:6px">${shown.length?shown.map(txRow).join(''):'<div class="empty">Nothing matches.</div>'}</div>
+    ${list.length>shown.length?`<button class="btn" style="width:100%;margin-top:8px" data-act="more">Show ${Math.min(40,list.length-shown.length)} more</button>`:''}</section>`},
+
+debts(){const end=nextM(STATE.m)+'-01',L=loans(),open=ccOpen();const owed=sum(L,l=>l.owed),people=new Set(L.filter(l=>l.owed>0).map(l=>l.p)).size;
+  const byCard={};open.forEach(c=>byCard[c.card]=(byCard[c.card]||0)+c.a);
+  const ccList=S.cc.slice().sort((a,b)=>(a.paid-b.paid)||(a.due||'9').localeCompare(b.due||'9'));
+  return`<div class="grid2">
+    <section class="card"><p class="eyebrow">Owed to me</p><div class="big owed">${peso(owed)}</div><div class="sub">${people} ${people===1?'person':'people'} · lent this month ${peso(monthStats(STATE.m).lent)}</div></section>
+    <section class="card"><p class="eyebrow">What I owe</p><div class="big neg">${peso(sum(open))}</div><div class="sub">${Object.keys(byCard).map(k=>esc(k)+' '+pesoS(byCard[k])).join(' · ')||'All paid'}</div></section></div>
+  <section class="card"><div class="split" style="margin-bottom:6px"><h2 style="margin:0">Money I lent</h2><button class="btn sm pri" data-act="form" data-t="lend">Lend cash</button></div>
+    <div class="list">${L.length?L.map(l=>`<div class="item"><div class="ic" style="background:var(--owed)">${esc((l.p||'?').charAt(0).toUpperCase())}</div>
+      <button class="mid" style="border:0;background:none;padding:0;text-align:left" data-act="edit" data-id="${l.id}"><div class="t">${esc(l.p)}${l.s?` <span class="muted" style="font-weight:400">· ${esc(l.s)}</span>`:''}</div>
+      <div class="m">${dLabel(l.d)} · ${esc(W(l.w).name)} · lent ${peso(l.a)}${l.paid?` · repaid ${peso(l.paid)}`:''}${l.due?` · due ${dLabel(l.due)}`:''}</div></button>
+      <div class="r">${l.owed>0?`<b class="neg">${peso(l.owed)}</b><button class="btn sm" data-act="repay" data-id="${l.id}" style="margin-top:4px">Repaid</button>`:`<span class="pill pos">Settled</span>`}</div></div>`).join(''):'<div class="empty">No loans yet. When family or friends borrow, log it here so you remember.</div>'}</div></section>
+  <section class="card"><div class="split" style="margin-bottom:6px"><h2 style="margin:0">Card & SPayLater items</h2><button class="btn sm pri" data-act="form" data-t="cc">Add charge</button></div>
+    <div class="list">${ccList.length?ccList.map(c=>`<div class="item"><div class="ic" style="background:var(--warn)">${c.card.charAt(0)}</div>
+      <button class="mid" style="border:0;background:none;padding:0;text-align:left" data-act="editcc" data-id="${c.id}"><div class="t">${esc(c.s)}</div><div class="m">${esc(c.card)} · ${dLabel(c.d)} · for ${esc(c.who||'Me')}${c.due?' · due '+dLabel(c.due):''}</div></button>
+      <div class="r"><b>${peso(c.a)}</b>${c.paid?`<button class="btn sm" data-act="unpay" data-id="${c.id}" style="margin-top:4px">Paid ✓</button>`:`<button class="btn sm" data-act="paycc" data-id="${c.id}" style="margin-top:4px">Mark paid</button>`}</div></div>`).join(''):'<div class="empty">No card charges logged.</div>'}</div></section>`},
+
+ai(){if(!STATE.chat.length)STATE.chat.push({me:false,h:`<b>Hi! I am your on-device assistant.</b> `+summaryLine()+`<br><br>`+help()});
+  return`<section class="ai-head"><div class="orb">✦</div><div><div style="font:700 17px var(--font-display)">Assistant</div><div class="sub">Runs offline on your phone. No internet, no GPU, no data leaves the device.</div></div></section>
+  <div class="chat" id="chat">${STATE.chat.map((c,i)=>`<div class="msg ${c.me?'me':'bot'}">${c.me?esc(c.h):c.h}${c.draft!=null?draftCard(c.draft):''}</div>`).join('')}</div><div style="height:96px"></div>`}};
+
+function summaryLine(){const st=monthStats(STATE.m);return`For ${mLabel(STATE.m)} you are at <b class="${st.net<0?'neg':'pos'}">${peso(st.net)}</b> net.`}
+function trendRows(){const ms=S.tx.map(t=>t.d.slice(0,7)).sort();let start=ms[0]||STATE.m;if(start>STATE.m)start=STATE.m;
+  if(addM(start,11)<STATE.m)start=addM(STATE.m,-11);let h='';
+  for(let i=0;i<12;i++){const m=addM(start,i),st=monthStats(m),e=nextM(m)+'-01',wt=sumBal(balances(e)),cl=ccUnpaid(e);
+    h+=`<tr class="${m===STATE.m?'on':''}"><td>${mLabel(m)}</td><td class="pos">${pesoS(st.in)}</td><td>${pesoS(st.exp)}</td><td>${pesoS(st.lent)}</td><td>${pesoS(st.out)}</td><td class="${st.net<0?'neg':st.net>0?'pos':''}">${pesoS(st.net)}</td><td class="warn">${pesoS(cl)}</td><td class="${wt<0?'neg':''}">${pesoS(wt)}</td></tr>`}
+  return h}
+function txRow(t){const T={exp:[catCol(t.c),catName(t.c).charAt(0),t.s,catName(t.c),'-'],inc:['var(--pos)','+',t.s,t.k||'Income','+'],
+  xfer:['var(--muted)','⇄',t.s||`${W(t.w).name} → ${W(t.to).name}`,`${W(t.w).name} → ${W(t.to).name}`,''],lend:['var(--owed)','↗',`Lent to ${t.p}`,t.s||'Loan','-'],
+  repay:['var(--pos)','↙',`${t.p} paid back`,'Repayment','+'],ccpay:['var(--warn)','▭',t.s||'Card payment','Card payment','-']}[t.t];
+  const cls=T[4]==='+'?'pos':T[4]==='-'&&t.t!=='exp'?'neg':'';
+  return`<button class="item" data-act="edit" data-id="${t.id}"><div class="ic" style="background:${T[0]}">${esc(T[1])}</div><div class="mid"><div class="t">${esc(T[2])}</div><div class="m">${dLabel(t.d)} · ${esc(T[3])}${t.t!=='xfer'?' · '+esc(W(t.w).name):''}${t.n?' · '+esc(t.n):''}</div></div><div class="r"><b class="${cls}">${T[4]}${peso(t.a)}</b></div></button>`}
+
+/* ================= sheets & forms ================= */
+function sheet(html){$('#sheetBody').innerHTML=html;$('#sheet').hidden=false;const f=$('#sheetBody input:not([type=hidden]),#sheetBody select');if(f&&!('ontouchstart' in window))f.focus()}
+function closeSheet(){$('#sheet').hidden=true;$('#sheetBody').innerHTML=''}
+function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,2200)}
+function askConfirm(msg,yes,label='Delete'){sheet(`<h3>${esc(msg)}</h3><div class="btns"><button class="btn pri" id="cyes" style="background:var(--neg);border-color:var(--neg)">${esc(label)}</button><button class="btn" data-act="close">Cancel</button></div>`);$('#cyes').onclick=()=>{closeSheet();yes()}}
+const wOpts=sel=>S.wallets.map(w=>`<option value="${w.id}"${w.id===sel?' selected':''}>${esc(w.name)}</option>`).join('');
+const defDate=()=>{const t=today();return t.slice(0,7)===STATE.m?t:(STATE.m<t.slice(0,7)?STATE.m+'-'+pad(dim(STATE.m)):STATE.m+'-01')};
+
+function addMenu(){sheet(`<h3>Add a record</h3><div class="actions-grid">
+  ${[['exp','Expense','−','var(--c2)'],['inc','Income','+','var(--pos)'],['xfer','Transfer','⇄','var(--muted)'],['lend','Lend cash','↗','var(--owed)'],['cc','Card charge','▭','var(--warn)'],['ai','Type it','✦','var(--accent)']]
+   .map(([t,l,i,c])=>`<button class="act" data-act="${t==='ai'?'tab':'form'}" data-t="${t}" data-id="ai"><i style="background:${c}">${i}</i>${l}</button>`).join('')}</div>`)}
+
+function openForm(type,x={}){const ed=!!x.id;const d=x.d||defDate();let body='',title='';
+  const amt=`<label>Amount (₱)<input class="amtin" id="f_a" inputmode="decimal" placeholder="0.00" value="${x.a!=null?x.a:''}" required></label>`;
+  const date=`<label>Date<input type="date" id="f_d" value="${d}" required></label>`;
+  const note=`<label>Note<input id="f_n" value="${esc(x.n||'')}" placeholder="Optional"></label>`;
+  if(type==='exp'){title=ed?'Edit expense':'Add expense';const c=x.c||'';
+    body=amt+`<label>What was it for?<input id="f_s" value="${esc(x.s||'')}" placeholder="e.g. Jollibee lunch, jeep to work" required autocomplete="off"></label><div class="hint" id="f_hint"></div>
+    <label>Category</label><div class="chips" id="f_cats" style="margin-top:-6px">${CATS.map(k=>`<button type="button" class="chip${k.id===c?' on':''}" data-cat="${k.id}"><i class="dot" style="background:${catCol(k.id)}"></i>${k.name}</button>`).join('')}</div>
+    <input type="hidden" id="f_c" value="${c}"><div class="row2"><label>Paid from<select id="f_w">${wOpts(x.w||'cash')}</select></label>${date}</div>`+note}
+  if(type==='inc'){title=ed?'Edit income':'Add income';body=amt+`<label>Source<input id="f_s" value="${esc(x.s||'')}" placeholder="e.g. Salary, freelance client" required></label>
+    <div class="row2"><label>Type<select id="f_k">${['Salary','Freelance','Bonus','Allowance','Gift','Refund','Other'].map(k=>`<option${k===(x.k||'Salary')?' selected':''}>${k}</option>`).join('')}</select></label><label>Deposited to<select id="f_w">${wOpts(x.w||'gcash')}</select></label></div>`+date+note}
+  if(type==='xfer'){title=ed?'Edit transfer':'Transfer between wallets';body=amt+`<div class="row2"><label>From<select id="f_w">${wOpts(x.w||'gcash')}</select></label><label>To<select id="f_to">${wOpts(x.to||'cash')}</select></label></div>`+date+note}
+  if(type==='lend'){title=ed?'Edit loan':'Lend cash';const ppl=[...new Set(S.tx.filter(t=>t.p).map(t=>t.p))];
+    body=`<label>Who borrowed<input id="f_p" list="ppl" value="${esc(x.p||'')}" placeholder="e.g. Mama, Kuya" required><datalist id="ppl">${ppl.map(p=>`<option value="${esc(p)}">`).join('')}</datalist></label>`+amt+
+    `<label>Reason<input id="f_s" value="${esc(x.s||'')}" placeholder="Optional"></label><div class="row2"><label>Taken from<select id="f_w">${wOpts(x.w||'gcash')}</select></label>${date}</div><label>Due date<input type="date" id="f_due" value="${x.due||''}"></label>`+note}
+  if(type==='repay'){const l=S.tx.find(t=>t.id===x.ref);const left=l?loans().find(z=>z.id===l.id).owed+(ed?x.a:0):0;title=`Repayment from ${esc(x.p||(l&&l.p)||'')}`;
+    body=amt.replace(`value="${x.a!=null?x.a:''}"`,`value="${x.a!=null?x.a:left}"`)+`<div class="sub">Still owed before this: ${peso(left)}</div><div class="row2"><label>Received in<select id="f_w">${wOpts(x.w||(l&&l.w)||'cash')}</select></label>${date}</div>`}
+  if(type==='cc'){title=ed?'Edit card charge':'Add card charge';body=amt+`<label>Merchant or item<input id="f_s" value="${esc(x.s||'')}" placeholder="e.g. Shopee rice cooker" required></label>
+    <div class="row2"><label>Card<select id="f_card">${S.cards.map(c=>`<option${c===x.card?' selected':''}>${esc(c)}</option>`).join('')}</select></label><label>For who<input id="f_who" value="${esc(x.who||'Me')}"></label></div>
+    <div class="row2">${date}<label>Due date<input type="date" id="f_due" value="${x.due||''}"></label></div>`+note}
+  sheet(`<h3>${title}</h3><form class="form" id="txform">${body}<div class="btns" style="margin-top:4px"><button class="btn pri" type="submit" style="flex:1">${ed?'Save changes':'Save'}</button>${ed?`<button class="btn danger" type="button" id="f_del">Delete</button>`:''}<button class="btn" type="button" data-act="close">Cancel</button></div></form>`);
+  if(type==='exp'){let manual=!!x.c;const hint=$('#f_hint'),cin=$('#f_c');
+    const pick=id=>{cin.value=id;document.querySelectorAll('#f_cats .chip').forEach(b=>b.classList.toggle('on',b.dataset.cat===id))};
+    $('#f_cats').onclick=e=>{const b=e.target.closest('[data-cat]');if(b){manual=true;pick(b.dataset.cat);hint.textContent=''}};
+    let tm;$('#f_s').oninput=e=>{clearTimeout(tm);tm=setTimeout(()=>{const p=predict(e.target.value);if(!p){hint.textContent='';return}
+      hint.textContent=`✦ ${catName(p.c)} · ${Math.round(p.p*100)}% sure · ${p.why}`;if(!manual)pick(p.c)},120)}}
+  if(ed)$('#f_del').onclick=()=>delRecord(type,x);
+  $('#txform').onsubmit=e=>{e.preventDefault();const a=num($('#f_a').value);if(!(a>0)){toast('Enter an amount above zero.');return}
+    const g=id=>{const el=$('#'+id);return el?el.value.trim():undefined};
+    if(type==='cc'){const c=ed?S.cc.find(z=>z.id===x.id):{id:uid(),paid:false};Object.assign(c,{a,s:g('f_s'),card:g('f_card'),who:g('f_who'),d:g('f_d'),due:g('f_due'),n:g('f_n')});if(!ed)S.cc.push(c)}
+    else{if(type==='xfer'&&g('f_w')===g('f_to')){toast('Pick two different wallets.');return}
+      if(type==='exp'&&!g('f_c')){const p=predict(g('f_s'));$('#f_c').value=p?p.c:'other'}
+      const t=ed?S.tx.find(z=>z.id===x.id):{id:uid(),t:type};
+      Object.assign(t,{a,d:g('f_d'),w:g('f_w')});
+      for(const[k,id]of[['s','f_s'],['c','f_c'],['k','f_k'],['to','f_to'],['p','f_p'],['due','f_due'],['n','f_n']]){const v=g(id);if(v!==undefined)t[k]=v}
+      if(type==='repay'){t.ref=x.ref;t.p=x.p}
+      if(!ed)S.tx.push(t)}
+    save();closeSheet();render();toast(ed?'Saved':'Added')}}
+
+function delRecord(type,x){
+  if(type==='cc')return askConfirm(`Delete “${x.s}”?`,()=>{if(x.pay)S.tx=S.tx.filter(t=>t.id!==x.pay);S.cc=S.cc.filter(c=>c.id!==x.id);save();render();toast('Deleted')});
+  const extra=type==='lend'?S.tx.filter(t=>t.ref===x.id).length:0;
+  askConfirm(type==='lend'&&extra?`Delete this loan and its ${extra} repayment${extra>1?'s':''}?`:'Delete this record?',()=>{
+    S.tx=S.tx.filter(t=>t.id!==x.id&&!(type==='lend'&&t.ref===x.id));
+    if(type==='ccpay'){const c=S.cc.find(c=>c.pay===x.id);if(c){c.paid=false;delete c.pay}}
+    save();render();toast('Deleted')})}
+
+function payCard(c){sheet(`<h3>Pay “${esc(c.s)}”</h3><form class="form" id="payform"><div class="kv"><span>Amount</span><b class="mono">${peso(c.a)}</b></div>
+  <div class="row2"><label>Paid from<select id="p_w">${wOpts('gcash')}</select></label><label>Date<input type="date" id="p_d" value="${defDate()}"></label></div>
+  <div class="btns"><button class="btn pri" type="submit" style="flex:1">Mark paid</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`);
+  $('#payform').onsubmit=e=>{e.preventDefault();const t={id:uid(),t:'ccpay',a:c.a,d:$('#p_d').value,w:$('#p_w').value,ref:c.id,s:'Paid card: '+c.s};S.tx.push(t);c.paid=true;c.pay=t.id;save();closeSheet();render();toast('Marked paid')}}
+
+function settings(){const b=balances();sheet(`<h3>Settings & backup</h3><form class="form" id="setform">
+  <p class="eyebrow" style="margin:0">Wallets and starting balances</p>
+  ${S.wallets.map(w=>`<div class="row2"><label>Name<input data-wn="${w.id}" value="${esc(w.name)}"></label><label>Starting balance<input data-wi="${w.id}" inputmode="decimal" value="${w.init||0}"></label></div>`).join('')}
+  <button class="btn" type="button" id="addw">+ Add wallet</button>
+  <p class="eyebrow" style="margin:6px 0 0">Savings goal</p>
+  <div class="row2"><label>Goal amount<input id="g_a" inputmode="decimal" value="${S.goal.amt}"></label><label>Savings wallet<select id="g_w">${wOpts(S.goal.w)}</select></label></div>
+  <label>Cards and pay-later accounts (comma separated)<input id="s_cards" value="${esc(S.cards.join(', '))}"></label>
+  <button class="btn pri" type="submit">Save settings</button></form>
+  ${NATIVE?`<div class="form" style="margin-top:18px"><p class="eyebrow" style="margin:0">Saved on this phone</p>
+  <span class="sub">${S.demo?'Sample data is not written to your phone. Tap Start fresh on Home to begin saving.':`Every change is saved to <span class="mono">Documents/Pitaka/pitaka-data.json</span>, plus one copy per day in <span class="mono">Documents/Pitaka/backups</span> (last ${PHONE.keep} days).`}</span>
+  ${PHONE.saved?`<span class="sub pos">Last saved ${new Date(PHONE.saved).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'})}</span>`:''}${PHONE.err?`<span class="sub neg">Last save failed: ${esc(PHONE.err)}</span>`:''}
+  ${S.demo?'':`<button class="btn" data-act="phonesave">Save to Pitaka folder now</button>`}</div>`:''}
+  <div class="form" style="margin-top:18px"><p class="eyebrow" style="margin:0">Backup to Google Drive</p>
+  <span class="sub">${NATIVE?'':'Your data is stored only on this phone. '}${lastBackup()?`Last backup: ${dLabel(lastBackup())}, ${lastBackup().slice(0,4)}.`:'No backup saved yet.'}</span>
+  ${INSTALLED||NATIVE?`<button class="btn pri" data-act="drive">Save to Drive</button><span class="sub">Opens your share menu. Choose Drive, then tap Save.</span>`
+    :`<span class="sub">Save to Drive works in the installed app. Here, use Copy backup.</span>`}
+  <div class="btns"><label class="btn" style="flex-direction:row;color:var(--fg);font-size:13.5px">Restore from Drive${NATIVE?' or phone':''}<input type="file" id="imp" hidden></label><button class="btn" data-act="copybk">Copy backup</button>${INSTALLED?'<button class="btn" data-act="dlbk">Download backup</button>':''}</div>
+  <span class="sub">Restore opens your file picker. Tap ☰ or Browse, choose Drive${NATIVE?' or Documents › Pitaka':''}, then pick a <span class="mono">pitaka</span> backup file.</span>
+  <label>Or paste a backup here<textarea id="pastebk" rows="3" placeholder='{"v":1,...}'></textarea></label><button class="btn" data-act="pastebk">Restore pasted backup</button>
+  <p class="eyebrow" style="margin:10px 0 0">Data</p><div class="btns"><button class="btn danger" data-act="fresh">Erase everything</button><button class="btn" data-act="sample">Load sample data</button></div></div>`);
+  $('#addw').onclick=()=>{const n=S.wallets.length;S.wallets.push({id:'w'+uid(),name:'New wallet',col:(n%8)+1,init:0});save();settings()};
+  $('#setform').onsubmit=e=>{e.preventDefault();
+    document.querySelectorAll('[data-wn]').forEach(i=>{const w=W(i.dataset.wn);w.name=i.value.trim()||w.name});
+    document.querySelectorAll('[data-wi]').forEach(i=>{const w=W(i.dataset.wi);const v=num(i.value);w.init=isNaN(v)?0:v});
+    S.goal={amt:num($('#g_a').value)||0,w:$('#g_w').value};S.cards=$('#s_cards').value.split(',').map(s=>s.trim()).filter(Boolean);if(!S.cards.length)S.cards=['Credit Card'];
+    save();closeSheet();render();toast('Settings saved')};
+  $('#imp').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>restore(r.result);r.onerror=()=>toast('That file could not be opened. Try downloading it from Drive first.');r.readAsText(f)}}
+function restore(txt){let d;try{d=JSON.parse(String(txt).trim());if(!d||!Array.isArray(d.tx)||!Array.isArray(d.wallets)||!d.wallets.length)throw 0}
+  catch(e){toast('That file is not a Pitaka backup. Pick a file named pitaka-backup.');return}
+  const n=d.tx.length+(d.cc||[]).length,when=d.savedAt?` saved ${dLabel(d.savedAt.slice(0,10))}, ${d.savedAt.slice(0,4)}`:'';
+  askConfirm(`Replace what is on this phone with this backup (${n} records${when})?`,()=>{delete d.savedAt;S=d;S.cc=S.cc||[];S.cards=S.cards||['Credit Card'];S.goal=S.goal||{amt:0,w:S.wallets[0].id};
+    STATE.chat=[];STATE.drafts=[];save();render();toast('Backup restored')},'Restore')}
+
+/* ================= backup files ================= */
+const INSTALLED=!!document.querySelector('link[rel=manifest]');
+function lastBackup(){try{return localStorage.getItem('pitaka.lastbk')||''}catch(e){return''}}
+function markBackup(){try{localStorage.setItem('pitaka.lastbk',today())}catch(e){}}
+// Android's share menu only accepts certain file types, so the backup travels as .txt (it is JSON inside).
+const backupFile=ext=>new File([JSON.stringify({...S,savedAt:new Date().toISOString()},null,ext==='json'?1:0)],`pitaka-backup-${today()}.${ext}`,{type:ext==='json'?'application/json':'text/plain'});
+function saveFile(file){try{const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=file.name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);markBackup();return true}catch(e){toast('Download is blocked here. Use Copy backup instead.');return false}}
+/* ================= Android app: Pitaka folder ================= */
+// Only active inside the native Android build (Capacitor). The web versions skip all of this.
+const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
+const FS=NATIVE?Capacitor.Plugins.Filesystem:null,SHARE=NATIVE?Capacitor.Plugins.Share:null;
+const PHONE={file:'Pitaka/pitaka-data.json',dir:'Pitaka/backups',keep:30,saved:'',err:''};
+const phoneData=()=>JSON.stringify({...S,savedAt:new Date().toISOString()},null,1);
+let phoneTimer;
+function writePhone(now){if(!FS||S.demo)return;clearTimeout(phoneTimer);phoneTimer=setTimeout(async()=>{
+  try{const data=phoneData();
+    await FS.writeFile({path:PHONE.file,data,directory:'DOCUMENTS',encoding:'utf8',recursive:true});
+    await FS.writeFile({path:`${PHONE.dir}/pitaka-${today()}.json`,data,directory:'DOCUMENTS',encoding:'utf8',recursive:true});
+    PHONE.saved=new Date().toISOString();PHONE.err='';
+    const{files}=await FS.readdir({path:PHONE.dir,directory:'DOCUMENTS'});
+    const old=files.map(f=>f.name||f).filter(n=>/^pitaka-\d{4}-\d\d-\d\d\.json$/.test(n)).sort().slice(0,-PHONE.keep);
+    for(const n of old)await FS.deleteFile({path:`${PHONE.dir}/${n}`,directory:'DOCUMENTS'}).catch(()=>{});
+    if(now)toast('Saved to Documents/Pitaka')}
+  catch(e){PHONE.err=String(e&&e.message||e);if(now)toast('Could not write to the Pitaka folder. Check storage permission.')}},now?0:800)}
+async function bootPhone(){
+  try{const p=await FS.checkPermissions();if(p.publicStorage!=='granted')await FS.requestPermissions()}catch(e){}
+  if(!FRESH){writePhone();return}
+  // Nothing saved in the app yet (new install or cleared data): pick up the copy in Documents/Pitaka if there is one.
+  try{const r=await FS.readFile({path:PHONE.file,directory:'DOCUMENTS',encoding:'utf8'});const d=JSON.parse(r.data);
+    if(Array.isArray(d.tx)&&Array.isArray(d.wallets)){delete d.savedAt;S=d;S.cc=S.cc||[];S.cards=S.cards||['Credit Card'];FRESH=false;save();render();toast('Loaded your records from Documents/Pitaka')}}
+  catch(e){/* no file yet, or the file belongs to an earlier install: use Restore in Settings */}}
+async function nativeShare(){const name=`pitaka-backup-${today()}.json`;
+  try{await FS.writeFile({path:name,data:phoneData(),directory:'CACHE',encoding:'utf8'});const{uri}=await FS.getUri({path:name,directory:'CACHE'});
+    await SHARE.share({title:'Pitaka backup',files:[uri],dialogTitle:'Save backup to Drive'});markBackup();if(!$('#sheet').hidden)settings();toast('Backup shared')}
+  catch(e){if(!/cancel/i.test(String(e&&e.message||e)))toast('Could not open the share menu.')}}
+
+function saveToDrive(){if(NATIVE)return nativeShare();const file=backupFile('txt');
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({files:[file],title:'Pitaka backup'}).then(()=>{markBackup();if(!$('#sheet').hidden)settings();toast('Backup shared')},
+      e=>{if(e&&e.name==='AbortError')return;if(saveFile(file))toast('Saved to Downloads. Upload it in the Drive app.')})}
+  else if(saveFile(file))toast('Sharing is not available here. Saved to Downloads; upload it in the Drive app.')}
+
+/* ================= assistant chat ================= */
+function draftCard(i){const x=STATE.drafts[i];if(!x)return'';if(x.done)return`<div class="draft"><span class="sub">${x.done}</span></div>`;
+  const L={exp:'Expense',inc:'Income',xfer:'Transfer',lend:'Loan',repay:'Repayment',cc:'Card charge'}[x.t];
+  const det=x.t==='exp'?`${catName(x.c)} · ${W(x.w).name}`:x.t==='xfer'?`${W(x.w).name} → ${W(x.to).name}`:x.t==='lend'?`to ${x.p} · from ${W(x.w).name}`:x.t==='repay'?`from ${x.p} · into ${W(x.w).name}`:x.t==='cc'?x.card:W(x.w).name;
+  return`<div class="draft"><div class="split"><b>${L}${x.s&&x.t!=='repay'?': '+esc(x.s):''}</b><b class="mono">${peso(x.a)}</b></div><span class="sub">${esc(det)} · ${dLabel(x.d)}${x.conf?` · ✦ ${Math.round(x.conf.p*100)}% sure of category`:''}</span>${x.warn?`<span class="sub warn">${esc(x.warn)}</span>`:''}
+  <div class="btns"><button class="btn sm pri" data-act="dsave" data-id="${i}">Add it</button><button class="btn sm" data-act="dedit" data-id="${i}">Edit</button><button class="btn sm" data-act="dskip" data-id="${i}">Discard</button></div></div>`}
+function renderChips(){$('#aichips').innerHTML=['Summary','Where did my money go?','Who owes me?','Forecast','Tips','Can I afford 2000?','Compare vs last month','Biggest expenses'].map(q=>`<button class="chip" data-act="ask" data-q="${q}">${q}</button>`).join('')}
+function ask(text){text=text.trim();if(!text)return;STATE.chat.push({me:true,h:text});
+  const isQ=RX.q.test(text.toLowerCase())&&!/^(lunch|dinner|breakfast)/i.test(text);const cmd=isQ?null:parseCommand(text);
+  if(cmd){STATE.drafts.push(cmd);const i=STATE.drafts.length-1;
+    STATE.chat.push({me:false,h:cmd.t==='exp'&&cmd.conf?`Got it. I filed this under <b>${catName(cmd.c)}</b> (${esc(cmd.conf.why)}).`:'Here is what I understood:',draft:i})}
+  else STATE.chat.push({me:false,h:answer(text)});
+  if(STATE.chat.length>60)STATE.chat.splice(1,STATE.chat.length-60);
+  if(STATE.tab!=='ai'){STATE.tab='ai'}render()}
+function commitDraft(i){const x=STATE.drafts[i];if(!x||x.done)return;
+  if(x.t==='cc')S.cc.push({id:uid(),d:x.d,s:x.s,a:x.a,card:x.card,who:x.who||'Me',due:x.due||'',paid:false});
+  else{if(x.t==='repay'&&!x.ref){toast('Open the loan in Debts to log this repayment.');return}
+    const t={id:uid(),t:x.t,a:x.a,d:x.d,w:x.w};['s','c','k','to','p','ref'].forEach(k=>{if(x[k]!=null&&x[k]!=='')t[k]=x[k]});S.tx.push(t)}
+  x.done='Added '+peso(x.a)+'. ✓';save();render()}
+
+/* ================= events ================= */
+const ACT={
+  tab:d=>{closeSheet();STATE.tab=d.id;try{localStorage.setItem('pitaka.tab',d.id)}catch(e){}render();window.scrollTo(0,STATE.tab==='ai'?document.body.scrollHeight:0)},
+  month:d=>{STATE.m=addM(STATE.m,+d.k);STATE.filter.limit=40;render()},
+  add:()=>addMenu(),close:()=>closeSheet(),settings:()=>settings(),
+  form:d=>openForm(d.t),
+  edit:d=>{const t=S.tx.find(x=>x.id===d.id);if(t){if(t.t==='ccpay')delRecord('ccpay',t);else openForm(t.t,t)}},
+  editcc:d=>{const c=S.cc.find(x=>x.id===d.id);if(c)openForm('cc',c)},
+  repay:d=>{const l=S.tx.find(x=>x.id===d.id);if(l)openForm('repay',{ref:l.id,p:l.p,w:l.w})},
+  paycc:d=>{const c=S.cc.find(x=>x.id===d.id);if(c)payCard(c)},
+  unpay:d=>{const c=S.cc.find(x=>x.id===d.id);if(!c)return;askConfirm('Mark as unpaid? The payment record will be removed.',()=>{S.tx=S.tx.filter(t=>t.id!==c.pay);c.paid=false;delete c.pay;save();render()},'Mark unpaid')},
+  cat:d=>{STATE.filter.cat=STATE.filter.cat===d.id?null:d.id;if(STATE.filter.cat)STATE.filter.type='all';render()},
+  type:d=>{STATE.filter.type=d.id;if(d.id!=='all'&&d.id!=='exp')STATE.filter.cat=null;render()},
+  more:()=>{STATE.filter.limit+=40;render()},
+  ask:d=>ask(d.q),
+  dsave:d=>commitDraft(+d.id),
+  dskip:d=>{const x=STATE.drafts[+d.id];if(x){x.done='Discarded.';render()}},
+  dedit:d=>{const x=STATE.drafts[+d.id];if(!x||x.done)return;if(x.t==='repay'&&x.ref)openForm('repay',{ref:x.ref,p:x.p,w:x.w,a:x.a,d:x.d});else openForm(x.t==='repay'?'lend':x.t,{...x,id:undefined});x.done='Opened in the form.'},
+  fresh:()=>askConfirm('Erase all records and start fresh?',()=>{const keep=S.demo?null:S.wallets;S=blank();if(keep)S.wallets=keep.map(w=>({...w,init:0}));STATE.chat=[];STATE.drafts=[];save();render();toast('Starting fresh. Set your wallet balances in Settings.')},'Erase'),
+  sample:()=>askConfirm('Replace your data with sample data?',()=>{S=demo();STATE.chat=[];save();render()},'Load sample'),
+  copybk:()=>{const txt=JSON.stringify(S);const done=()=>toast('Backup copied');
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done,()=>fallbackCopy(txt));else fallbackCopy(txt)},
+  dlbk:()=>{if(saveFile(backupFile('json')))toast('Backup downloaded')},
+  drive:()=>saveToDrive(),
+  phonesave:()=>writePhone(true),
+  pastebk:()=>restore($('#pastebk').value)};
+function fallbackCopy(txt){const ta=$('#pastebk');if(ta){ta.value=txt;ta.select();toast('Selected. Copy it from the box.')}}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const f=ACT[b.dataset.act];if(f){e.preventDefault();f(b.dataset,b)}});
+let st_;document.addEventListener('input',e=>{if(e.target.id==='search'){clearTimeout(st_);st_=setTimeout(()=>{STATE.filter.q=e.target.value;STATE.filter.limit=40;const pos=e.target.selectionStart;render();const s=$('#search');s.focus();try{s.setSelectionRange(pos,pos)}catch(_){}},180)}});
+$('#aiform').onsubmit=e=>{e.preventDefault();const i=$('#aiinput');const v=i.value;i.value='';ask(v)};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#sheet').hidden)closeSheet()});
+
+load();render();
+if(NATIVE)bootPhone();
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+if('serviceWorker' in navigator&&document.querySelector('link[rel=manifest]'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+
+</body>
+</html>

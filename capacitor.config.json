@@ -1,0 +1,8 @@
+{
+  "appId": "com.pitaka.tracker",
+  "appName": "Pitaka",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#edf1ef"
+  }
+}

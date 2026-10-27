@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Pitaka</string>
+    <string name="title_activity_main">Pitaka</string>
+    <string name="package_name">com.pitaka.tracker</string>
+    <string name="custom_url_scheme">com.pitaka.tracker</string>
+</resources>

@@ -39,7 +39,7 @@ jobs:
         run: |
           mkdir -p ~/.android
           if [ -n "$KEY" ]; then
-            printf '%s' "$KEY" | tr -d '\r\n ' | base64 -d > ~/.android/debug.keystore
+            printf '%s' "$KEY" | tr -cd 'A-Za-z0-9+/=' | base64 -d > ~/.android/debug.keystore
           else
             keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey \
               -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Pitaka"

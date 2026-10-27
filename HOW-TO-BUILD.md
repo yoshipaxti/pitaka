@@ -1,6 +1,25 @@
 # Pitaka for Android: how to build and install
 
-## What to install (one time)
+## Easiest: GitHub builds it for you (nothing to install)
+
+This project lives in the private repository **github.com/yoshipaxti/pitaka**. Every time a change is pushed to `main`, GitHub builds a new APK automatically.
+
+To get the latest APK:
+1. Open the repository on GitHub and go to the **Actions** tab.
+2. Click the newest **Build APK** run with a green check.
+3. Under **Artifacts**, download **pitaka-apk**. It's a zip file; inside is `app-debug.apk`.
+
+Or, from a terminal on this PC:
+
+```bash
+gh run download --repo yoshipaxti/pitaka --name pitaka-apk
+```
+
+Every APK is signed with the same key, which is stored as the repository secret `DEBUG_KEYSTORE_B64`. That's why each new APK installs over the old one and keeps your data. Don't delete that secret. A copy of the key is also in `android-app\signing\` on this PC, which is never uploaded.
+
+To rebuild after changing the app: edit `pitaka.html`, run `build-android.ps1`, then commit and push the `android-app` folder.
+
+## Build it yourself instead: what to install (one time)
 
 | What | Why | Where |
 |---|---|---|

@@ -24,8 +24,9 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      # npm install (not npm ci): the lock file comes from a newer npm on Windows than the runner has
       - name: Install Capacitor
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Copy the app into the Android project
         run: npx cap sync android

@@ -213,7 +213,8 @@ tbody tr{cursor:pointer}
 .composer .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
 .composer .chips::-webkit-scrollbar{display:none}
 
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));z-index:30;background:rgba(28,28,30,.92);color:#fff;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);padding:10px 18px;border-radius:999px;font-size:14px;font-weight:500;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
+.tact{border:0;background:none;color:#5ab0ff;font:inherit;font-weight:700;padding:4px 2px 4px 10px;min-height:32px}
+.toast{display:flex;align-items:center;gap:4px;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));z-index:30;background:rgba(28,28,30,.92);color:#fff;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);padding:10px 18px;border-radius:999px;font-size:14px;font-weight:500;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
 .kv{display:flex;justify-content:space-between;gap:8px;font-size:14px}
 .split{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .cv{content-visibility:auto;contain-intrinsic-size:auto 400px}
@@ -338,10 +339,25 @@ function demo(){
   return s;
 }
 
-let S,FRESH=false;
-function load(){try{const r=localStorage.getItem(KEY);if(r){S=JSON.parse(r);return}}catch(e){}S=demo();FRESH=true}
+let S,FRESH=false,DAMAGED='';
+// If the saved records cannot be read, keep the raw text under another key instead of letting the next save overwrite it.
+function load(){let r=null;try{r=localStorage.getItem(KEY)}catch(e){}
+  if(r){try{const d=JSON.parse(r);if(!d||!Array.isArray(d.tx)||!Array.isArray(d.wallets))throw 0;S=d;S.cc=S.cc||[];return}
+    catch(e){DAMAGED=KEY+'.damaged-'+Date.now();try{localStorage.setItem(DAMAGED,r)}catch(_){DAMAGED='unsaved'}}}
+  S=demo();FRESH=true}
 function save(){MODEL=null;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Could not save on this device. Copy a backup from Settings.')}writePhone()}
 const W=id=>S.wallets.find(w=>w.id===id)||{id,name:id||'—',col:3};
+/* Undo: before anything removes records, the current records are kept as one snapshot (and, on Android, a file in
+   Documents/Pitaka/backups). Undo brings them back; it is offered in a toast right away and in Settings afterwards. */
+const PREV='pitaka.v1.prev';
+const REASON={delete:'a delete',erase:'Erase everything',sample:'Load sample data',restore:'a restore',undo:'the undo'};
+function snapshot(reason){if(S.demo)return;const snap={reason,at:new Date().toISOString(),data:JSON.parse(JSON.stringify(S))};
+  try{localStorage.setItem(PREV,JSON.stringify(snap))}catch(e){}
+  if(FS)FS.writeFile({path:`${PHONE.dir}/pitaka-before-${reason}-${today()}.json`,data:JSON.stringify(snap.data,null,1),directory:'DOCUMENTS',encoding:'utf8',recursive:true}).catch(()=>{})}
+function prevSnap(){try{const p=JSON.parse(localStorage.getItem(PREV)||'null');return p&&p.data&&Array.isArray(p.data.tx)?p:null}catch(e){return null}}
+function undoLast(){const p=prevSnap();if(!p)return toast('Nothing to undo.');snapshot('undo');S=p.data;S.cc=S.cc||[];STATE.chat=[];STATE.drafts=[];save();closeSheet();render();toast('Records brought back')}
+// New records made while sample data is showing are marked, so they can be kept when the samples are removed.
+const own=x=>{if(S.demo)x.mine=1;return x};
 
 /* ================= money math ================= */
 function apply(b,t){const a=t.a;switch(t.t){
@@ -636,6 +652,23 @@ function render(){
   $('#composer').hidden=STATE.tab!=='ai';$('#fab').hidden=STATE.tab==='ai';
   if(STATE.tab==='ai'){renderChips();const c=$('#chat');if(c)window.scrollTo(0,document.body.scrollHeight)}}
 
+function keepMine(){const tx=S.tx.filter(t=>t.mine),cc=S.cc.filter(c=>c.mine),ids=new Set(tx.map(t=>t.id)),cids=new Set(cc.map(c=>c.id));
+  // drop repayments and card payments that pointed at sample records
+  S.tx=tx.filter(t=>!(t.t==='repay'&&!ids.has(t.ref))&&!(t.t==='ccpay'&&!cids.has(t.ref)));S.cc=cc;
+  S.cc.forEach(c=>{if(c.pay&&!S.tx.some(t=>t.id===c.pay)){c.paid=false;delete c.pay}});
+  S.tx.forEach(t=>delete t.mine);S.cc.forEach(c=>delete c.mine);S.wallets.forEach(w=>w.init=0);S.demo=false;STATE.chat=[];STATE.drafts=[];
+  save();render();const n=S.tx.length+S.cc.length;toast(`Kept your ${n} record${n===1?'':'s'}. Set your wallet balances in Settings.`)}
+/* Overview notices that protect records: damaged save, records mixed into sample data, backup reminder. */
+function safetyNotices(){let h='';
+  if(DAMAGED)h+=`<div class="notice bad"><b>Your saved records could not be read</b><span>${DAMAGED==='unsaved'?'This phone is out of storage space, so the damaged copy could not be kept.':'The damaged copy was kept aside, not deleted.'} Open Settings and use <b>Restore</b> with your newest backup${NATIVE?' or a file from Documents › Pitaka › backups':''}.</span><div class="acts"><button class="btn sm pri" data-act="settings">Open Settings</button></div></div>`;
+  const mine=S.demo?S.tx.filter(t=>t.mine).length+S.cc.filter(c=>c.mine).length:0;
+  if(mine)h+=`<div class="notice warn"><b>Your ${mine} record${mine>1?'s are':' is'} mixed into the sample data</b><span>Sample data is not saved${NATIVE?' to your Pitaka folder':''} or backed up. Keep your own records and remove the samples.</span><div class="acts"><button class="btn sm pri" data-act="keepmine">Keep mine, remove samples</button></div></div>`;
+  const n=S.demo?0:S.tx.length+S.cc.length;let snooze='';try{snooze=localStorage.getItem('pitaka.bksnooze')||''}catch(e){}
+  const lb=lastBackup(),ago=lb?-daysTo(lb):Infinity;
+  if(n>=3&&ago>=7&&!(snooze&&today()<snooze))
+    h+=`<div class="notice warn"><b>${lb?`Last backup ${ago} days ago`:'No backup yet'}</b><span>Your ${n} records are only on this phone. Save a copy to Google Drive or iCloud so a lost or reset phone does not take them with it.</span>
+    <div class="acts"><button class="btn sm pri" data-act="drive">Back up now</button><button class="btn sm" data-act="bklater">Later</button></div></div>`;
+  return h}
 function hero(){const m=STATE.m,st=monthStats(m),end=nextM(m)+'-01',bal=sumBal(balances(end)),cur=m===today().slice(0,7);
   return`<section class="card hero" aria-label="Month summary"><p class="eyebrow">All wallets · ${cur?'now':'end of '+mLabel(m)}</p><div class="big ${bal<0?'neg':''}">${peso(bal)}</div>
   <div class="hero-k"><button data-act="tab" data-id="spend"><span>Net ${cur?'this month':mLabel(m).slice(0,3)}</span><b class="${st.net<0?'neg':'pos'}">${st.net>0.004?'+':''}${peso(st.net)}</b></button>
@@ -647,7 +680,7 @@ home(){const m=STATE.m,st=monthStats(m),end=nextM(m)+'-01',ins=insights(m);
   const gw=W(S.goal.w),gb=balances(end)[S.goal.w]||0,gp=Math.max(0,Math.min(1,gb/(S.goal.amt||1)));
   const outs=[['Money lent to others',st.lent,'var(--c3)'],['Day-to-day expenses',st.exp,'var(--c2)'],['Card & SPayLater paid',st.ccp,'var(--c4)']];
   const mx=Math.max(st.out,st.ccCharged,1);
-  return`<h1 class="ltitle">Overview</h1>`+updateNotice()+installNotice()+(S.demo?`<div class="notice info"><b>You are viewing sample data</b><span>Explore freely, then start with your own numbers. Sample entries are examples, not your records.</span><div class="acts"><button class="btn sm pri" data-act="fresh">Start fresh</button><button class="btn sm" data-act="settings">Set wallet balances</button></div></div>`:'')+
+  return`<h1 class="ltitle">Overview</h1>`+safetyNotices()+updateNotice()+installNotice()+(S.demo&&!S.tx.some(t=>t.mine)&&!S.cc.some(c=>c.mine)?`<div class="notice info"><b>You are viewing sample data</b><span>Explore freely, then start with your own numbers. Sample entries are examples, not your records.</span><div class="acts"><button class="btn sm pri" data-act="fresh">Start fresh</button><button class="btn sm" data-act="settings">Set wallet balances</button></div></div>`:'')+
   hero()+
   (ins.length?`<div class="notice ${ins[0].lv}"><b>${esc(ins[0].t)}</b><span>${esc(ins[0].x)}</span><div class="acts"><button class="btn sm" data-act="ask" data-q="Give me tips">Get tips</button><button class="btn sm" data-act="ask" data-q="forecast">Forecast</button>${ins.length>1?`<button class="btn sm" data-act="insall" aria-expanded="${!!STATE.insAll}">${STATE.insAll?'Hide':'See'} ${ins.length-1} more</button>`:''}</div></div>`:'')+
   (STATE.insAll?ins.slice(1).map(n=>`<div class="notice ${n.lv}"><b>${esc(n.t)}</b><span>${esc(n.x)}</span></div>`).join(''):'')+
@@ -736,7 +769,8 @@ function txRow(t,noDate){const T={exp:[catCol(t.c),catName(t.c).charAt(0),t.s,ca
 /* ================= sheets & forms ================= */
 function sheet(html){$('#sheetBody').innerHTML=html;$('#sheet').hidden=false;const f=$('#sheetBody input:not([type=hidden]),#sheetBody select');if(f&&!('ontouchstart' in window))f.focus()}
 function closeSheet(){$('#sheet').hidden=true;$('#sheetBody').innerHTML=''}
-function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,2200)}
+function toast(msg,act,label){const t=$('#toast');t.innerHTML=esc(msg)+(act?` <button class="tact" data-act="${act}">${esc(label)}</button>`:'');t.hidden=false;
+  clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,act?6000:2200)}
 function askConfirm(msg,yes,label='Delete'){sheet(`<h3>${esc(msg)}</h3><div class="btns"><button class="btn pri" id="cyes" style="background:var(--neg);border-color:var(--neg)">${esc(label)}</button><button class="btn" data-act="close">Cancel</button></div>`);$('#cyes').onclick=()=>{closeSheet();yes()}}
 const wOpts=sel=>S.wallets.map(w=>`<option value="${w.id}"${w.id===sel?' selected':''}>${esc(w.name)}</option>`).join('');
 const defDate=()=>{const t=today();return t.slice(0,7)===STATE.m?t:(STATE.m<t.slice(0,7)?STATE.m+'-'+pad(dim(STATE.m)):STATE.m+'-01')};
@@ -776,10 +810,10 @@ function openForm(type,x={}){const ed=!!x.id;const d=x.d||defDate();let body='',
   if(ed)$('#f_del').onclick=()=>delRecord(type,x);
   $('#txform').onsubmit=e=>{e.preventDefault();const a=num($('#f_a').value);if(!(a>0)){toast('Enter an amount above zero.');return}
     const g=id=>{const el=$('#'+id);return el?el.value.trim():undefined};
-    if(type==='cc'){const c=ed?S.cc.find(z=>z.id===x.id):{id:uid(),paid:false};Object.assign(c,{a,s:g('f_s'),card:g('f_card'),who:g('f_who'),d:g('f_d'),due:g('f_due'),n:g('f_n')});if(!ed)S.cc.push(c)}
+    if(type==='cc'){const c=ed?S.cc.find(z=>z.id===x.id):own({id:uid(),paid:false});Object.assign(c,{a,s:g('f_s'),card:g('f_card'),who:g('f_who'),d:g('f_d'),due:g('f_due'),n:g('f_n')});if(!ed)S.cc.push(c)}
     else{if(type==='xfer'&&g('f_w')===g('f_to')){toast('Pick two different wallets.');return}
       if(type==='exp'&&!g('f_c')){const p=predict(g('f_s'));$('#f_c').value=p?p.c:'other'}
-      const t=ed?S.tx.find(z=>z.id===x.id):{id:uid(),t:type};
+      const t=ed?S.tx.find(z=>z.id===x.id):own({id:uid(),t:type});
       Object.assign(t,{a,d:g('f_d'),w:g('f_w')});
       for(const[k,id]of[['s','f_s'],['c','f_c'],['k','f_k'],['to','f_to'],['p','f_p'],['due','f_due'],['n','f_n']]){const v=g(id);if(v!==undefined)t[k]=v}
       if(type==='repay'){t.ref=x.ref;t.p=x.p}
@@ -787,17 +821,17 @@ function openForm(type,x={}){const ed=!!x.id;const d=x.d||defDate();let body='',
     save();closeSheet();render();toast(ed?'Saved':'Added')}}
 
 function delRecord(type,x){
-  if(type==='cc')return askConfirm(`Delete “${x.s}”?`,()=>{if(x.pay)S.tx=S.tx.filter(t=>t.id!==x.pay);S.cc=S.cc.filter(c=>c.id!==x.id);save();render();toast('Deleted')});
+  if(type==='cc')return askConfirm(`Delete “${x.s}”?`,()=>{snapshot('delete');if(x.pay)S.tx=S.tx.filter(t=>t.id!==x.pay);S.cc=S.cc.filter(c=>c.id!==x.id);save();render();toast('Deleted',S.demo?'':'undo','Undo')});
   const extra=type==='lend'?S.tx.filter(t=>t.ref===x.id).length:0;
   askConfirm(type==='lend'&&extra?`Delete this loan and its ${extra} repayment${extra>1?'s':''}?`:'Delete this record?',()=>{
-    S.tx=S.tx.filter(t=>t.id!==x.id&&!(type==='lend'&&t.ref===x.id));
+    snapshot('delete');S.tx=S.tx.filter(t=>t.id!==x.id&&!(type==='lend'&&t.ref===x.id));
     if(type==='ccpay'){const c=S.cc.find(c=>c.pay===x.id);if(c){c.paid=false;delete c.pay}}
-    save();render();toast('Deleted')})}
+    save();render();toast('Deleted',S.demo?'':'undo','Undo')})}
 
 function payCard(c){sheet(`<h3>Pay “${esc(c.s)}”</h3><form class="form" id="payform"><div class="kv"><span>Amount</span><b class="mono">${peso(c.a)}</b></div>
   <div class="row2"><label>Paid from<select id="p_w">${wOpts('gcash')}</select></label><label>Date<input type="date" id="p_d" value="${defDate()}"></label></div>
   <div class="btns"><button class="btn pri" type="submit" style="flex:1">Mark paid</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`);
-  $('#payform').onsubmit=e=>{e.preventDefault();const t={id:uid(),t:'ccpay',a:c.a,d:$('#p_d').value,w:$('#p_w').value,ref:c.id,s:'Paid card: '+c.s};S.tx.push(t);c.paid=true;c.pay=t.id;save();closeSheet();render();toast('Marked paid')}}
+  $('#payform').onsubmit=e=>{e.preventDefault();const t=own({id:uid(),t:'ccpay',a:c.a,d:$('#p_d').value,w:$('#p_w').value,ref:c.id,s:'Paid card: '+c.s});S.tx.push(t);c.paid=true;c.pay=t.id;save();closeSheet();render();toast('Marked paid')}}
 
 function settings(){const b=balances();sheet(`<h3>Settings & backup</h3><form class="form" id="setform">
   <p class="eyebrow" style="margin:0">Wallets and starting balances</p>
@@ -820,6 +854,7 @@ function settings(){const b=balances();sheet(`<h3>Settings & backup</h3><form cl
   <label>Or paste a backup here<textarea id="pastebk" rows="3" placeholder='{"v":1,...}'></textarea></label><button class="btn" data-act="pastebk">Restore pasted backup</button>
   ${UPD?`<p class="eyebrow" style="margin:10px 0 0">App version</p><span class="sub">${UP.cur?'Version '+esc(UP.cur.versionName):'Version unknown'}${UP.next?` · <b class="pos">${esc(UP.next.versionName)} available</b>`:''}</span>
   <div class="btns">${UP.next?`<button class="btn pri" data-act="${UP.state==='ready'?'updinstall':'update'}"${UP.state==='dl'?' disabled':''}>${UP.state==='dl'?'Downloading…':UP.state==='ready'?'Install':'Update now'}</button>`:''}<button class="btn" data-act="updcheck"${UP.checking?' disabled':''}>Check for updates</button></div>`:''}
+  ${prevSnap()?(p=>`<p class="eyebrow" style="margin:10px 0 0">Undo</p><span class="sub">Your records from just before ${REASON[p.reason]||'the last change'} (${dLabel(p.at.slice(0,10))}) are kept on this phone.</span><div class="btns"><button class="btn" data-act="undoask">Bring them back</button></div>`)(prevSnap()):''}
   <p class="eyebrow" style="margin:10px 0 0">Data</p><div class="btns"><button class="btn danger" data-act="fresh">Erase everything</button><button class="btn" data-act="sample">Load sample data</button></div></div>`);
   $('#addw').onclick=()=>{const n=S.wallets.length;S.wallets.push({id:'w'+uid(),name:'New wallet',col:(n%8)+1,init:0});save();settings()};
   $('#setform').onsubmit=e=>{e.preventDefault();
@@ -831,13 +866,13 @@ function settings(){const b=balances();sheet(`<h3>Settings & backup</h3><form cl
 function restore(txt){let d;try{d=JSON.parse(String(txt).trim());if(!d||!Array.isArray(d.tx)||!Array.isArray(d.wallets)||!d.wallets.length)throw 0}
   catch(e){toast('That file is not a Pitaka backup. Pick a file named pitaka-backup.');return}
   const n=d.tx.length+(d.cc||[]).length,when=d.savedAt?` saved ${dLabel(d.savedAt.slice(0,10))}, ${d.savedAt.slice(0,4)}`:'';
-  askConfirm(`Replace what is on this phone with this backup (${n} records${when})?`,()=>{delete d.savedAt;S=d;S.cc=S.cc||[];S.cards=S.cards||['Credit Card'];S.goal=S.goal||{amt:0,w:S.wallets[0].id};
-    STATE.chat=[];STATE.drafts=[];save();render();toast('Backup restored')},'Restore')}
+  askConfirm(`Replace what is on this phone with this backup (${n} records${when})? You can undo this.`,()=>{snapshot('restore');const had=!S.demo;delete d.savedAt;S=d;S.cc=S.cc||[];S.cards=S.cards||['Credit Card'];S.goal=S.goal||{amt:0,w:S.wallets[0].id};
+    STATE.chat=[];STATE.drafts=[];save();render();toast('Backup restored',had?'undo':'','Undo')},'Restore')}
 
 /* ================= backup files ================= */
 const INSTALLED=!!document.querySelector('link[rel=manifest]')&&!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
 function lastBackup(){try{return localStorage.getItem('pitaka.lastbk')||''}catch(e){return''}}
-function markBackup(){try{localStorage.setItem('pitaka.lastbk',today())}catch(e){}}
+function markBackup(){try{localStorage.setItem('pitaka.lastbk',today());localStorage.removeItem('pitaka.bksnooze')}catch(e){}render()}
 // Android's share menu only accepts certain file types, so the backup travels as .txt (it is JSON inside).
 const backupFile=ext=>new File([JSON.stringify({...S,savedAt:new Date().toISOString()},null,ext==='json'?1:0)],`pitaka-backup-${today()}.${ext}`,{type:ext==='json'?'application/json':'text/plain'});
 function saveFile(file){try{const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=file.name;document.body.appendChild(a);a.click();a.remove();
@@ -864,7 +899,7 @@ async function bootPhone(){
   if(!FRESH){writePhone();return}
   // Nothing saved in the app yet (new install or cleared data): pick up the copy in Documents/Pitaka if there is one.
   try{const r=await FS.readFile({path:PHONE.file,directory:'DOCUMENTS',encoding:'utf8'});const d=JSON.parse(r.data);
-    if(Array.isArray(d.tx)&&Array.isArray(d.wallets)){delete d.savedAt;S=d;S.cc=S.cc||[];S.cards=S.cards||['Credit Card'];FRESH=false;save();render();toast('Loaded your records from Documents/Pitaka')}}
+    if(Array.isArray(d.tx)&&Array.isArray(d.wallets)){delete d.savedAt;S=d;S.cc=S.cc||[];S.cards=S.cards||['Credit Card'];FRESH=false;DAMAGED='';save();render();toast('Loaded your records from Documents/Pitaka')}}
   catch(e){/* no file yet, or the file belongs to an earlier install: use Restore in Settings */}}
 /* ================= app updates (Android app only) ================= */
 // Each push to main publishes a GitHub Release with pitaka.apk and version.json. The app compares version numbers,
@@ -936,9 +971,9 @@ function ask(text){text=text.trim();if(!text)return;STATE.chat.push({me:true,h:t
   if(STATE.chat.length>60)STATE.chat.splice(1,STATE.chat.length-60);
   if(STATE.tab!=='ai'){STATE.tab='ai'}render()}
 function commitDraft(i){const x=STATE.drafts[i];if(!x||x.done)return;
-  if(x.t==='cc')S.cc.push({id:uid(),d:x.d,s:x.s,a:x.a,card:x.card,who:x.who||'Me',due:x.due||'',paid:false});
+  if(x.t==='cc')S.cc.push(own({id:uid(),d:x.d,s:x.s,a:x.a,card:x.card,who:x.who||'Me',due:x.due||'',paid:false}));
   else{if(x.t==='repay'&&!x.ref){toast('Open the loan in Debts to log this repayment.');return}
-    const t={id:uid(),t:x.t,a:x.a,d:x.d,w:x.w};['s','c','k','to','p','ref'].forEach(k=>{if(x[k]!=null&&x[k]!=='')t[k]=x[k]});S.tx.push(t)}
+    const t=own({id:uid(),t:x.t,a:x.a,d:x.d,w:x.w});['s','c','k','to','p','ref'].forEach(k=>{if(x[k]!=null&&x[k]!=='')t[k]=x[k]});S.tx.push(t)}
   x.done='Added '+peso(x.a)+'. ✓';save();render()}
 
 /* ================= events ================= */
@@ -962,8 +997,12 @@ const ACT={
   dcat:d=>{const x=STATE.drafts[+d.id];if(x&&!x.done){x.c=d.c;x.picked=true;render()}},
   dskip:d=>{const x=STATE.drafts[+d.id];if(x){x.done='Discarded.';render()}},
   dedit:d=>{const x=STATE.drafts[+d.id];if(!x||x.done)return;if(x.t==='repay'&&x.ref)openForm('repay',{ref:x.ref,p:x.p,w:x.w,a:x.a,d:x.d});else openForm(x.t==='repay'?'lend':x.t,{...x,id:undefined});x.done='Opened in the form.'},
-  fresh:()=>askConfirm('Erase all records and start fresh?',()=>{const keep=S.demo?null:S.wallets;S=blank();if(keep)S.wallets=keep.map(w=>({...w,init:0}));STATE.chat=[];STATE.drafts=[];save();render();toast('Starting fresh. Set your wallet balances in Settings.')},'Erase'),
-  sample:()=>askConfirm('Replace your data with sample data?',()=>{S=demo();STATE.chat=[];save();render()},'Load sample'),
+  fresh:()=>askConfirm(S.demo?'Remove the sample data and start fresh?':'Erase all records and start fresh? You can undo this from Settings.',()=>{const had=!S.demo;snapshot('erase');const keep=S.demo?null:S.wallets;S=blank();if(keep)S.wallets=keep.map(w=>({...w,init:0}));STATE.chat=[];STATE.drafts=[];save();render();had?toast('Erased. Set your wallet balances in Settings.','undo','Undo'):toast('Starting fresh. Set your wallet balances in Settings.')},S.demo?'Start fresh':'Erase'),
+  sample:()=>askConfirm(S.demo?'Reload the sample data?':'Replace your records with sample data? You can undo this from Settings.',()=>{const had=!S.demo;snapshot('sample');S=demo();STATE.chat=[];save();render();if(had)toast('Sample data loaded','undo','Undo')},'Load sample'),
+  undo:()=>undoLast(),
+  undoask:()=>{const p=prevSnap();if(p)askConfirm(`Bring back your records from just before ${REASON[p.reason]||'the last change'} (${dLabel(p.at.slice(0,10))}, ${new Date(p.at).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'})})? Changes made since then will be replaced.`,undoLast,'Bring back')},
+  keepmine:()=>keepMine(),
+  bklater:()=>{try{localStorage.setItem('pitaka.bksnooze',addDays(today(),3))}catch(e){}render()},
   copybk:()=>{const txt=JSON.stringify(S);const done=()=>toast('Backup copied');
     if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done,()=>fallbackCopy(txt));else fallbackCopy(txt)},
   dlbk:()=>{if(saveFile(backupFile('json')))toast('Backup downloaded')},

@@ -7,10 +7,19 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pitaka">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
+/* Inter is bundled with the app (fonts/, SIL Open Font License), so it works offline and nothing is fetched from other sites. */
+@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;font-display:swap;src:url(fonts/inter-latin.woff2) format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;font-display:swap;src:url(fonts/inter-latin-ext.woff2) format("woff2");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
 /* Layout: phone-first single column (max 560px), translucent bar on top, translucent tab bar at bottom, sheets slide up for every form.
    Look: iOS-inspired. Grouped gray background, white rounded cards without borders, hairline separators, capsule buttons, frosted bars. */
 :root{
@@ -86,6 +95,7 @@ main.wrap{padding-block:4px 160px;display:flex;flex-direction:column;gap:16px}
 .notice.info{background:var(--accent-soft)}
 .notice .acts{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
 .notice .btn:not(.pri){background:var(--surface)}
+.notice a{color:var(--accent);font-weight:600}
 
 .bar{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden}
 .bar i{display:block;height:100%;border-radius:99px}
@@ -637,7 +647,7 @@ home(){const m=STATE.m,st=monthStats(m),end=nextM(m)+'-01',ins=insights(m);
   const gw=W(S.goal.w),gb=balances(end)[S.goal.w]||0,gp=Math.max(0,Math.min(1,gb/(S.goal.amt||1)));
   const outs=[['Money lent to others',st.lent,'var(--c3)'],['Day-to-day expenses',st.exp,'var(--c2)'],['Card & SPayLater paid',st.ccp,'var(--c4)']];
   const mx=Math.max(st.out,st.ccCharged,1);
-  return`<h1 class="ltitle">Overview</h1>`+updateNotice()+(S.demo?`<div class="notice info"><b>You are viewing sample data</b><span>Explore freely, then start with your own numbers. Sample entries are examples, not your records.</span><div class="acts"><button class="btn sm pri" data-act="fresh">Start fresh</button><button class="btn sm" data-act="settings">Set wallet balances</button></div></div>`:'')+
+  return`<h1 class="ltitle">Overview</h1>`+updateNotice()+installNotice()+(S.demo?`<div class="notice info"><b>You are viewing sample data</b><span>Explore freely, then start with your own numbers. Sample entries are examples, not your records.</span><div class="acts"><button class="btn sm pri" data-act="fresh">Start fresh</button><button class="btn sm" data-act="settings">Set wallet balances</button></div></div>`:'')+
   hero()+
   (ins.length?`<div class="notice ${ins[0].lv}"><b>${esc(ins[0].t)}</b><span>${esc(ins[0].x)}</span><div class="acts"><button class="btn sm" data-act="ask" data-q="Give me tips">Get tips</button><button class="btn sm" data-act="ask" data-q="forecast">Forecast</button>${ins.length>1?`<button class="btn sm" data-act="insall" aria-expanded="${!!STATE.insAll}">${STATE.insAll?'Hide':'See'} ${ins.length-1} more</button>`:''}</div></div>`:'')+
   (STATE.insAll?ins.slice(1).map(n=>`<div class="notice ${n.lv}"><b>${esc(n.t)}</b><span>${esc(n.x)}</span></div>`).join(''):'')+
@@ -825,7 +835,7 @@ function restore(txt){let d;try{d=JSON.parse(String(txt).trim());if(!d||!Array.i
     STATE.chat=[];STATE.drafts=[];save();render();toast('Backup restored')},'Restore')}
 
 /* ================= backup files ================= */
-const INSTALLED=!!document.querySelector('link[rel=manifest]');
+const INSTALLED=!!document.querySelector('link[rel=manifest]')&&!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
 function lastBackup(){try{return localStorage.getItem('pitaka.lastbk')||''}catch(e){return''}}
 function markBackup(){try{localStorage.setItem('pitaka.lastbk',today())}catch(e){}}
 // Android's share menu only accepts certain file types, so the backup travels as .txt (it is JSON inside).
@@ -884,6 +894,18 @@ function updateNotice(){const v=UP.next;if(!v||UP.later)return'';
     :UP.state==='ready'?`<button class="btn sm pri" data-act="updinstall">Install</button>`:`<button class="btn sm pri" data-act="update">Update now</button>`;
   return`<div class="notice info"><b>Update available · version ${esc(v.versionName)}</b>${v.notes?`<span>${esc(v.notes)}</span>`:''}<span class="sub">Your records stay on this phone.</span>
   <div class="acts">${btn}${UP.state?'':`<button class="btn sm" data-act="updlater">Later</button>`}</div></div>`}
+
+/* ================= web version: install hint ================= */
+// iPhone: records live with the Home Screen app, separate from a Safari tab, so ask people to add it before they start.
+const STANDALONE=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+const IOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const ANDROID=/android/i.test(navigator.userAgent);
+const APK_URL='https://github.com/yoshipaxti/pitaka/releases/latest/download/pitaka.apk';
+function installNotice(){let hide=false;try{hide=localStorage.getItem('pitaka.installhint')==='hide'}catch(e){}
+  if(NATIVE||STANDALONE||hide||!(IOS||ANDROID))return'';
+  const body=IOS?`Tap the <b>Share</b> button (the square with an arrow), then <b>Add to Home Screen</b>. Open Pitaka from its new icon. Do this before adding records: the Home Screen app keeps its own records, separate from this Safari tab.`
+    :`For the full app, <a href="${APK_URL}">download Pitaka for Android</a>. Or use your browser menu, then <b>Add to Home screen</b>.`;
+  return`<div class="notice info"><b>${IOS?'Add Pitaka to your Home Screen':'Install Pitaka'}</b><span>${body}</span><div class="acts"><button class="btn sm" data-act="installhide">Got it</button></div></div>`}
 
 async function nativeShare(){const name=`pitaka-backup-${today()}.json`;
   try{await FS.writeFile({path:name,data:phoneData(),directory:'CACHE',encoding:'utf8'});const{uri}=await FS.getUri({path:name,directory:'CACHE'});
@@ -949,6 +971,7 @@ const ACT={
   phonesave:()=>writePhone(true),
   update:()=>startUpdate(),updinstall:()=>installUpdate(),updcheck:()=>checkUpdate(true),
   updlater:()=>{UP.later=true;render()},
+  installhide:()=>{try{localStorage.setItem('pitaka.installhint','hide')}catch(e){}render()},
   pastebk:()=>restore($('#pastebk').value)};
 function fallbackCopy(txt){const ta=$('#pastebk');if(ta){ta.value=txt;ta.select();toast('Selected. Copy it from the box.')}}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const f=ACT[b.dataset.act];if(f){e.preventDefault();f(b.dataset,b)}});
@@ -960,7 +983,7 @@ load();render();
 if(NATIVE)bootPhone();
 if(UPD)setTimeout(()=>checkUpdate(false),3000);
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
-if('serviceWorker' in navigator&&document.querySelector('link[rel=manifest]'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+if(!NATIVE&&'serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 
 </body>

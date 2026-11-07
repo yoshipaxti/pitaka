@@ -16,6 +16,19 @@ Once you have version 1.0.7 or later installed, Pitaka checks for a newer releas
 
 Your records stay, because Android keeps an app's storage when it is updated with an APK signed by the same key. Android refuses any APK signed with a different key, so a tampered download can't replace Pitaka.
 
+## iPhone (and anyone else): the web app
+
+The same app is published as a website at **https://yoshipaxti.github.io/pitaka/** every time `www/` changes on `main`. That is the link to share.
+
+On an iPhone:
+1. Open the link in **Safari**.
+2. Tap the **Share** button (the square with an arrow), then **Add to Home Screen**.
+3. Open Pitaka from its new icon. Add records there, not in the Safari tab: the Home Screen app keeps its own records.
+
+It works offline, updates itself whenever it is opened online, and keeps records only on that phone. Removing the icon from the Home Screen deletes its records, so use **Settings › Save to Drive** (it opens the share menu; choose Files or Drive) now and then. To move records from another phone, save a backup there and use **Settings › Restore** on the iPhone.
+
+The website needs GitHub Pages switched on once: repository **Settings › Pages › Build and deployment › Source: GitHub Actions**.
+
 ### Getting an APK by hand
 
 Download `pitaka.apk` from the newest release on the **Releases** page, or from a terminal on this PC:

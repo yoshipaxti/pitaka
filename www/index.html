@@ -281,6 +281,11 @@ main#view{view-transition-name:view}
 .setrow .chev{color:var(--muted);opacity:.6}
 .field{display:flex;flex-direction:column;gap:8px}
 .daychips .chip{min-width:44px;justify-content:center}
+.tagtxt{color:var(--accent)}
+.tagchips{margin-top:-2px}
+.chip.tag{background:color-mix(in srgb,var(--accent) 10%,var(--surface-2));color:var(--accent)}
+.chip.tag.on{background:var(--accent-fill);color:var(--accent-fg)}
+.chip.sc{max-width:240px;overflow:hidden;text-overflow:ellipsis}
 .catrow{position:relative;display:flex;align-items:center;gap:2px;padding-right:6px}
 .catrow+.catrow::before{content:"";position:absolute;top:0;left:60px;right:0;border-top:.5px solid var(--line)}
 .catmain{flex:1;min-width:0;display:flex;align-items:center;gap:12px;border:0;background:none;padding:10px 6px 10px 14px;min-height:52px;text-align:left;font-size:16px;border-radius:10px}
@@ -379,6 +384,9 @@ const DEC=()=>S&&S.cfg?S.cfg.dec:2;
 const peso=n=>(n<-(DEC()?0.004:0.5)?'-':'')+CUR()+NF.format(Math.abs(n)||0);
 const pesoS=n=>(n<-0.5?'-':'')+CUR()+NF0.format(Math.abs(n)||0);
 const pct=(a,b)=>b?Math.round(a/b*100)+'%':'0%';
+/* Tags: free labels on any record (#family, #trip), stored lowercase without the #. */
+const parseTags=str=>[...new Set(String(str||'').split(/[\s,]+/).map(x=>x.replace(/^#+/,'').toLowerCase().replace(/[^\p{L}\p{N}_-]/gu,'')).filter(Boolean))].slice(0,8);
+const tagStr=t=>(t&&t.length?t.map(x=>'#'+x).join(' '):'');
 const ord=n=>n+(n%100>=11&&n%100<=13?'th':['th','st','nd','rd'][n%10]||'th');
 const sum=(arr,f=x=>x.a)=>arr.reduce((s,x)=>s+f(x),0);
 const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
@@ -453,7 +461,7 @@ function load(){let r=null;try{r=localStorage.getItem(KEY)}catch(e){}
   if(r){try{const d=JSON.parse(r);if(!d||!Array.isArray(d.tx)||!Array.isArray(d.wallets)||!d.wallets.length)throw 0;S=migrate(d);return}
     catch(e){DAMAGED=KEY+'.damaged-'+Date.now();try{localStorage.setItem(DAMAGED,r)}catch(_){DAMAGED='unsaved'}}}
   S=demo();FRESH=true}
-function save(){MODEL=null;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Could not save on this device. Copy a backup from Settings.')}writePhone()}
+function save(){MODEL=null;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Could not save on this device. Copy a backup from Settings.')}writePhone();if(typeof scheduleNudges==='function')scheduleNudges()}
 const W=id=>S.wallets.find(w=>w.id===id)||{id,name:id||'—',col:3};
 // A wallet id that is safe to use as a default: the preferred one if it exists and is not hidden, else the first visible one.
 const wid=pref=>S.wallets.some(w=>w.id===pref&&!w.hidden)?pref:(S.wallets.find(w=>!w.hidden)||S.wallets[0]).id;
@@ -653,7 +661,8 @@ function parseCommand(raw){
   let q=' '+raw.toLowerCase().replace(/\s+/g,' ').trim()+' ';
   const ev=q.match(/\b(every ?month|monthly|buwan-buwan|kada buwan|every ?week|weekly|linggo-linggo|kada linggo)\b/);
   const every=ev?(/week|linggo/.test(ev[1])?'week':'month'):'';if(ev)q=q.replace(ev[0],' ');
-  const out=parseCommand1(q);if(out&&every&&['exp','inc','xfer','cc'].includes(out.t))out.every=every;return out}
+  const tags=parseTags((q.match(/#[\p{L}\p{N}_-]+/gu)||[]).join(' '));q=q.replace(/#[\p{L}\p{N}_-]+/gu,' ');
+  const out=parseCommand1(q);if(out){if(every&&['exp','inc','xfer','cc'].includes(out.t))out.every=every;if(tags.length&&out.t!=='repay')out.tags=tags;out.raw=raw.trim()}return out}
 function parseCommand1(q){
   const{d,rm}=parseDate(q);rm.forEach(x=>q=q.replace(x,' '));
   const amts=parseAmounts(q);if(!amts.length)return null;
@@ -697,6 +706,12 @@ function answer(raw){
   const r=rangeOf(q);const cat=(S.cats.find(c=>q.includes(c.name.toLowerCase()))||{}).id||Object.keys(CATQ).find(k=>CATQ[k].test(q)&&S.cats.some(c=>c.id===k));
   const exps=S.tx.filter(t=>t.t==='exp'&&inR(t,r));
   if(/^(hi|hello|hey|help)\b|what can you do|paano/.test(q))return help();
+  const tq=(q.match(/#([\p{L}\p{N}_-]+)/u)||[])[1];
+  if(tq){const tg=tq.toLowerCase(),rr=/this month|last month|today|week|year/.test(q)?r:{f:'0000',to:'9999',l:'all time'};
+    const hit=S.tx.filter(t=>(t.tags||[]).includes(tg)&&inR(t,rr)),out=hit.filter(t=>['exp','lend','ccpay'].includes(t.t)),inn=hit.filter(t=>['inc','repay'].includes(t.t)),cc=S.cc.filter(c=>(c.tags||[]).includes(tg)&&inR(c,rr));
+    if(!hit.length&&!cc.length)return`Nothing tagged #${esc(tg)} for ${rr.l}.`;
+    return`#${esc(tg)} for ${rr.l}:`+li([`Spent: <b class="mono">${peso(sum(out))}</b> across ${out.length} entr${out.length===1?'y':'ies'}`,...(cc.length?[`Charged to cards: <span class="mono warn">${peso(sum(cc))}</span>`]:[]),...(inn.length?[`Money in: <span class="mono pos">${peso(sum(inn))}</span>`]:[]),
+      ...out.sort((a,b)=>b.a-a.a).slice(0,3).map(t=>`${esc(t.s||t.p||'Entry')} <span class="muted">(${dLabel(t.d)})</span>: <span class="mono">${peso(t.a)}</span>`)])}
   if(/who owes|owes me|owe me|receivable|utang (nila|sa akin)|may utang|pinahiram/.test(q)){
     const by={};loans().forEach(l=>{if(l.owed>0)by[l.p]=(by[l.p]||0)+l.owed});const k=Object.keys(by).sort((a,b)=>by[b]-by[a]);
     if(!k.length)return'Nobody owes you money right now.';
@@ -748,6 +763,7 @@ function answer(raw){
   return'I did not catch that. '+help()}
 function help(){return`I run fully on your phone, so nothing leaves it. Try:`+li([
   '<b>Add things:</b> “lunch 120 gcash”, “jeep 13 yesterday”, “salary 16000 gotyme”, “lent mama 500 for tuition”, “ate paid back 200”, “transfer 1000 gcash to cash”, “shopee 899 spaylater”',
+  '<b>Tag things:</b> add #words, like “dinner 850 gcash #family”, then ask “how much on #family?”',
   '<b>Ask:</b> “how much on food?”, “who owes me?”, “forecast”, “can I afford 2500?”, “compare vs last month”, “biggest expenses”, “tips”'])}
 function summary(){const m=STATE.m,st=monthStats(m),end=pE(m);const top=Object.keys(st.cats).sort((a,b)=>st.cats[b]-st.cats[a])[0];
   return`<b>${pLabel(m)} so far</b>`+li([`Money in: <span class="mono pos">${peso(st.in)}</span>, money out: <span class="mono">${peso(st.out)}</span>`,
@@ -834,10 +850,26 @@ function safetyNotices(){let h='';
   if(mine)h+=`<div class="notice warn"><b>Your ${mine} record${mine>1?'s are':' is'} mixed into the sample data</b><span>Sample data is not saved${NATIVE?' to your Pitaka folder':''} or backed up. Keep your own records and remove the samples.</span><div class="acts"><button class="btn sm pri" data-act="keepmine">Keep mine, remove samples</button></div></div>`;
   const n=S.demo?0:S.tx.length+S.cc.length;let snooze='';try{snooze=localStorage.getItem('pitaka.bksnooze')||''}catch(e){}
   const lb=lastBackup(),ago=lb?-daysTo(lb):Infinity;
-  if(n>=3&&ago>=7&&!(snooze&&today()<snooze))
+  if(n>=3&&S.cfg.bkEvery>0&&ago>=S.cfg.bkEvery&&!(snooze&&today()<snooze))
     h+=`<div class="notice warn"><b>${lb?`Last backup ${ago} days ago`:'No backup yet'}</b><span>Your ${n} records are only on this phone. Save a copy to Google Drive or iCloud so a lost or reset phone does not take them with it.</span>
     <div class="acts"><button class="btn sm pri" data-act="drive">Back up now</button><button class="btn sm" data-act="bklater">Later</button></div></div>`;
+  // Daily reminder, in-app part (iPhone and browsers; Android also gets a phone notification)
+  const nz=S.cfg.nudge;let ok='';try{ok=localStorage.getItem('pitaka.nudgeok')||''}catch(e){}
+  const hm=new Date().toTimeString().slice(0,5),logged=S.tx.some(t=>t.d===today())||S.cc.some(c=>c.d===today());
+  if(nz.on&&!S.demo&&hm>=nz.time&&!logged&&ok!==today()&&STATE.m===curP())
+    h+=`<div class="notice info"><b>Nothing logged today</b><span>Add what you spent today while you still remember it.</span><div class="acts"><button class="btn sm pri" data-act="form" data-t="exp">Add expense</button><button class="btn sm" data-act="nudgeok">Nothing to log</button></div></div>`;
   return h}
+/* Daily reminder on Android: one notification a day at the chosen time for the next 7 days, skipping today once
+   something is logged. Rescheduled on open and after each change, so the skip stays right. */
+// (declared before NATIVE further down, so it does its own Android check)
+const LN=(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform()&&Capacitor.Plugins.LocalNotifications)||null;
+let nudgeT;function scheduleNudges(){if(!LN)return;clearTimeout(nudgeT);nudgeT=setTimeout(async()=>{
+  try{await LN.cancel({notifications:[0,1,2,3,4,5,6,7].map(k=>({id:7100+k}))});
+    if(!S.cfg.nudge.on||S.demo)return;
+    const[hh,mm]=S.cfg.nudge.time.split(':').map(Number),logged=S.tx.some(t=>t.d===today())||S.cc.some(c=>c.d===today()),list=[];
+    for(let k=0;k<7;k++){const at=new Date();at.setDate(at.getDate()+k);at.setHours(hh,mm,0,0);if(at<=new Date()||(k===0&&logged))continue;
+      list.push({id:7100+k,title:'Pitaka',body:'Log today’s spending while you still remember it.',schedule:{at}})}
+    if(list.length)await LN.schedule({notifications:list})}catch(e){}},600)}
 /* One card per savings goal: progress is the goal wallet's balance; a target date gives the monthly amount needed. */
 function goalCard(g,gb){const gp=Math.max(0,Math.min(1,gb/(g.amt||1))),left=g.amt-gb,w=W(g.w);
   const months=g.due?Math.max(1,(+g.due.slice(0,4)-+today().slice(0,4))*12+(+g.due.slice(5,7)-+today().slice(5,7))):0;
@@ -893,7 +925,9 @@ spend(){const m=STATE.m,st=monthStats(m),F=STATE.filter;const cats=S.cats.filter
   let list=S.tx.filter(t=>inP(t.d,m));
   if(F.type!=='all')list=list.filter(t=>F.type==='loan'?(t.t==='lend'||t.t==='repay'):t.t===F.type);
   if(F.cat)list=list.filter(t=>t.t==='exp'&&t.c===F.cat);
-  if(F.q){const q=F.q.toLowerCase();list=list.filter(t=>((t.s||'')+' '+(t.n||'')+' '+(t.p||'')+' '+W(t.w).name).toLowerCase().includes(q))}
+  const tagsHere=[...new Set(S.tx.filter(t=>inP(t.d,m)).flatMap(t=>t.tags||[]))].sort();
+  if(F.tag)list=list.filter(t=>(t.tags||[]).includes(F.tag));
+  if(F.q){const q=F.q.toLowerCase();list=list.filter(t=>((t.s||'')+' '+(t.n||'')+' '+(t.p||'')+' '+W(t.w).name+' '+tagStr(t.tags)).toLowerCase().includes(q))}
   list.sort((a,b)=>b.d.localeCompare(a.d));const shown=list.slice(0,F.limit);
   const bs=budgets(m);
   return`<h1 class="ltitle">Spending</h1>${bs.length?`<section class="card"><h2>Budgets<span class="right"><button class="linkbtn" data-act="setpage" data-id="cats">Edit</button></span></h2><div class="brk">
@@ -907,7 +941,8 @@ spend(){const m=STATE.m,st=monthStats(m),F=STATE.filter;const cats=S.cats.filter
       :'<div class="empty">No expenses this month yet. Tap + to add one, or tell the assistant “lunch 120 gcash”.</div>'}</section>
   <section class="card"><h2>Transactions${F.cat?`<span class="pill zero">${esc(catName(F.cat))}</span>`:''}<span class="right">${list.length} shown</span></h2>
     <div style="display:flex;flex-direction:column;gap:10px"><input class="search" id="search" type="search" placeholder="Search description, person, wallet" value="${esc(F.q)}" aria-label="Search transactions">
-    <div class="chips">${[['all','All'],['exp','Expenses'],['inc','Income'],['xfer','Transfers'],['loan','Loans'],['ccpay','Card payments']].map(([k,l])=>`<button class="chip${F.type===k?' on':''}" data-act="type" data-id="${k}">${l}</button>`).join('')}${F.cat?`<button class="chip" data-act="cat" data-id="${F.cat}">Clear category ✕</button>`:''}</div></div>
+    <div class="chips">${[['all','All'],['exp','Expenses'],['inc','Income'],['xfer','Transfers'],['loan','Loans'],['ccpay','Card payments']].map(([k,l])=>`<button class="chip${F.type===k?' on':''}" data-act="type" data-id="${k}">${l}</button>`).join('')}${F.cat?`<button class="chip" data-act="cat" data-id="${F.cat}">Clear category ✕</button>`:''}</div>
+    ${tagsHere.length?`<div class="chips tagchips" role="group" aria-label="Tags">${tagsHere.map(g=>`<button class="chip tag${F.tag===g?' on':''}" data-act="tagf" data-id="${esc(g)}" aria-pressed="${F.tag===g}">#${esc(g)}</button>`).join('')}</div>`:''}</div>
     <div class="list" style="margin-top:6px">${shown.length?dayGroups(shown,list):'<div class="empty">Nothing matches.</div>'}</div>
     ${list.length>shown.length?`<button class="btn" style="width:100%;margin-top:8px" data-act="more">Show ${Math.min(40,list.length-shown.length)} more</button>`:''}</section>`},
 
@@ -924,7 +959,7 @@ debts(){const end=pE(STATE.m),L=loans(),open=ccOpen();const owed=sum(L,l=>l.owed
       <div class="r">${l.owed>0?`<b class="neg">${peso(l.owed)}</b><button class="btn sm" data-act="repay" data-id="${l.id}" style="margin-top:4px">Repaid</button>`:`<span class="pill pos">Settled</span>`}</div></div>`).join(''):'<div class="empty">No loans yet. When family or friends borrow, log it here so you remember.</div>'}</div></section>
   <section class="card"><div class="split" style="margin-bottom:6px"><h2 style="margin:0">Card & SPayLater items</h2><button class="btn sm pri" data-act="form" data-t="cc">Add charge</button></div>
     <div class="list">${ccList.length?ccList.map(c=>`<div class="item"><div class="ic" style="--ic:var(--warn)" aria-hidden="true">${c.card.charAt(0)}</div>
-      <button class="mid" style="border:0;background:none;padding:0;text-align:left" data-act="editcc" data-id="${c.id}"><div class="t">${esc(c.s)}</div><div class="m">${esc(c.card)} · ${dLabel(c.d)} · for ${esc(c.who||'Me')}</div>${c.due&&!c.paid?dueTag(c.due):''}</button>
+      <button class="mid" style="border:0;background:none;padding:0;text-align:left" data-act="editcc" data-id="${c.id}"><div class="t">${esc(c.s)}</div><div class="m">${esc(c.card)} · ${dLabel(c.d)} · for ${esc(c.who||'Me')}${c.tags?' · <span class="tagtxt">'+esc(tagStr(c.tags))+'</span>':''}</div>${c.due&&!c.paid?dueTag(c.due):''}</button>
       <div class="r"><b>${peso(c.a)}</b>${c.paid?`<button class="btn sm" data-act="unpay" data-id="${c.id}" style="margin-top:4px">Paid ✓</button>`:`<button class="btn sm" data-act="paycc" data-id="${c.id}" style="margin-top:4px">Mark paid</button>`}</div></div>`).join(''):'<div class="empty">No card charges logged.</div>'}</div></section>`},
 
 ai(){if(!STATE.chat.length)STATE.chat.push({me:false,h:`<b>Hi! I am your on-device assistant.</b> `+summaryLine()+`<br><br>`+help()});
@@ -945,7 +980,7 @@ function txRow(t,noDate){const T={exp:[catCol(t.c),catIc(t.c),t.s,catName(t.c),'
   xfer:['var(--muted)','⇄',t.s||`${W(t.w).name} → ${W(t.to).name}`,`${W(t.w).name} → ${W(t.to).name}`,''],lend:['var(--owed)','↗',`Lent to ${t.p}`,t.s||'Loan','-'],
   repay:['var(--pos)','↙',`${t.p} paid back`,'Repayment','+'],ccpay:['var(--warn)','▭',t.s||'Card payment','Card payment','-']}[t.t];
   const cls=T[4]==='+'?'pos':T[4]==='-'&&t.t!=='exp'?'neg':'';
-  return`<button class="item" data-act="edit" data-id="${t.id}"><div class="ic" style="--ic:${T[0]}" aria-hidden="true">${esc(T[1])}</div><div class="mid"><div class="t">${esc(T[2])}</div><div class="m">${noDate?'':dLabel(t.d)+' · '}${esc(T[3])}${t.t!=='xfer'?' · '+esc(W(t.w).name):''}${t.n?' · '+esc(t.n):''}</div></div><div class="r"><b class="${cls}">${T[4]}${peso(t.a)}</b></div></button>`}
+  return`<button class="item" data-act="edit" data-id="${t.id}"><div class="ic" style="--ic:${T[0]}" aria-hidden="true">${esc(T[1])}</div><div class="mid"><div class="t">${esc(T[2])}</div><div class="m">${noDate?'':dLabel(t.d)+' · '}${esc(T[3])}${t.t!=='xfer'?' · '+esc(W(t.w).name):''}${t.n?' · '+esc(t.n):''}${t.tags?' · <span class="tagtxt">'+esc(tagStr(t.tags))+'</span>':''}</div></div><div class="r"><b class="${cls}">${T[4]}${peso(t.a)}</b></div></button>`}
 
 /* ================= sheets & forms ================= */
 // Sheets slide up and slide away. kind says what is showing ('settings' lets Settings refresh itself in place);
@@ -966,7 +1001,8 @@ const defDate=()=>{const t=today();return inP(t,STATE.m)?t:pE(STATE.m)<=t?addDay
 
 function addMenu(){sheet(`<h3>Add a record</h3><div class="actions-grid">
   ${[['exp','Expense','−','var(--c2)'],['inc','Income','+','var(--pos)'],['xfer','Transfer','⇄','var(--muted)'],['lend','Lend cash','↗','var(--owed)'],['cc','Card charge','▭','var(--warn)'],['ai','Type it','✦','var(--accent)']]
-   .map(([t,l,i,c])=>`<button class="act" data-act="${t==='ai'?'tab':'form'}" data-t="${t}" data-id="ai"><i style="background:${c}">${i}</i>${l}</button>`).join('')}</div>`)}
+   .map(([t,l,i,c])=>`<button class="act" data-act="${t==='ai'?'tab':'form'}" data-t="${t}" data-id="ai"><i style="background:${c}">${i}</i>${l}</button>`).join('')}</div>
+  ${S.cfg.shortcuts.length?`<p class="eyebrow" style="margin:16px 0 8px">Quick add</p><div class="chips">${S.cfg.shortcuts.map(q=>`<button class="chip sc" data-act="ask" data-q="${esc(q)}">⚡ ${esc(q)}</button>`).join('')}</div>`:''}`)}
 
 function openForm(type,x={}){const ed=!!x.id;const d=x.d||defDate();let body='',title='';
   const amt=`<label>Amount (${esc(CUR())})<input class="amtin" id="f_a" inputmode="decimal" placeholder="${DEC()?'0.00':'0'}" value="${x.a!=null?x.a:''}" required></label>`;
@@ -987,6 +1023,7 @@ function openForm(type,x={}){const ed=!!x.id;const d=x.d||defDate();let body='',
   if(type==='cc'){title=ed?'Edit card charge':'Add card charge';body=amt+`<label>Merchant or item<input id="f_s" value="${esc(x.s||'')}" placeholder="e.g. Shopee rice cooker" required></label>
     <div class="row2"><label>Card<select id="f_card">${S.cards.map(c=>`<option${c===x.card?' selected':''}>${esc(c)}</option>`).join('')}</select></label><label>For who<input id="f_who" value="${esc(x.who||'Me')}"></label></div>
     <div class="row2">${date}<label>Due date<input type="date" id="f_due" value="${x.due||(ed?'':dueFor(x.card||S.cards[0],d))}"></label></div><div class="sub" id="f_duehint"></div>`+note}
+  if(type!=='repay')body+=`<label>Tags<input id="f_tags" value="${esc(tagStr(x.tags))}" placeholder="#family #trip" autocomplete="off" autocapitalize="off"></label>`;
   if(!ed&&['exp','inc','xfer','cc'].includes(type))body+=`<label>Repeat<select id="f_rep"><option value="">Doesn’t repeat</option><option value="week"${x.every==='week'?' selected':''}>Every week</option><option value="month"${x.every==='month'?' selected':''}>Every month</option></select></label>`;
   sheet(`<h3>${title}</h3><form class="form" id="txform">${body}<div class="btns" style="margin-top:4px"><button class="btn pri" type="submit" style="flex:1">${ed?'Save changes':'Save'}</button>${ed?`<button class="btn danger" type="button" id="f_del">Delete</button>`:''}<button class="btn" type="button" data-act="close">Cancel</button></div></form>`);
   if(type==='exp'){let manual=!!x.c;const hint=$('#f_hint'),cin=$('#f_c');
@@ -1004,14 +1041,14 @@ function openForm(type,x={}){const ed=!!x.id;const d=x.d||defDate();let body='',
   if(ed)$('#f_del').onclick=()=>delRecord(type,x);
   $('#txform').onsubmit=e=>{e.preventDefault();const a=num($('#f_a').value);if(!(a>0)){toast('Enter an amount above zero.');return}
     const g=id=>{const el=$('#'+id);return el?el.value.trim():undefined};
-    const rep_=g('f_rep');let newRec=null;
-    if(type==='cc'){const c=ed?S.cc.find(z=>z.id===x.id):own({id:uid(),paid:false});Object.assign(c,{a,s:g('f_s'),card:g('f_card'),who:g('f_who'),d:g('f_d'),due:g('f_due'),n:g('f_n')});if(!ed){S.cc.push(c);newRec=c}}
+    const rep_=g('f_rep'),tags=parseTags(g('f_tags'));let newRec=null;const setTags=o=>{if(tags.length)o.tags=tags;else delete o.tags};
+    if(type==='cc'){const c=ed?S.cc.find(z=>z.id===x.id):own({id:uid(),paid:false});Object.assign(c,{a,s:g('f_s'),card:g('f_card'),who:g('f_who'),d:g('f_d'),due:g('f_due'),n:g('f_n')});setTags(c);if(!ed){S.cc.push(c);newRec=c}}
     else{if(type==='xfer'&&g('f_w')===g('f_to')){toast('Pick two different wallets.');return}
       if(type==='exp'&&!g('f_c')){const p=predict(g('f_s'));$('#f_c').value=p?p.c:fallbackCat()}
       const t=ed?S.tx.find(z=>z.id===x.id):own({id:uid(),t:type});
       Object.assign(t,{a,d:g('f_d'),w:g('f_w')});
       for(const[k,id]of[['s','f_s'],['c','f_c'],['k','f_k'],['to','f_to'],['p','f_p'],['due','f_due'],['n','f_n']]){const v=g(id);if(v!==undefined)t[k]=v}
-      if(type==='repay'){t.ref=x.ref;t.p=x.p}
+      if(type==='repay'){t.ref=x.ref;t.p=x.p}else setTags(t);
       if(!ed){S.tx.push(t);newRec=t}}
     if(rep_&&newRec&&!S.demo)addRule(type,newRec,rep_);
     save();closeSheet();render();if(rep_&&!S.demo&&runRecurring())return;
@@ -1049,6 +1086,8 @@ const SET={
       ${setRow('recur','🔁','Recurring entries',S.recur.filter(r=>r.on).length?S.recur.filter(r=>r.on).length+' active':'None')}
       ${setRow('period','📅','Month starts on','the '+ord(MS()))}
       ${setRow('cats','🏷️','Categories & budgets',`${S.cats.length} categories${S.cats.some(c=>c.budget>0)?' · '+S.cats.filter(c=>c.budget>0).length+' budgets':''}`)}</div>
+    <div class="setgroup">${setRow('shortcuts','⚡','Assistant shortcuts',S.cfg.shortcuts.length?S.cfg.shortcuts.length+' saved':'None')}
+      ${setRow('reminders','🔔','Reminders',[S.cfg.bkEvery?'Backup '+({7:'weekly',14:'every 2 weeks',30:'monthly'}[S.cfg.bkEvery]||''):'',S.cfg.nudge.on?'daily at '+S.cfg.nudge.time:''].filter(Boolean).join(' · ')||'Off')}</div>
     <div class="setgroup">${setRow('backup','☁️','Backup & restore',lastBackup()?'Last '+dLabel(lastBackup()):'No backup yet')}
       ${UPD?setRow('version','⬇️','App version',UP.cur?esc(UP.cur.versionName)+(UP.next?' · update ready':''):''):''}
       ${setRow('data','🗂️','Data',prevSnap()?'Undo available':'')}</div>`}},
@@ -1147,6 +1186,21 @@ const SET={
         Object.assign(r.tpl,{a,s:$('#re_s').value.trim()});r.every=$('#re_e').value;r.next=$('#re_n').value||r.next;r.day=+r.next.slice(8);save();runRecurring();render();toast('Saved');settings('recur','back')};
       $('#re_p').onclick=()=>{r.on=!r.on;save();toast(r.on?'Resumed':'Paused');settings()};
       $('#re_del').onclick=()=>{S.recur=S.recur.filter(x=>x.id!==r.id);save();render();toast('Stopped repeating');settings('recur','back')}}},
+  shortcuts:{title:'Assistant shortcuts',parent:'main',html:()=>`<form class="form" id="shform">
+    <span class="sub">One tap sends these to the assistant, which makes a draft you confirm. They appear above the message box and in the + menu. You can also tap <b>⚡ Save as shortcut</b> under any draft.</span>
+    <label>One per line<textarea id="sh_l" rows="7" placeholder="jeep 13 cash
+lunch 120 gcash
+load 99 gcash" data-nofocus>${esc(S.cfg.shortcuts.join('\n'))}</textarea></label>
+    <button class="btn pri" type="submit">Save</button></form>`,
+    bind:()=>{$('#shform').onsubmit=e=>{e.preventDefault();S.cfg.shortcuts=[...new Set($('#sh_l').value.split('\n').map(x=>x.trim()).filter(Boolean))].slice(0,12);save();render();toast('Saved');settings('main','back')}}},
+  reminders:{title:'Reminders',parent:'main',html:()=>`<div class="form">
+    <div class="field"><span class="flabel">Backup reminder</span>${choice('bkEvery',[[0,'Off'],[7,'Weekly'],[14,'Every 2 weeks'],[30,'Monthly']],S.cfg.bkEvery)}
+      <span class="sub">Shows on Overview when your last backup is older than this.</span></div>
+    <div class="field"><span class="flabel">Daily “log your spending” reminder</span>
+      <div class="chips" role="group"><button class="chip${S.cfg.nudge.on?'':' on'}" data-act="nudgeon" data-v="0">Off</button><button class="chip${S.cfg.nudge.on?' on':''}" data-act="nudgeon" data-v="1">On</button></div>
+      <label>Time<input type="time" id="nz_t" value="${S.cfg.nudge.time}" data-nofocus></label>
+      <span class="sub">${LN?'A phone notification at this time on days you have not logged anything.':'On iPhone and in a browser, Pitaka cannot send notifications by itself. Instead, opening Pitaka after this time shows a reminder on Overview if nothing is logged yet today.'}</span></div></div>`,
+    bind:()=>{const t=$('#nz_t');t.onchange=()=>{if(t.value){S.cfg.nudge.time=t.value;save();render()}}}},
   inctypes:{title:'Income types',parent:'main',html:()=>`<form class="form" id="itform">
     <label>One type per line<textarea id="it_l" rows="8" data-nofocus>${esc(S.incTypes.join('\n'))}</textarea></label>
     <span class="sub">These appear in the income form and the assistant understands them (“remittance 5000 gcash”). Renaming a type keeps old records as they are.</span>
@@ -1302,10 +1356,10 @@ function draftCard(i){const x=STATE.drafts[i];if(!x)return'';if(x.done)return`<d
   const det=x.t==='exp'?`${catName(x.c)} · ${W(x.w).name}`:x.t==='xfer'?`${W(x.w).name} → ${W(x.to).name}`:x.t==='lend'?`to ${x.p} · from ${W(x.w).name}`:x.t==='repay'?`from ${x.p} · into ${W(x.w).name}`:x.t==='cc'?x.card:W(x.w).name;
   const opts=x.t==='exp'?[...new Set([x.c,...(x.conf?x.conf.alts.filter(a=>a.p>=.08).map(a=>a.c):[]),...S.cats.map(c=>c.id)])].filter(id=>S.cats.some(c=>c.id===id)).slice(0,4):[];
   const sure=x.conf&&!x.picked?` · ✦ ${Math.round(x.conf.p*100)}% sure of category`:'';
-  return`<div class="draft"><div class="split"><b>${L}${x.s&&x.t!=='repay'?': '+esc(x.s):''}</b><b class="mono">${peso(x.a)}</b></div><span class="sub">${esc(det)} · ${dLabel(x.d)}${rp}${sure}</span>${x.warn?`<span class="sub warn">${esc(x.warn)}</span>`:''}
+  return`<div class="draft"><div class="split"><b>${L}${x.s&&x.t!=='repay'?': '+esc(x.s):''}</b><b class="mono">${peso(x.a)}</b></div><span class="sub">${esc(det)} · ${dLabel(x.d)}${rp}${x.tags?' · '+esc(tagStr(x.tags)):''}${sure}</span>${x.warn?`<span class="sub warn">${esc(x.warn)}</span>`:''}
   ${opts.length?`<div class="chips" role="group" aria-label="Category">${opts.map(c=>`<button class="chip${c===x.c?' on':''}" data-act="dcat" data-id="${i}" data-c="${c}" aria-pressed="${c===x.c}"><i class="dot" style="background:${catCol(c)}"></i>${esc(catName(c))}</button>`).join('')}</div>`:''}
-  <div class="btns"><button class="btn sm pri" data-act="dsave" data-id="${i}">Add it</button><button class="btn sm" data-act="dedit" data-id="${i}">Edit</button><button class="btn sm" data-act="dskip" data-id="${i}">Discard</button></div></div>`}
-function renderChips(){$('#aichips').innerHTML=['Summary','Where did my money go?','Who owes me?','Forecast','Tips','Can I afford 2000?','Compare vs last month','Biggest expenses'].map(q=>`<button class="chip" data-act="ask" data-q="${q}">${q}</button>`).join('')}
+  <div class="btns"><button class="btn sm pri" data-act="dsave" data-id="${i}">Add it</button><button class="btn sm" data-act="dedit" data-id="${i}">Edit</button><button class="btn sm" data-act="dskip" data-id="${i}">Discard</button>${x.raw&&!S.cfg.shortcuts.includes(x.raw)?`<button class="btn sm" data-act="dshort" data-id="${i}">⚡ Save as shortcut</button>`:''}</div></div>`}
+function renderChips(){$('#aichips').innerHTML=S.cfg.shortcuts.map(q=>`<button class="chip sc" data-act="ask" data-q="${esc(q)}">⚡ ${esc(q)}</button>`).join('')+['Summary','Where did my money go?','Who owes me?','Forecast','Tips','Can I afford 2000?','Compare vs last month','Biggest expenses'].map(q=>`<button class="chip" data-act="ask" data-q="${q}">${q}</button>`).join('')}
 function ask(text){text=text.trim();if(!text)return;STATE.chat.push({me:true,h:text,fresh:1});
   const isQ=RX.q.test(text.toLowerCase())&&!/^(lunch|dinner|breakfast)/i.test(text);const cmd=isQ?null:parseCommand(text);
   if(cmd){STATE.drafts.push(cmd);const i=STATE.drafts.length-1;
@@ -1314,9 +1368,9 @@ function ask(text){text=text.trim();if(!text)return;STATE.chat.push({me:true,h:t
   if(STATE.chat.length>60)STATE.chat.splice(1,STATE.chat.length-60);
   if(STATE.tab!=='ai'){STATE.tab='ai'}render()}
 function commitDraft(i){const x=STATE.drafts[i];if(!x||x.done)return;
-  if(x.t==='cc')S.cc.push(own({id:uid(),d:x.d,s:x.s,a:x.a,card:x.card,who:x.who||'Me',due:x.due||dueFor(x.card,x.d),paid:false}));
+  if(x.t==='cc')S.cc.push(own({id:uid(),d:x.d,s:x.s,a:x.a,card:x.card,who:x.who||'Me',due:x.due||dueFor(x.card,x.d),paid:false,...(x.tags?{tags:x.tags}:{})}));
   else{if(x.t==='repay'&&!x.ref){toast('Open the loan in Debts to log this repayment.');return}
-    const t=own({id:uid(),t:x.t,a:x.a,d:x.d,w:x.w});['s','c','k','to','p','ref'].forEach(k=>{if(x[k]!=null&&x[k]!=='')t[k]=x[k]});S.tx.push(t);if(x.every&&!S.demo)addRule(x.t,t,x.every)}
+    const t=own({id:uid(),t:x.t,a:x.a,d:x.d,w:x.w});['s','c','k','to','p','ref','tags'].forEach(k=>{if(x[k]!=null&&x[k]!=='')t[k]=x[k]});S.tx.push(t);if(x.every&&!S.demo)addRule(x.t,t,x.every)}
   if(x.t==='cc'&&x.every&&!S.demo)addRule('cc',S.cc[S.cc.length-1],x.every);
   x.done='Added '+peso(x.a)+(x.every&&!S.demo?`, repeating ${x.every==='week'?'weekly':'monthly'}`:'')+'. ✓';save();render();if(x.every)runRecurring()}
 
@@ -1343,9 +1397,11 @@ const ACT={
   cat:d=>{STATE.filter.cat=STATE.filter.cat===d.id?null:d.id;if(STATE.filter.cat)STATE.filter.type='all';render()},
   type:d=>{STATE.filter.type=d.id;if(d.id!=='all'&&d.id!=='exp')STATE.filter.cat=null;render()},
   more:()=>{STATE.filter.limit+=40;render()},
+  tagf:d=>{STATE.filter.tag=STATE.filter.tag===d.id?null:d.id;render()},
   ask:d=>ask(d.q),
   dsave:d=>commitDraft(+d.id),
   dcat:d=>{const x=STATE.drafts[+d.id];if(x&&!x.done){x.c=d.c;x.picked=true;render()}},
+  dshort:d=>{const x=STATE.drafts[+d.id];if(!x||!x.raw)return;S.cfg.shortcuts=[...S.cfg.shortcuts.filter(q=>q!==x.raw),x.raw].slice(-12);save();render();toast('Shortcut saved. It appears above the message box and in the + menu.')},
   dskip:d=>{const x=STATE.drafts[+d.id];if(x){x.done='Discarded.';render()}},
   recurview:()=>{STATE.setArg='';settings('recur')},
   dedit:d=>{const x=STATE.drafts[+d.id];if(!x||x.done)return;if(x.t==='repay'&&x.ref)openForm('repay',{ref:x.ref,p:x.p,w:x.w,a:x.a,d:x.d});else openForm(x.t==='repay'?'lend':x.t,{...x,id:undefined});x.done='Opened in the form.'},
@@ -1356,6 +1412,9 @@ const ACT={
   themeset:d=>{applyTheme(d.id);refreshSettings()},
   undoask:()=>{const p=prevSnap();if(p)askConfirm(`Bring back your records from just before ${REASON[p.reason]||'the last change'} (${dLabel(p.at.slice(0,10))}, ${new Date(p.at).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'})})? Changes made since then will be replaced.`,undoLast,'Bring back')},
   keepmine:()=>keepMine(),
+  nudgeok:()=>{try{localStorage.setItem('pitaka.nudgeok',today())}catch(e){}render()},
+  nudgeon:async d=>{const on=d.v==='1';if(on&&LN){try{const p=await LN.requestPermissions();if(p.display!=='granted'){toast('Allow notifications for Pitaka in your phone settings to get the reminder.');return}}catch(e){}}
+    S.cfg.nudge.on=on;save();render();settings();if(on)toast(LN?`You’ll get a reminder at ${S.cfg.nudge.time} on days with nothing logged.`:'Pitaka will remind you when you open it after that time.')},
   bklater:()=>{try{localStorage.setItem('pitaka.bksnooze',addDays(today(),3))}catch(e){}render()},
   copybk:()=>{const txt=JSON.stringify(S);const done=()=>toast('Backup copied');
     if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done,()=>fallbackCopy(txt));else fallbackCopy(txt)},
@@ -1374,7 +1433,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheetOpen())closeSh
 
 load();applyCfg();STATE.m=curP();if(S.cfg.start!=='last')STATE.tab=S.cfg.start;applyTheme(themePref());render();
 if(NATIVE)bootPhone();
-runRecurring();
+runRecurring();scheduleNudges();
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(curP()!==STATE.m&&STATE.lastSeen&&STATE.lastSeen!==today())STATE.m=curP();runRecurring();STATE.lastSeen=today()}});
 STATE.lastSeen=today();
 if(UPD)setTimeout(()=>checkUpdate(false),3000);

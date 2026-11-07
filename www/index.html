@@ -637,7 +637,7 @@ home(){const m=STATE.m,st=monthStats(m),end=nextM(m)+'-01',ins=insights(m);
   const gw=W(S.goal.w),gb=balances(end)[S.goal.w]||0,gp=Math.max(0,Math.min(1,gb/(S.goal.amt||1)));
   const outs=[['Money lent to others',st.lent,'var(--c3)'],['Day-to-day expenses',st.exp,'var(--c2)'],['Card & SPayLater paid',st.ccp,'var(--c4)']];
   const mx=Math.max(st.out,st.ccCharged,1);
-  return`<h1 class="ltitle">Overview</h1>`+(S.demo?`<div class="notice info"><b>You are viewing sample data</b><span>Explore freely, then start with your own numbers. Sample entries are examples, not your records.</span><div class="acts"><button class="btn sm pri" data-act="fresh">Start fresh</button><button class="btn sm" data-act="settings">Set wallet balances</button></div></div>`:'')+
+  return`<h1 class="ltitle">Overview</h1>`+updateNotice()+(S.demo?`<div class="notice info"><b>You are viewing sample data</b><span>Explore freely, then start with your own numbers. Sample entries are examples, not your records.</span><div class="acts"><button class="btn sm pri" data-act="fresh">Start fresh</button><button class="btn sm" data-act="settings">Set wallet balances</button></div></div>`:'')+
   hero()+
   (ins.length?`<div class="notice ${ins[0].lv}"><b>${esc(ins[0].t)}</b><span>${esc(ins[0].x)}</span><div class="acts"><button class="btn sm" data-act="ask" data-q="Give me tips">Get tips</button><button class="btn sm" data-act="ask" data-q="forecast">Forecast</button>${ins.length>1?`<button class="btn sm" data-act="insall" aria-expanded="${!!STATE.insAll}">${STATE.insAll?'Hide':'See'} ${ins.length-1} more</button>`:''}</div></div>`:'')+
   (STATE.insAll?ins.slice(1).map(n=>`<div class="notice ${n.lv}"><b>${esc(n.t)}</b><span>${esc(n.x)}</span></div>`).join(''):'')+
@@ -808,6 +808,8 @@ function settings(){const b=balances();sheet(`<h3>Settings & backup</h3><form cl
   <div class="btns"><label class="btn" style="flex-direction:row;color:var(--fg);font-size:13.5px">Restore from Drive${NATIVE?' or phone':''}<input type="file" id="imp" hidden></label><button class="btn" data-act="copybk">Copy backup</button>${INSTALLED?'<button class="btn" data-act="dlbk">Download backup</button>':''}</div>
   <span class="sub">Restore opens your file picker. Tap ☰ or Browse, choose Drive${NATIVE?' or Documents › Pitaka':''}, then pick a <span class="mono">pitaka</span> backup file.</span>
   <label>Or paste a backup here<textarea id="pastebk" rows="3" placeholder='{"v":1,...}'></textarea></label><button class="btn" data-act="pastebk">Restore pasted backup</button>
+  ${UPD?`<p class="eyebrow" style="margin:10px 0 0">App version</p><span class="sub">${UP.cur?'Version '+esc(UP.cur.versionName):'Version unknown'}${UP.next?` · <b class="pos">${esc(UP.next.versionName)} available</b>`:''}</span>
+  <div class="btns">${UP.next?`<button class="btn pri" data-act="${UP.state==='ready'?'updinstall':'update'}"${UP.state==='dl'?' disabled':''}>${UP.state==='dl'?'Downloading…':UP.state==='ready'?'Install':'Update now'}</button>`:''}<button class="btn" data-act="updcheck"${UP.checking?' disabled':''}>Check for updates</button></div>`:''}
   <p class="eyebrow" style="margin:10px 0 0">Data</p><div class="btns"><button class="btn danger" data-act="fresh">Erase everything</button><button class="btn" data-act="sample">Load sample data</button></div></div>`);
   $('#addw').onclick=()=>{const n=S.wallets.length;S.wallets.push({id:'w'+uid(),name:'New wallet',col:(n%8)+1,init:0});save();settings()};
   $('#setform').onsubmit=e=>{e.preventDefault();
@@ -854,6 +856,35 @@ async function bootPhone(){
   try{const r=await FS.readFile({path:PHONE.file,directory:'DOCUMENTS',encoding:'utf8'});const d=JSON.parse(r.data);
     if(Array.isArray(d.tx)&&Array.isArray(d.wallets)){delete d.savedAt;S=d;S.cc=S.cc||[];S.cards=S.cards||['Credit Card'];FRESH=false;save();render();toast('Loaded your records from Documents/Pitaka')}}
   catch(e){/* no file yet, or the file belongs to an earlier install: use Restore in Settings */}}
+/* ================= app updates (Android app only) ================= */
+// Each push to main publishes a GitHub Release with pitaka.apk and version.json. The app compares version numbers,
+// downloads the APK, and opens Android's installer. Android only accepts it if it is signed with the same key,
+// and records stay in place because the app keeps its storage across updates.
+const UPD=NATIVE&&Capacitor.Plugins.AppUpdate?Capacitor.Plugins.AppUpdate:null;
+const UPDATE_URL='https://github.com/yoshipaxti/pitaka/releases/latest/download/version.json';
+const UP={cur:null,next:null,state:'',pct:-1,later:false,checking:false};
+async function checkUpdate(manual){if(!UPD||UP.checking)return;UP.checking=true;
+  try{if(!UP.cur)UP.cur=await UPD.info();
+    const v=JSON.parse((await UPD.fetchText({url:UPDATE_URL})).text);
+    if(!(v&&+v.versionCode>0&&typeof v.apk==='string'))throw new Error('Bad version file');
+    UP.next=+v.versionCode>+UP.cur.versionCode?v:null;
+    if(manual)toast(UP.next?`Version ${v.versionName} is available`:'You have the latest version')}
+  catch(e){if(manual)toast('Could not check for updates. Check your internet connection.')}
+  finally{UP.checking=false;render();if(manual&&!$('#sheet').hidden)settings()}}
+async function startUpdate(){const v=UP.next;if(!v||UP.state==='dl')return;
+  writePhone();UP.state='dl';UP.pct=-1;render();
+  const h=await UPD.addListener('progress',e=>{UP.pct=e.percent;const el=$('#updpct');if(el)el.textContent=e.percent>=0?e.percent+'%':''});
+  try{await UPD.download({url:v.apk});UP.state='ready';render();await installUpdate()}
+  catch(e){UP.state='';render();toast('Download failed. Try again on Wi-Fi.')}
+  finally{h.remove()}}
+async function installUpdate(){try{await UPD.install()}
+  catch(e){toast(e&&e.code==='PERMISSION'?'Turn on “Allow from this source”, then come back and tap Install.':'Could not open the installer.')}}
+function updateNotice(){const v=UP.next;if(!v||UP.later)return'';
+  const btn=UP.state==='dl'?`<button class="btn sm pri" disabled>Downloading <span id="updpct">${UP.pct>=0?UP.pct+'%':''}</span></button>`
+    :UP.state==='ready'?`<button class="btn sm pri" data-act="updinstall">Install</button>`:`<button class="btn sm pri" data-act="update">Update now</button>`;
+  return`<div class="notice info"><b>Update available · version ${esc(v.versionName)}</b>${v.notes?`<span>${esc(v.notes)}</span>`:''}<span class="sub">Your records stay on this phone.</span>
+  <div class="acts">${btn}${UP.state?'':`<button class="btn sm" data-act="updlater">Later</button>`}</div></div>`}
+
 async function nativeShare(){const name=`pitaka-backup-${today()}.json`;
   try{await FS.writeFile({path:name,data:phoneData(),directory:'CACHE',encoding:'utf8'});const{uri}=await FS.getUri({path:name,directory:'CACHE'});
     await SHARE.share({title:'Pitaka backup',files:[uri],dialogTitle:'Save backup to Drive'});markBackup();if(!$('#sheet').hidden)settings();toast('Backup shared')}
@@ -916,6 +947,8 @@ const ACT={
   dlbk:()=>{if(saveFile(backupFile('json')))toast('Backup downloaded')},
   drive:()=>saveToDrive(),
   phonesave:()=>writePhone(true),
+  update:()=>startUpdate(),updinstall:()=>installUpdate(),updcheck:()=>checkUpdate(true),
+  updlater:()=>{UP.later=true;render()},
   pastebk:()=>restore($('#pastebk').value)};
 function fallbackCopy(txt){const ta=$('#pastebk');if(ta){ta.value=txt;ta.select();toast('Selected. Copy it from the box.')}}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const f=ACT[b.dataset.act];if(f){e.preventDefault();f(b.dataset,b)}});
@@ -925,6 +958,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#sheet').hidden
 
 load();render();
 if(NATIVE)bootPhone();
+if(UPD)setTimeout(()=>checkUpdate(false),3000);
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 if('serviceWorker' in navigator&&document.querySelector('link[rel=manifest]'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>

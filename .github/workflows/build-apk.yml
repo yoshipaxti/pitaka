@@ -1,8 +1,11 @@
 name: Build APK
 
+# Pushes to main build the APK and publish it as a GitHub Release; the app checks the latest release and offers the update.
+# Pull requests only build it, to prove the change compiles.
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -11,6 +14,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release
     steps:
       - uses: actions/checkout@v4
 
@@ -32,20 +37,25 @@ jobs:
         run: npx cap sync android
 
       # Every APK must be signed with the same key, or Android refuses to install updates over the old app.
-      # The key lives in the DEBUG_KEYSTORE_B64 secret. On the very first run there is none yet, so one is made.
+      # The key lives in the DEBUG_KEYSTORE_B64 secret. It is never written to the repo or uploaded.
+      # Pull requests from forks get no secrets, so they build with a throwaway key that is discarded with the runner.
       - name: Signing key
         env:
           KEY: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+          EVENT: ${{ github.event_name }}
         run: |
           mkdir -p ~/.android
           if [ -n "$KEY" ]; then
             printf '%s' "$KEY" | tr -cd 'A-Za-z0-9+/=' | base64 -d > ~/.android/debug.keystore
-          else
+          elif [ "$EVENT" = "pull_request" ]; then
             keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey \
-              -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Pitaka"
-            cp ~/.android/debug.keystore new-signing-key.keystore
+              -keypass android -keyalg RSA -keysize 2048 -validity 1 -dname "CN=Throwaway"
+          else
+            echo "::error::The DEBUG_KEYSTORE_B64 secret is missing. Without it the APK would not install over the app on your phone."
+            exit 1
           fi
 
+      # versionCode = this run's number, so every build is newer than the last (see android/app/build.gradle).
       - name: Build APK
         working-directory: android
         run: |
@@ -57,10 +67,20 @@ jobs:
           name: pitaka-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
-      - name: Hand over a newly made key (first run only)
-        if: hashFiles('new-signing-key.keystore') != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: new-signing-key
-          path: new-signing-key.keystore
-          retention-days: 1
+      - name: Publish the update
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN: ${{ github.run_number }}
+          REPO: ${{ github.repository }}
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          TAG="v1.0.$RUN"
+          cp android/app/build/outputs/apk/debug/app-debug.apk pitaka.apk
+          NOTES="$(printf '%s\n' "$MSG" | head -n 1)"
+          jq -n --argjson code "$RUN" --arg name "1.0.$RUN" --arg notes "$NOTES" \
+            --arg apk "https://github.com/$REPO/releases/download/$TAG/pitaka.apk" \
+            '{versionCode:$code, versionName:$name, notes:$notes, apk:$apk}' > version.json
+          cat version.json
+          gh release create "$TAG" pitaka.apk version.json --repo "$REPO" --target "$GITHUB_SHA" \
+            --title "Pitaka 1.0.$RUN" --notes "$NOTES" --latest

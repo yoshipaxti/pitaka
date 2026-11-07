@@ -2,18 +2,29 @@
 
 ## Easiest: GitHub builds it for you (nothing to install)
 
-This project lives in the private repository **github.com/yoshipaxti/pitaka**. Every time a change is pushed to `main`, GitHub builds a new APK automatically.
+This project lives in the public repository **github.com/yoshipaxti/pitaka**. Only the app's code is there. Your records stay on your phone and are never uploaded.
 
-To get the latest APK:
-1. Open the repository on GitHub and go to the **Actions** tab.
-2. Click the newest **Build APK** run with a green check.
-3. Under **Artifacts**, download **pitaka-apk**. It's a zip file; inside is `app-debug.apk`.
+Every time a change is pushed to `main`, GitHub builds a new APK and publishes it on the repository's **Releases** page as `pitaka.apk`, with a version number that goes up by one each build (1.0.7, 1.0.8, …).
 
-Or, from a terminal on this PC:
+### Updates inside the app
+
+Once you have version 1.0.7 or later installed, Pitaka checks for a newer release each time it opens. When one exists, **Overview** shows **Update available** with an **Update now** button. You can also check from **Settings › App version › Check for updates**.
+
+1. Tap **Update now**. The new APK downloads.
+2. The first time only, Android asks you to allow Pitaka to install apps. Turn on **Allow from this source**, go back, and tap **Install**.
+3. Android shows its own "Do you want to update this app?" screen. Tap **Update**.
+
+Your records stay, because Android keeps an app's storage when it is updated with an APK signed by the same key. Android refuses any APK signed with a different key, so a tampered download can't replace Pitaka.
+
+### Getting an APK by hand
+
+Download `pitaka.apk` from the newest release on the **Releases** page, or from a terminal on this PC:
 
 ```bash
-gh run download --repo yoshipaxti/pitaka --name pitaka-apk
+gh release download --repo yoshipaxti/pitaka --pattern pitaka.apk
 ```
+
+Each build is also kept for 90 days under **Actions › Build APK › Artifacts › pitaka-apk**.
 
 Every APK is signed with the same key, which is stored as the repository secret `DEBUG_KEYSTORE_B64`. That's why each new APK installs over the old one and keeps your data. Don't delete that secret. A copy of the key is also in `android-app\signing\` on this PC, which is never uploaded.
 

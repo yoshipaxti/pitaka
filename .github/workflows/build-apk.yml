@@ -36,36 +36,60 @@ jobs:
       - name: Copy the app into the Android project
         run: npx cap sync android
 
-      # Every APK must be signed with the same key, or Android refuses to install updates over the old app.
-      # The key lives in the DEBUG_KEYSTORE_B64 secret. It is never written to the repo or uploaded.
+      # Every APK must be signed with the same key, or Android refuses to install updates over the old app
+      # ("package conflicts with an existing package"). The key lives in the DEBUG_KEYSTORE_B64 secret and is written
+      # only to this runner's temp folder; android/app/build.gradle reads it from PITAKA_KEYSTORE.
       # Pull requests from forks get no secrets, so they build with a throwaway key that is discarded with the runner.
       - name: Signing key
         env:
           KEY: ${{ secrets.DEBUG_KEYSTORE_B64 }}
           EVENT: ${{ github.event_name }}
         run: |
-          mkdir -p ~/.android
+          KS="$RUNNER_TEMP/pitaka.keystore"
           if [ -n "$KEY" ]; then
-            printf '%s' "$KEY" | tr -cd 'A-Za-z0-9+/=' | base64 -d > ~/.android/debug.keystore
+            printf '%s' "$KEY" | tr -cd 'A-Za-z0-9+/=' | base64 -d > "$KS"
           elif [ "$EVENT" = "pull_request" ]; then
-            keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey \
+            keytool -genkeypair -keystore "$KS" -storepass android -alias androiddebugkey \
               -keypass android -keyalg RSA -keysize 2048 -validity 1 -dname "CN=Throwaway"
           else
             echo "::error::The DEBUG_KEYSTORE_B64 secret is missing. Without it the APK would not install over the app on your phone."
             exit 1
           fi
+          echo "PITAKA_KEYSTORE=$KS" >> "$GITHUB_ENV"
+          # The certificate fingerprint is public (it is inside every APK); printing it makes key changes easy to spot.
+          if ! FP=$(keytool -list -v -keystore "$KS" -storepass android -alias androiddebugkey 2>&1 | sed -n 's/.*SHA256: //p'); [ -z "$FP" ]; then
+            echo "::error::Could not open the key in DEBUG_KEYSTORE_B64 with alias androiddebugkey and password android. Aliases in it:"
+            keytool -list -keystore "$KS" -storepass android 2>&1 | sed -n 's/,.*PrivateKeyEntry.*//p' || true
+            exit 1
+          fi
+          echo "Signing certificate SHA-256: $FP"
+          echo "KEY_SHA256=$(printf '%s' "$FP" | tr -d ':' | tr 'A-F' 'a-f')" >> "$GITHUB_ENV"
 
       # versionCode = this run's number, so every build is newer than the last (see android/app/build.gradle).
       - name: Build APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk ../pitaka.apk
+
+      # Never publish an APK that is not signed with the key above: it could not update anyone's installed app.
+      - name: Check the APK's signature
+        run: |
+          GOT=$(python3 -I .github/scripts/apk-cert.py pitaka.apk)
+          echo "APK signed with: $GOT"
+          # apksigner's own report, for the log
+          BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
+          "$BT/apksigner" verify --verbose --print-certs pitaka.apk 2>&1 | grep -Ei 'verified using|SHA-256|DOES NOT|error' || true
+          if [ "$GOT" != "$KEY_SHA256" ]; then
+            echo "::error::The APK is signed with a different key than DEBUG_KEYSTORE_B64 ($KEY_SHA256). Not publishing."
+            exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
           name: pitaka-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: pitaka.apk
 
       - name: Publish the update
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -76,7 +100,6 @@ jobs:
           MSG: ${{ github.event.head_commit.message }}
         run: |
           TAG="v1.0.$RUN"
-          cp android/app/build/outputs/apk/debug/app-debug.apk pitaka.apk
           NOTES="$(printf '%s\n' "$MSG" | head -n 1)"
           jq -n --argjson code "$RUN" --arg name "1.0.$RUN" --arg notes "$NOTES" \
             --arg apk "https://github.com/$REPO/releases/download/$TAG/pitaka.apk" \

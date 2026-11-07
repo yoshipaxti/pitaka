@@ -1269,7 +1269,7 @@ load 99 gcash" data-nofocus>${esc(S.cfg.shortcuts.join('\n'))}</textarea></label
         if(STATE.filter.cat===id)STATE.filter.cat=null;save();render();toast(`Deleted ${c.name}`,'undo','Undo');settings('cats','back')}}},
   backup:{title:'Backup & restore',parent:'main',html:()=>`<div class="form">
     ${NATIVE?`<div class="field"><span class="flabel">Saved on this phone</span>
-      <span class="sub">${S.demo?'Sample data is not written to your phone. Tap Start fresh on Overview to begin saving.':`Every change is saved to <span class="mono">Documents/Pitaka/pitaka-data.json</span>, plus one copy per day in <span class="mono">Documents/Pitaka/backups</span> (last ${PHONE.keep} days).`}</span>
+      <span class="sub">${S.demo?'Sample data is not written to your phone. Tap Start fresh on Overview to begin saving.':`Every change is saved to <span class="mono">Documents/${esc(PHONE.file)}</span>, plus one copy per day in <span class="mono">Documents/Pitaka/backups</span> (last ${PHONE.keep} days).`}</span>
       ${PHONE.saved?`<span class="sub pos">Last saved ${new Date(PHONE.saved).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'})}</span>`:''}${PHONE.err?`<span class="sub neg">Last save failed: ${esc(PHONE.err)}</span>`:''}
       ${S.demo?'':`<button class="btn" data-act="phonesave">Save to Pitaka folder now</button>`}</div>`:''}
     <div class="field"><span class="flabel">Backup to Google Drive or iCloud</span>
@@ -1308,16 +1308,24 @@ function saveFile(file){try{const a=document.createElement('a');a.href=URL.creat
 // Only active inside the native Android build (Capacitor). The web versions skip all of this.
 const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
 const FS=NATIVE?Capacitor.Plugins.Filesystem:null,SHARE=NATIVE?Capacitor.Plugins.Share:null;
-const PHONE={file:'Pitaka/pitaka-data.json',dir:'Pitaka/backups',keep:30,saved:'',err:''};
+// Android only lets an app change files it created. If Documents/Pitaka/pitaka-data.json was made by an earlier install
+// (uninstalled, or signed with another key), writing it fails with EACCES; this install then uses its own file names
+// (pitaka-data-<tag>.json), remembered on the phone.
+let FTAG='';try{FTAG=localStorage.getItem('pitaka.ftag')||''}catch(e){}
+const PHONE={get file(){return`Pitaka/pitaka-data${FTAG?'-'+FTAG:''}.json`},dir:'Pitaka/backups',keep:30,saved:'',err:''};
+const dayFile=()=>`${PHONE.dir}/pitaka-${today()}${FTAG?'-'+FTAG:''}.json`;
 const phoneData=()=>JSON.stringify({...S,savedAt:new Date().toISOString()},null,1);
 let phoneTimer;
 function writePhone(now){if(!FS||S.demo)return;clearTimeout(phoneTimer);phoneTimer=setTimeout(async()=>{
   try{const data=phoneData();
-    await FS.writeFile({path:PHONE.file,data,directory:'DOCUMENTS',encoding:'utf8',recursive:true});
-    await FS.writeFile({path:`${PHONE.dir}/pitaka-${today()}.json`,data,directory:'DOCUMENTS',encoding:'utf8',recursive:true});
+    const put=async path=>{try{await FS.writeFile({path,data,directory:'DOCUMENTS',encoding:'utf8',recursive:true})}
+      catch(e){if(FTAG||!/EACCES|denied/i.test(String(e&&e.message||e)))throw e;
+        FTAG=Math.random().toString(36).slice(2,6);try{localStorage.setItem('pitaka.ftag',FTAG)}catch(_){}
+        await FS.writeFile({path:path.replace(/\.json$/,'-'+FTAG+'.json'),data,directory:'DOCUMENTS',encoding:'utf8',recursive:true})}};
+    await put(PHONE.file);await put(dayFile());
     PHONE.saved=new Date().toISOString();PHONE.err='';
     const{files}=await FS.readdir({path:PHONE.dir,directory:'DOCUMENTS'});
-    const old=files.map(f=>f.name||f).filter(n=>/^pitaka-\d{4}-\d\d-\d\d\.json$/.test(n)).sort().slice(0,-PHONE.keep);
+    const old=files.map(f=>f.name||f).filter(n=>/^pitaka-\d{4}-\d\d-\d\d(-[a-z0-9]{4})?\.json$/.test(n)).sort().slice(0,-PHONE.keep);
     for(const n of old)await FS.deleteFile({path:`${PHONE.dir}/${n}`,directory:'DOCUMENTS'}).catch(()=>{});
     if(now)toast('Saved to Documents/Pitaka')}
   catch(e){PHONE.err=String(e&&e.message||e);if(now)toast('Could not write to the Pitaka folder. Check storage permission.')}},now?0:800)}

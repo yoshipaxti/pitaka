@@ -17,9 +17,27 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Every Pitaka APK must be signed with the same key, or Android refuses to install it over the app already on a
+    // phone ("package conflicts with an existing package"). The key is named here instead of relying on Gradle's
+    // default debug key, which is silently re-created when it is not where Gradle looks. On GitHub, PITAKA_KEYSTORE
+    // points at the key from the DEBUG_KEYSTORE_B64 secret; on your own computer it falls back to ~/.android/debug.keystore.
+    signingConfigs {
+        pitaka {
+            def ks = System.getenv("PITAKA_KEYSTORE") ?: "${System.getProperty('user.home')}/.android/debug.keystore"
+            storeFile file(ks)
+            storePassword System.getenv("PITAKA_STORE_PASS") ?: "android"
+            keyAlias System.getenv("PITAKA_KEY_ALIAS") ?: "androiddebugkey"
+            keyPassword System.getenv("PITAKA_KEY_PASS") ?: "android"
+        }
+    }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.pitaka
+        }
+        // The published APK is a release build: not debuggable, which Play Protect treats as less suspicious.
         release {
             minifyEnabled false
+            signingConfig signingConfigs.pitaka
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }

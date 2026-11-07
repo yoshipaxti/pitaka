@@ -7,6 +7,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<script>try{var t=localStorage.getItem('pitaka.theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
@@ -62,13 +63,16 @@ button{cursor:pointer}
 
 /* frosted top bar */
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--bar);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:.5px solid var(--line)}
-.top .wrap{display:flex;align-items:center;gap:10px;padding-block:8px}
+.top .wrap{display:flex;align-items:center;gap:6px;padding-block:8px}
+@media (max-width:374px){.brand b{display:none}.month b{min-width:68px}}
+.mstart .brand b{display:none}
+.mstart .month b{min-width:96px;font-size:13px;white-space:nowrap}
 .brand{display:flex;align-items:center;gap:8px;font:700 17px/1 var(--font-display);letter-spacing:-.02em}
 .brand i{display:grid;place-items:center;width:30px;height:30px;border-radius:8px;background:linear-gradient(180deg,#3d9bff,#0066cc);color:#fff;font-style:normal;font-size:16px;font-weight:700}
 .month{margin-left:auto;display:flex;align-items:center;gap:0;background:var(--surface-2);border-radius:999px;padding:2px}
 .month b{font:600 15px/1 var(--font-display);min-width:80px;text-align:center}
 .icon-btn{display:grid;place-items:center;width:40px;height:40px;border:0;background:none;border-radius:999px;color:var(--accent)}
-.icon-btn:active{opacity:.5}
+.icon-btn:active{opacity:.5;transform:scale(.9)}
 .icon-btn svg,.tab svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
 main.wrap{padding-block:4px 160px;display:flex;flex-direction:column;gap:16px}
@@ -81,6 +85,7 @@ main.wrap{padding-block:4px 160px;display:flex;flex-direction:column;gap:16px}
 .eyebrow{font-size:13px;font-weight:500;color:var(--muted);margin:0 0 4px}
 .big{font:700 28px/1.1 var(--font-display);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .sub{font-size:13px;color:var(--muted)}
+.sub.neg{color:var(--neg)} .sub.warn{color:var(--warn)} .sub.pos{color:var(--pos)}
 .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 @media (max-width:380px){.grid2{grid-template-columns:1fr}}
 .rows{display:flex;flex-direction:column;gap:7px;margin-top:12px;padding-top:12px;border-top:.5px solid var(--line);font-size:14px}
@@ -108,7 +113,7 @@ main.wrap{padding-block:4px 160px;display:flex;flex-direction:column;gap:16px}
 .btn.pri{background:var(--accent-fill);color:var(--accent-fg)}
 .btn.sm{padding:6px 13px;font-size:13.5px;min-height:34px}
 .btn.danger{color:var(--neg)}
-.btn:active{opacity:.6}
+.btn:active{transform:scale(.96);opacity:.85}
 .btns{display:flex;gap:8px;flex-wrap:wrap}
 
 .pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 8px;border-radius:99px;white-space:nowrap}
@@ -174,9 +179,17 @@ tbody tr{cursor:pointer}
 /* sheet */
 .sheet-wrap{position:fixed;inset:0;z-index:20;display:flex;align-items:flex-end;justify-content:center}
 .scrim{position:absolute;inset:0;background:rgba(0,0,0,.35)}
-.sheet{position:relative;width:100%;max-width:560px;max-height:92%;overflow:auto;background:var(--surface);border-radius:14px 14px 0 0;padding:6px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));animation:up .28s cubic-bezier(.2,.9,.3,1)}
-@keyframes up{from{transform:translateY(40px);opacity:.4}}
-@media (prefers-reduced-motion:reduce){.sheet{animation:none}}
+.sheet{position:relative;will-change:transform;width:100%;max-width:560px;max-height:92%;overflow:auto;background:var(--surface);border-radius:14px 14px 0 0;padding:6px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));animation:up .28s cubic-bezier(.2,.9,.3,1)}
+@keyframes up{from{transform:translateY(100%)}}
+@keyframes fade{from{opacity:0}}
+.sheet-wrap .scrim{animation:fade .25s ease-out}
+.sheet-wrap.closing .scrim{opacity:0;transition:opacity .22s ease-in}
+.sheet-wrap.closing .sheet{transform:translateY(105%);transition:transform .23s cubic-bezier(.4,0,1,1)}
+.sheet-wrap.closing{pointer-events:none}
+#sheetBody.pg-fwd{animation:pg-fwd .28s cubic-bezier(.2,.9,.3,1)}
+#sheetBody.pg-back{animation:pg-back .28s cubic-bezier(.2,.9,.3,1)}
+@keyframes pg-fwd{from{opacity:0;transform:translateX(28px)}}
+@keyframes pg-back{from{opacity:0;transform:translateX(-28px)}}
 .grab{width:36px;height:5px;border-radius:9px;background:color-mix(in srgb,var(--muted) 45%,transparent);margin:2px auto 12px}
 .sheet h3{font:700 22px var(--font-display);letter-spacing:-.02em;margin:0 0 14px}
 .form{display:flex;flex-direction:column;gap:14px}
@@ -213,10 +226,100 @@ tbody tr{cursor:pointer}
 .composer .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
 .composer .chips::-webkit-scrollbar{display:none}
 
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));z-index:30;background:rgba(28,28,30,.92);color:#fff;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);padding:10px 18px;border-radius:999px;font-size:14px;font-weight:500;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
+.tact{border:0;background:none;color:#5ab0ff;font:inherit;font-weight:700;padding:4px 2px 4px 10px;min-height:32px}
+.toast{opacity:0;pointer-events:none;transition:opacity .2s ease,transform .3s cubic-bezier(.2,.9,.3,1);display:flex;align-items:center;gap:4px;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));z-index:30;background:rgba(28,28,30,.92);color:#fff;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);padding:10px 18px;border-radius:999px;font-size:14px;font-weight:500;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
 .kv{display:flex;justify-content:space-between;gap:8px;font-size:14px}
 .split{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .cv{content-visibility:auto;contain-intrinsic-size:auto 400px}
+.toast{transform:translate(-50%,14px)}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+
+/* ---- motion: press feedback, view changes, growing bars, new chat bubbles ---- */
+.btn,.chip,.act,.icon-btn,.tab svg,.setrow,.item,.legend button,.hero-k button,.fab{transition:transform .14s ease,background-color .2s ease,color .2s ease,opacity .2s ease;touch-action:manipulation}
+.chip:active,.act:active,.hero-k button:active{transform:scale(.95)}
+.fab:active{transform:scale(.9)}
+.tab:active svg{transform:scale(.86)}
+.item:active,.setrow:active{background:color-mix(in srgb,var(--fg) 6%,transparent)}
+.item{border-radius:10px}
+main#view{view-transition-name:view}
+::view-transition-old(root),::view-transition-new(root){animation:none}
+::view-transition-old(view){animation:vt-out .14s ease-in both}
+::view-transition-new(view){animation:vt-in .26s cubic-bezier(.2,.9,.3,1) both}
+:root[data-vt=next]::view-transition-new(view){animation-name:vt-in-r}
+:root[data-vt=prev]::view-transition-new(view){animation-name:vt-in-l}
+:root[data-vt=next]::view-transition-old(view){animation:vt-out-l .16s ease-in both}
+:root[data-vt=prev]::view-transition-old(view){animation:vt-out-r .16s ease-in both}
+#view.enter{animation:vt-in .26s cubic-bezier(.2,.9,.3,1)}
+#view.enter-next{animation:vt-in-r .26s cubic-bezier(.2,.9,.3,1)}
+#view.enter-prev{animation:vt-in-l .26s cubic-bezier(.2,.9,.3,1)}
+@keyframes vt-in{from{opacity:0;transform:translateY(10px)}}
+@keyframes vt-in-r{from{opacity:0;transform:translateX(32px)}}
+@keyframes vt-in-l{from{opacity:0;transform:translateX(-32px)}}
+@keyframes vt-out{to{opacity:0}}
+@keyframes vt-out-l{to{opacity:0;transform:translateX(-24px)}}
+@keyframes vt-out-r{to{opacity:0;transform:translateX(24px)}}
+.bar i{transform-origin:left center}
+#view.fresh .bar i{animation:grow .7s cubic-bezier(.2,.9,.3,1) both}
+#view.fresh .donut svg{animation:pop .45s cubic-bezier(.2,.9,.3,1) both}
+@keyframes grow{from{transform:scaleX(0)}}
+@keyframes pop{from{opacity:0;transform:scale(.9) rotate(-20deg)}}
+.msg.new{animation:msg-in .3s cubic-bezier(.2,.9,.3,1) both}
+@keyframes msg-in{from{opacity:0;transform:translateY(10px) scale(.97)}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* ---- settings pages ---- */
+.shead{display:flex;flex-direction:column;gap:2px;margin-bottom:10px}
+.shead h3{margin:0}
+.back{display:inline-flex;align-items:center;gap:2px;align-self:flex-start;border:0;background:none;color:var(--accent);font-size:15px;font-weight:500;padding:6px 6px 6px 0;margin-left:-4px;min-height:36px}
+.back svg,.chev{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.setgroup{background:var(--surface-2);border-radius:14px;margin-bottom:14px;overflow:hidden}
+.setrow{position:relative;display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;padding:12px 12px 12px 14px;min-height:52px;text-align:left;font-size:16px}
+.setrow+.setrow::before{content:"";position:absolute;top:0;left:54px;right:0;border-top:.5px solid var(--line)}
+.sic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:var(--surface);font-size:17px;flex:none}
+.sl{flex:1 0 auto;white-space:nowrap}
+.sv{flex:0 1 auto;min-width:0;color:var(--muted);font-size:14px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.setrow .chev{color:var(--muted);opacity:.6}
+.field{display:flex;flex-direction:column;gap:8px}
+.daychips .chip{min-width:44px;justify-content:center}
+.tagtxt{color:var(--accent)}
+/* ---- lock screen ---- */
+.lock{position:fixed;inset:0;z-index:50;background:var(--bg);display:grid;place-items:center;padding:calc(24px + env(safe-area-inset-top,0px)) 24px calc(24px + env(safe-area-inset-bottom,0px));animation:fade .2s ease-out}
+:root.locked #view,:root.locked .tabs,:root.locked .fab,:root.locked .composer,:root.locked .top{visibility:hidden}
+.lockbox{width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.lockbox h2{font:600 20px var(--font-display);margin:0}
+.lockic{width:56px;height:56px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(180deg,#3d9bff,#0066cc);color:#fff;font:700 26px var(--font-display)}
+.dots{display:flex;gap:16px;margin:6px 0 2px}
+.dots i{width:13px;height:13px;border-radius:50%;border:1.5px solid var(--fg);transition:background-color .12s}
+.dots i.on{background:var(--fg)}
+.dots.shake{animation:shake .38s}
+@keyframes shake{20%,60%{transform:translateX(-9px)}40%,80%{transform:translateX(9px)}}
+.lockmsg{min-height:20px;margin:0;color:var(--neg);font-size:14px}
+.keypad{display:grid;grid-template-columns:repeat(3,76px);gap:14px 24px;justify-content:center}
+.key{width:76px;height:76px;border-radius:50%;border:0;background:var(--surface-2);font:400 30px var(--font-display);color:var(--fg);transition:background-color .1s,transform .1s}
+.key:active{background:color-mix(in srgb,var(--fg) 18%,var(--surface-2));transform:scale(.94)}
+.key.fn{background:none;font-size:24px;color:var(--accent)}
+.key:disabled{opacity:.35}
+.forgot{background:var(--surface);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;font-size:14px}
+.forgot p{margin:0}
+.tagchips{margin-top:-2px}
+.chip.tag{background:color-mix(in srgb,var(--accent) 10%,var(--surface-2));color:var(--accent)}
+.chip.tag.on{background:var(--accent-fill);color:var(--accent-fg)}
+.chip.sc{max-width:240px;overflow:hidden;text-overflow:ellipsis}
+.catrow{position:relative;display:flex;align-items:center;gap:2px;padding-right:6px}
+.catrow+.catrow::before{content:"";position:absolute;top:0;left:60px;right:0;border-top:.5px solid var(--line)}
+.catmain{flex:1;min-width:0;display:flex;align-items:center;gap:12px;border:0;background:none;padding:10px 6px 10px 14px;min-height:52px;text-align:left;font-size:16px;border-radius:10px}
+.catmain:active{background:color-mix(in srgb,var(--fg) 6%,transparent)}
+.catmain .ic{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font:600 15px var(--font-display);flex:none;background:color-mix(in srgb,var(--ic) 20%,var(--surface));color:color-mix(in srgb,var(--ic) 45%,var(--fg))}
+.catmain .sl{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.icon-btn.sm{width:36px;height:36px}
+.icon-btn:disabled{opacity:.25}
+.chip.emo{font-size:18px;padding:4px 10px}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.sw{width:36px;height:36px;border-radius:50%;border:0;background:var(--sw);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--fg) 8%,transparent);transition:transform .14s ease}
+.sw.on{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--sw)}
+.sw:active{transform:scale(.9)}
+.budrow{display:block;width:100%;border:0;background:none;padding:0;text-align:left;border-radius:8px}
+.linkbtn{border:0;background:none;color:var(--accent);font:500 14px var(--font-body);padding:4px 0}
 /* home hero */
 .hero .big{font-size:36px}
 .grid2 .big{font-size:23px;overflow-wrap:anywhere}
@@ -234,12 +337,13 @@ tbody tr{cursor:pointer}
 </head>
 <body>
 <header class="top"><div class="wrap">
-  <div class="brand"><i>₱</i>Pitaka</div>
+  <div class="brand"><i>₱</i><b>Pitaka</b></div>
   <div class="month">
     <button class="icon-btn" data-act="month" data-k="-1" aria-label="Previous month"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
     <b id="mlabel"></b>
     <button class="icon-btn" data-act="month" data-k="1" aria-label="Next month"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
   </div>
+  <button class="icon-btn" id="themebtn" data-act="theme" aria-label="Switch theme"></button>
   <button class="icon-btn" data-act="settings" aria-label="Settings and backup"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </div></header>
 
@@ -255,7 +359,8 @@ tbody tr{cursor:pointer}
 <nav class="tabs" aria-label="Sections"><div class="wrap" id="tabs"></div></nav>
 
 <div class="sheet-wrap" id="sheet" hidden><div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div><div id="sheetBody"></div></div></div>
-<div class="toast" id="toast" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="lock" id="lock" hidden role="dialog" aria-modal="true" aria-label="Pitaka is locked"></div>
 
 <script>
 "use strict";
@@ -272,36 +377,68 @@ const addM=(m,k)=>{let[y,mo]=m.split('-').map(Number);mo+=k;while(mo>12){mo-=12;
 const nextM=m=>addM(m,1);
 const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const mLabel=m=>MN[+m.slice(5,7)-1]+' '+m.slice(0,4);
-const dLabel=s=>s?MN[+s.slice(5,7)-1]+' '+(+s.slice(8,10)):'—';
+const dLabel=s=>s?(S&&S.cfg&&S.cfg.date==='dm'?(+s.slice(8,10))+' '+MN[+s.slice(5,7)-1]:MN[+s.slice(5,7)-1]+' '+(+s.slice(8,10))):'—';
 const daysTo=s=>Math.round((parseISO(s)-parseISO(today()))/864e5);
 const dayName=s=>{const k=daysTo(s);return k===0?'Today':k===-1?'Yesterday':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][parseISO(s).getDay()]+', '+dLabel(s)};
 function dueTag(due){const k=daysTo(due);
   const [c,t]=k<0?['neg',`Overdue ${-k} day${k<-1?'s':''} · was due ${dLabel(due)}`]:k===0?['neg','Due today']:k<=7?['warn',`Due ${dLabel(due)} · in ${k} day${k>1?'s':''}`]:['muted',`Due ${dLabel(due)}`];
   return`<div class="due ${c}">${t}</div>`}
 const dim=m=>new Date(+m.slice(0,4),+m.slice(5,7),0).getDate();
-const num=v=>{const n=parseFloat(String(v??'').replace(/[₱,\s]/g,''));return isFinite(n)?Math.round(n*100)/100:NaN};
-const nf=new Intl.NumberFormat('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
-const nf0=new Intl.NumberFormat('en-PH',{maximumFractionDigits:0});
-const peso=n=>(n<-0.004?'-':'')+'₱'+nf.format(Math.abs(n)||0);
-const pesoS=n=>(n<-0.5?'-':'')+'₱'+nf0.format(Math.abs(n)||0);
+/* Periods: "month" m (YYYY-MM) starts on Settings › Month starts on (S.cfg.mstart, e.g. payday the 15th) and runs to the day
+   before the next one. With the default (the 1st) a period is the calendar month. */
+const MS=()=>S&&S.cfg?S.cfg.mstart||1:1;
+const pS=m=>m+'-'+pad(Math.min(MS(),dim(m)));
+const pE=m=>pS(addM(m,1));
+const inP=(d,m)=>d>=pS(m)&&d<pE(m);
+const periodOf=d=>d>=pS(d.slice(0,7))?d.slice(0,7):addM(d.slice(0,7),-1);
+const curP=()=>periodOf(today());
+const pDays=m=>Math.round((parseISO(pE(m))-parseISO(pS(m)))/864e5);
+const pLabel=m=>MS()===1?mLabel(m):dLabel(pS(m))+' – '+dLabel(addDays(pE(m),-1));
+const pShort=m=>MS()===1?mLabel(m):dLabel(pS(m));
+const num=v=>{const n=parseFloat(String(v??'').replace(/[^\d.\-]/g,''));return isFinite(n)?Math.round(n*100)/100:NaN};
+/* Money and date formatting follow Settings › Currency & format (S.cfg). */
+let NF=new Intl.NumberFormat('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const NF0=new Intl.NumberFormat('en-PH',{maximumFractionDigits:0});
+const CUR=()=>S&&S.cfg?S.cfg.cur:'₱';
+const DEC=()=>S&&S.cfg?S.cfg.dec:2;
+const peso=n=>(n<-(DEC()?0.004:0.5)?'-':'')+CUR()+NF.format(Math.abs(n)||0);
+const pesoS=n=>(n<-0.5?'-':'')+CUR()+NF0.format(Math.abs(n)||0);
 const pct=(a,b)=>b?Math.round(a/b*100)+'%':'0%';
+/* Tags: free labels on any record (#family, #trip), stored lowercase without the #. */
+const parseTags=str=>[...new Set(String(str||'').split(/[\s,]+/).map(x=>x.replace(/^#+/,'').toLowerCase().replace(/[^\p{L}\p{N}_-]/gu,'')).filter(Boolean))].slice(0,8);
+const tagStr=t=>(t&&t.length?t.map(x=>'#'+x).join(' '):'');
+const ord=n=>n+(n%100>=11&&n%100<=13?'th':['th','st','nd','rd'][n%10]||'th');
 const sum=(arr,f=x=>x.a)=>arr.reduce((s,x)=>s+f(x),0);
 const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
 
 /* ================= data ================= */
 const KEY='pitaka.v1';
-const CATS=[
-  {id:'food',name:'Food',col:7},{id:'transpo',name:'Transportation',col:2},{id:'bills',name:'Bills & Utilities',col:4},
-  {id:'load',name:'Load & Internet',col:6},{id:'shop',name:'Personal & Shopping',col:8},{id:'health',name:'Health',col:1},
-  {id:'edu',name:'Education',col:5},{id:'other',name:'Other Expenses',col:3}];
-const CAT=Object.fromEntries(CATS.map(c=>[c.id,c]));
-const catName=id=>(CAT[id]||CAT.other).name;
-const catCol=id=>`var(--c${(CAT[id]||CAT.other).col})`;
+/* Categories are the person's own list (Settings › Categories & budgets): name, emoji, color (1–8 of the theme palette)
+   and an optional monthly budget. These are the starting set; the built-in word list knows their ids. */
+const CATS0=[
+  {id:'food',name:'Food',col:7,ic:'🍚'},{id:'transpo',name:'Transportation',col:2,ic:'🚌'},{id:'bills',name:'Bills & Utilities',col:4,ic:'💡'},
+  {id:'load',name:'Load & Internet',col:6,ic:'📶'},{id:'shop',name:'Personal & Shopping',col:8,ic:'🛍️'},{id:'health',name:'Health',col:1,ic:'💊'},
+  {id:'edu',name:'Education',col:5,ic:'📚'},{id:'other',name:'Other Expenses',col:3,ic:'📦'}];
+const catOf=id=>S.cats.find(c=>c.id===id)||S.cats.find(c=>c.id==='other')||S.cats[S.cats.length-1];
+const fallbackCat=()=>(S.cats.find(c=>c.id==='other')||S.cats[S.cats.length-1]).id;
+const catName=id=>catOf(id).name;
+const catCol=id=>`var(--c${catOf(id).col})`;
+const catIc=id=>{const c=catOf(id);return c.ic||c.name.charAt(0)};
 
-function blank(){return{v:1,demo:false,
+/* Everything the person can customize lives in S.cfg (and the lists next to it), so it travels with backups.
+   migrate() fills in anything missing, for records saved by older versions of the app. */
+const CFG0={cur:'₱',dec:2,date:'md',text:'md',start:'last',mstart:1,bkEvery:7,nudge:{on:false,time:'20:00'},shortcuts:[],lockAfter:0};
+function migrate(d){d.cfg={...CFG0,...(d.cfg||{})};d.cfg.nudge={...CFG0.nudge,...(d.cfg.nudge||{})};
+  if(!Array.isArray(d.cats)||!d.cats.length)d.cats=CATS0.map(c=>({...c}));
+  d.cc=d.cc||[];d.cards=d.cards&&d.cards.length?d.cards:['Credit Card'];d.cardCfg=d.cardCfg||{};
+  if(!Array.isArray(d.goals))d.goals=d.goal&&d.goal.amt>0?[{id:'g'+uid(),name:'Savings goal',amt:d.goal.amt,w:d.goal.w,due:''}]:[];delete d.goal;
+  if(!Array.isArray(d.recur))d.recur=[];
+  if(!Array.isArray(d.incTypes)||!d.incTypes.length)d.incTypes=['Salary','Freelance','Bonus','Allowance','Gift','Refund','Other'];
+  return d}
+function blank(){return migrate({v:1,demo:false,
   wallets:[{id:'cash',name:'Cash',col:1,init:0},{id:'gcash',name:'GCash',col:2,init:0},{id:'cimb',name:'CIMB (GSave)',col:3,init:0},
     {id:'uno',name:'UNO Digital',col:4,init:0},{id:'mari',name:'Maribank',col:5,init:0},{id:'gotyme',name:'GoTyme',col:6,init:0}],
-  cards:['Credit Card','SPayLater'],tx:[],cc:[],goal:{amt:20000,w:'gotyme'}}}
+  cards:['Credit Card','SPayLater'],cardCfg:{'Credit Card':{close:25,due:15}},tx:[],cc:[],goals:[{id:'g1',name:'Emergency fund',amt:20000,w:'gotyme',due:''}]})}
 
 function demo(){
   const s=blank();s.demo=true;s.wallets[0].init=2000;s.wallets[1].init=3500;s.wallets[5].init=12000;
@@ -338,10 +475,32 @@ function demo(){
   return s;
 }
 
-let S,FRESH=false;
-function load(){try{const r=localStorage.getItem(KEY);if(r){S=JSON.parse(r);return}}catch(e){}S=demo();FRESH=true}
-function save(){MODEL=null;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Could not save on this device. Copy a backup from Settings.')}writePhone()}
+let S,FRESH=false,DAMAGED='';
+// If the saved records cannot be read, keep the raw text under another key instead of letting the next save overwrite it.
+function load(){let r=null;try{r=localStorage.getItem(KEY)}catch(e){}
+  if(r){try{const d=JSON.parse(r);if(!d||!Array.isArray(d.tx)||!Array.isArray(d.wallets)||!d.wallets.length)throw 0;S=migrate(d);return}
+    catch(e){DAMAGED=KEY+'.damaged-'+Date.now();try{localStorage.setItem(DAMAGED,r)}catch(_){DAMAGED='unsaved'}}}
+  S=demo();FRESH=true}
+function save(){MODEL=null;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Could not save on this device. Copy a backup from Settings.')}writePhone();if(typeof scheduleNudges==='function')scheduleNudges()}
 const W=id=>S.wallets.find(w=>w.id===id)||{id,name:id||'—',col:3};
+// A wallet id that is safe to use as a default: the preferred one if it exists and is not hidden, else the first visible one.
+const wid=pref=>S.wallets.some(w=>w.id===pref&&!w.hidden)?pref:(S.wallets.find(w=>!w.hidden)||S.wallets[0]).id;
+const wIc=w=>w.ic?esc(w.ic)+' ':'';
+/* Card due dates: a card's statement closes on its close day; payment is due on its due day after that. */
+function dueFor(card,d){const c=S.cardCfg[card];if(!c||!c.due||!d)return'';
+  let m=d.slice(0,7),stmt;if(c.close){stmt=m+'-'+pad(Math.min(c.close,dim(m)));if(d>stmt){m=addM(m,1);stmt=m+'-'+pad(Math.min(c.close,dim(m)))}}else stmt=d;
+  let dm=stmt.slice(0,7),due=dm+'-'+pad(Math.min(c.due,dim(dm)));if(due<=stmt){dm=addM(dm,1);due=dm+'-'+pad(Math.min(c.due,dim(dm)))}return due}
+/* Undo: before anything removes records, the current records are kept as one snapshot (and, on Android, a file in
+   Documents/Pitaka/backups). Undo brings them back; it is offered in a toast right away and in Settings afterwards. */
+const PREV='pitaka.v1.prev';
+const REASON={delete:'a delete',erase:'Erase everything',sample:'Load sample data',restore:'a restore',undo:'the undo'};
+function snapshot(reason){if(S.demo)return;const snap={reason,at:new Date().toISOString(),data:JSON.parse(JSON.stringify(S))};
+  try{localStorage.setItem(PREV,JSON.stringify(snap))}catch(e){}
+  if(FS)FS.writeFile({path:`${PHONE.dir}/pitaka-before-${reason}-${today()}.json`,data:JSON.stringify(snap.data,null,1),directory:'DOCUMENTS',encoding:'utf8',recursive:true}).catch(()=>{})}
+function prevSnap(){try{const p=JSON.parse(localStorage.getItem(PREV)||'null');return p&&p.data&&Array.isArray(p.data.tx)?p:null}catch(e){return null}}
+function undoLast(){const p=prevSnap();if(!p)return toast('Nothing to undo.');snapshot('undo');S=migrate(p.data);applyCfg();STATE.chat=[];STATE.drafts=[];save();closeSheet();render();toast('Records brought back')}
+// New records made while sample data is showing are marked, so they can be kept when the samples are removed.
+const own=x=>{if(S.demo)x.mine=1;return x};
 
 /* ================= money math ================= */
 function apply(b,t){const a=t.a;switch(t.t){
@@ -352,22 +511,37 @@ function balances(before){const b={};S.wallets.forEach(w=>b[w.id]=+w.init||0);fo
 const sumBal=b=>Object.values(b).reduce((s,x)=>s+x,0);
 function monthStats(m){
   const r={inc:0,rep:0,exp:0,lent:0,ccp:0,cats:{},n:0};
-  for(const t of S.tx){if(t.d.slice(0,7)!==m)continue;
+  for(const t of S.tx){if(!inP(t.d,m))continue;
     if(t.t==='inc')r.inc+=t.a;else if(t.t==='repay')r.rep+=t.a;else if(t.t==='lend')r.lent+=t.a;else if(t.t==='ccpay')r.ccp+=t.a;
     else if(t.t==='exp'){r.exp+=t.a;r.cats[t.c]=(r.cats[t.c]||0)+t.a;r.n++}}
-  r.in=r.inc+r.rep;r.out=r.exp+r.lent+r.ccp;r.net=r.in-r.out;r.ccCharged=sum(S.cc.filter(c=>c.d.slice(0,7)===m));return r}
+  r.in=r.inc+r.rep;r.out=r.exp+r.lent+r.ccp;r.net=r.in-r.out;r.ccCharged=sum(S.cc.filter(c=>inP(c.d,m)));return r}
 function loans(before){
   return S.tx.filter(t=>t.t==='lend'&&(!before||t.d<before)).map(l=>{
     const rp=S.tx.filter(t=>t.t==='repay'&&t.ref===l.id&&(!before||t.d<before));const paid=sum(rp);
     return{...l,paid,owed:Math.max(0,l.a-paid)}}).sort((a,b)=>(b.owed>0)-(a.owed>0)||b.d.localeCompare(a.d))}
 const owedTotal=before=>sum(loans(before),l=>l.owed);
+/* Recurring entries: a rule keeps a template record and the next date. On open (and when the app comes back to the
+   front) every rule whose date has come adds its record, then moves to the next week or month. */
+const EVERY={week:'Every week',month:'Every month'};
+const nextDate=(r,d)=>{if(r.every==='week')return addDays(d,7);const m=addM(d.slice(0,7),1);return m+'-'+pad(Math.min(r.day||+d.slice(8),dim(m)))};
+function runRecurring(){if(!S||S.demo)return 0;const t=today();let n=0;
+  for(const r of S.recur){if(!r.on)continue;let guard=0;
+    while(r.next&&r.next<=t&&guard++<60){const x={...r.tpl,id:uid(),d:r.next,rec:r.id};
+      if(r.kind==='cc'){x.paid=false;x.due=dueFor(x.card,x.d);S.cc.push(x)}else{x.t=r.kind;S.tx.push(x)}n++;r.next=nextDate(r,r.next)}}
+  if(n){save();render();toast(`Added ${n} repeating entr${n>1?'ies':'y'}`,'recurview','See')}return n}
+function addRule(kind,rec,every){const tpl={...rec};['id','d','t','rec','mine','paid','pay','due'].forEach(k=>delete tpl[k]);
+  const r={id:'r'+uid(),kind,every,day:+rec.d.slice(8),tpl,on:true};r.next=nextDate(r,rec.d);rec.rec=r.id;S.recur.push(r);return r}
+const ruleName=r=>r.tpl.s||(r.kind==='inc'?r.tpl.k:r.kind==='xfer'?W(r.tpl.w).name+' → '+W(r.tpl.to).name:'Repeating entry');
+/* Monthly budgets: one limit per category, compared with that month's day-to-day spending in it. */
+function budgets(m){const st=monthStats(m);return S.cats.filter(c=>c.budget>0).map(c=>{const spent=st.cats[c.id]||0;return{c,spent,limit:c.budget,p:spent/c.budget}})}
+const budgetLv=p=>p>=1?'neg':p>=.8?'warn':'pos';
 function ccPaidDate(c){if(!c.paid)return null;const t=S.tx.find(x=>x.id===c.pay);return t?t.d:c.d}
 function ccOpen(before){return S.cc.filter(c=>(!before||c.d<before)&&(!c.paid||(before&&ccPaidDate(c)>=before)))}
 const ccUnpaid=before=>sum(ccOpen(before));
 function forecast(m){
-  const st=monthStats(m),t=today(),days=dim(m);
-  if(m!==t.slice(0,7))return{live:false,exp:st.exp,days,avg:st.exp/days,proj:st.exp};
-  const el=+t.slice(8);const avg=st.exp/el;return{live:true,exp:st.exp,days:el,total:days,avg,proj:avg*days,left:days-el}}
+  const st=monthStats(m),t=today(),days=pDays(m);
+  if(m!==curP())return{live:false,exp:st.exp,days,avg:st.exp/days,proj:st.exp};
+  const el=Math.round((parseISO(t)-parseISO(pS(m)))/864e5)+1;const avg=st.exp/el;return{live:true,exp:st.exp,days:el,total:days,avg,proj:avg*days,left:days-el}}
 
 /* ================= on-device AI ================= */
 /* 1) Category model, trained on seed words + your own past entries. Rebuilt only when data changes.
@@ -444,9 +618,10 @@ let MODEL=null;
 function model(){if(MODEL)return MODEL;
   const M={cnt:{},tot:{},udocs:{},uN:0,V:new Set(),exact:{},fz:{}};
   const add=(c,ws,w)=>{const cc=M.cnt[c]=M.cnt[c]||{};for(const t of ws){cc[t]=(cc[t]||0)+w;M.tot[c]=(M.tot[c]||0)+w;M.V.add(t)}};
-  for(const c in SEED)add(c,SEED[c].split(/\s+/).filter(Boolean).map(seedTok),1);
+  for(const c in SEED)if(S.cats.some(k=>k.id===c))add(c,SEED[c].split(/\s+/).filter(Boolean).map(seedTok),1);
+  for(const k of S.cats)add(k.id,tok(k.name),2); // a category's own name counts as a word for it
   // Your own entries count 4x a seed word, so the app learns your habits (and your corrections) quickly.
-  for(const t of S.tx)if(t.t==='exp'&&t.s){add(t.c,tok(t.s),4);M.udocs[t.c]=(M.udocs[t.c]||0)+1;M.uN++;M.exact[words(t.s).join(' ')]=t.c}
+  for(const t of S.tx)if(t.t==='exp'&&t.s&&S.cats.some(k=>k.id===t.c)){add(t.c,tok(t.s),4);M.udocs[t.c]=(M.udocs[t.c]||0)+1;M.uN++;M.exact[words(t.s).join(' ')]=t.c}
   M.list=[...M.V].filter(v=>!v.includes('_'));
   return MODEL=M}
 function fuzzy(M,w){if(w in M.fz)return M.fz[w];let best=null,bd=9;
@@ -465,8 +640,8 @@ function predict(text){
   for(const w of all){if(w.includes('_')||covered.has(w))continue;
     if(M.V.has(w)){ws.push(w);hits.push(w)}else{const f=fuzzy(M,w);if(f&&!ws.includes(f)){ws.push(f);hits.push(w+' ≈ '+f)}}}
   if(!ws.length)return null;
-  const V=M.V.size,K=CATS.length,A=.02,sc={};let mx=-Infinity;
-  for(const{id}of CATS){const cc=M.cnt[id]||{},tot=M.tot[id]||0;
+  const V=M.V.size,K=S.cats.length,A=.02,sc={};let mx=-Infinity;
+  for(const{id}of S.cats){const cc=M.cnt[id]||{},tot=M.tot[id]||0;
     let s=Math.log(((M.udocs[id]||0)+2)/(M.uN+2*K));for(const w of ws)s+=(WEAK.has(w)?.35:1)*Math.log(((cc[w]||0)+A)/(tot+V*A));sc[id]=s;if(s>mx)mx=s}
   let z=0;for(const id in sc){sc[id]=Math.exp(sc[id]-mx);z+=sc[id]}
   const alts=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]).slice(0,3).map(c=>({c,p:sc[c]/z}));
@@ -490,7 +665,8 @@ function parseDate(q){
   R(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})\b/,mm=>{const mo=MN.findIndex(x=>x.toLowerCase()===mm[1])+1;const y=+t.slice(0,4);return y+'-'+pad(mo)+'-'+pad(+mm[2])});
   R(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/,mm=>{let y=mm[3]?+mm[3]:+t.slice(0,4);if(y<100)y+=2000;return y+'-'+pad(+mm[1])+'-'+pad(+mm[2])});
   return{d,rm}}
-function parseAmounts(q){const out=[];const re=/(₱|php\s?)?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?\s*(k\b)?/g;let mm;
+function parseAmounts(q){const out=[];const cs=CUR().toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const re=new RegExp('('+cs+'|₱|php\\s?)?(\\d{1,3}(?:,\\d{3})+|\\d+)(?:\\.(\\d{1,2}))?\\s*(k\\b)?','g');let mm;
   while((mm=re.exec(q))){let v=parseFloat(mm[2].replace(/,/g,'')+(mm[3]?'.'+mm[3]:''));if(mm[4])v*=1000;out.push({v,s:mm[0],cur:!!mm[1]})}return out}
 const RX={
   q:/(\?\s*$)|^(how|what|who|whom|when|where|why|which|show|list|magkano|ilan|sino|kailan|saan|can|could|should|is|am|are|do|does|did|give|tell|summary|summari[sz]e|forecast|predict|tips?|advice|help|compare|top|biggest|largest|balance|report|kamusta|kumusta|paano|ano)\b/,
@@ -503,6 +679,11 @@ const FILL=/\b(to|kay|ni|si|for|from|sa|with|via|using|my|ko|po|the|a|an|php|pes
 function knownPeople(){const m={};S.tx.forEach(t=>{if(t.p)m[t.p.toLowerCase()]=t.p});return m}
 function parseCommand(raw){
   let q=' '+raw.toLowerCase().replace(/\s+/g,' ').trim()+' ';
+  const ev=q.match(/\b(every ?month|monthly|buwan-buwan|kada buwan|every ?week|weekly|linggo-linggo|kada linggo)\b/);
+  const every=ev?(/week|linggo/.test(ev[1])?'week':'month'):'';if(ev)q=q.replace(ev[0],' ');
+  const tags=parseTags((q.match(/#[\p{L}\p{N}_-]+/gu)||[]).join(' '));q=q.replace(/#[\p{L}\p{N}_-]+/gu,' ');
+  const out=parseCommand1(q);if(out){if(every&&['exp','inc','xfer','cc'].includes(out.t))out.every=every;if(tags.length&&out.t!=='repay')out.tags=tags;out.raw=raw.trim()}return out}
+function parseCommand1(q){
   const{d,rm}=parseDate(q);rm.forEach(x=>q=q.replace(x,' '));
   const amts=parseAmounts(q);if(!amts.length)return null;
   const amt=(amts.find(a=>a.cur)||amts.reduce((a,b)=>b.v>a.v?b:a)).v;amts.forEach(a=>q=q.replace(a.s,' '));
@@ -513,36 +694,44 @@ function parseCommand(raw){
   const personFrom=s=>{const ws=clean(s).split(' ').filter(Boolean);
     for(let i=0;i<ws.length;i++){for(const k in people){const kw=k.split(' ');if(ws.slice(i,i+kw.length).join(' ')===k)return{p:people[k],rest:[...ws.slice(0,i),...ws.slice(i+kw.length)].join(' ')}}}
     return{p:cap(ws[0]||''),rest:ws.slice(1).join(' ')}};
-  if(RX.xfer.test(q)){const nc=(wh.find(h=>h.id!=='cash')||{}).id||'gcash';let from,to;
+  if(RX.xfer.test(q)){const nc=(wh.find(h=>h.id!=='cash')||{}).id||wid('gcash');let from,to;
     if(/cash ?out|withdr/.test(q)){from=nc;to='cash'}else if(/cash ?in/.test(q)){from='cash';to=nc}else if(wh.length>=2){from=wh[0].id;to=wh[1].id}
     if(from&&to&&from!==to)return{t:'xfer',a:amt,d:date,w:from,to,s:/cash ?out|withdr/.test(q)?'Cash out':/cash ?in/.test(q)?'Cash in':cap(clean(rest))}}
   if(RX.repay.test(q)){const{p}=personFrom(rest);const open=loans().filter(l=>l.owed>0&&l.p.toLowerCase()===p.toLowerCase());
-    return{t:'repay',a:amt,d:date,w:w0||(open[0]&&open[0].w)||'cash',p:open[0]?open[0].p:p,ref:open[0]&&open[0].id,warn:open.length?'':`No open loan found for ${p||'that person'}.`}}
-  if(RX.lend.test(q)){const{p,rest:r}=personFrom(rest);return{t:'lend',a:amt,d:date,w:w0||'gcash',p:p||'Someone',s:cap(r)}}
-  if(RX.inc.test(q)){const k=/freelance|sideline|commission/.test(q)?'Freelance':/bonus|13th/.test(q)?'Bonus':/allowance/.test(q)?'Allowance':/refund|cashback/.test(q)?'Refund':'Salary';
-    return{t:'inc',a:amt,d:date,w:w0||'gcash',k,s:cap(clean(rest))||k}}
+    return{t:'repay',a:amt,d:date,w:w0||(open[0]&&open[0].w)||wid('cash'),p:open[0]?open[0].p:p,ref:open[0]&&open[0].id,warn:open.length?'':`No open loan found for ${p||'that person'}.`}}
+  if(RX.lend.test(q)){const{p,rest:r}=personFrom(rest);return{t:'lend',a:amt,d:date,w:w0||wid('gcash'),p:p||'Someone',s:cap(r)}}
+  // The person's own income types count as income words, except ones that also describe spending ("gift", "other").
+  const myInc=S.incTypes.find(x=>x.length>=4&&!/^(gift|other|others)$/i.test(x)&&new RegExp('(^|[^a-z])'+x.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?![a-z])').test(q));
+  if(RX.inc.test(q)||myInc){let k=myInc||S.incTypes.find(x=>q.includes(x.toLowerCase()))||(/freelance|sideline|commission/.test(q)?'Freelance':/bonus|13th/.test(q)?'Bonus':/allowance/.test(q)?'Allowance':/refund|cashback/.test(q)?'Refund':'Salary');
+    if(!S.incTypes.includes(k))k=S.incTypes[0];return{t:'inc',a:amt,d:date,w:w0||wid('gcash'),k,s:cap(clean(rest))||k}}
   if(RX.cc.test(q)){const card=/spay|s pay/.test(q)?(S.cards.find(c=>/spay/i.test(c))||'SPayLater'):(S.cards[0]||'Credit Card');
-    return{t:'cc',a:amt,d:date,card,s:cap(clean(rest))||'Card purchase',who:'Me',due:''}}
+    return{t:'cc',a:amt,d:date,card,s:cap(clean(rest))||'Card purchase',who:'Me',due:dueFor(card,date)}}
   const s=cap(clean(rest))||'Expense';const pr=predict(s);
-  return{t:'exp',a:amt,d:date,w:w0||'cash',s,c:pr&&pr.p>.3?pr.c:'other',conf:pr}}
+  return{t:'exp',a:amt,d:date,w:w0||wid('cash'),s,c:pr&&pr.p>.3?pr.c:fallbackCat(),conf:pr}}
 
 /* 3) Question answering over your own ledger. */
 const CATQ={food:/food|pagkain|kain|eat|meal|grocer/,transpo:/transpo|transport|fare|commute|pamasahe|grab|jeep|travel/,bills:/bill|utilit|kuryente|electric|water|rent/,
   load:/load|internet|wifi|data/,shop:/shop|personal|cloth|damit/,health:/health|medic|gamot|doctor/,edu:/educ|school|tuition|aral/,other:/other|misc/};
 function rangeOf(q){const t=today(),cur=STATE.m;
-  if(/last month|nakaraang buwan|previous month/.test(q)){const m=addM(cur,-1);return{f:m+'-01',to:nextM(m)+'-01',l:mLabel(m)}}
+  if(/last month|nakaraang buwan|previous month/.test(q)){const m=addM(cur,-1);return{f:pS(m),to:pE(m),l:pLabel(m)}}
   if(/this year|\byear\b|ngayong taon/.test(q)){const y=cur.slice(0,4);return{f:y+'-01-01',to:(+y+1)+'-01-01',l:y}}
   if(/\btoday\b|ngayon/.test(q))return{f:t,to:addDays(t,1),l:'today'};
   if(/\bweek\b|linggo/.test(q))return{f:addDays(t,-6),to:addDays(t,1),l:'the last 7 days'};
   if(/all time|ever|lahat/.test(q))return{f:'0000',to:'9999',l:'all time'};
-  return{f:cur+'-01',to:nextM(cur)+'-01',l:mLabel(cur)}}
+  return{f:pS(cur),to:pE(cur),l:pLabel(cur)}}
 const inR=(t,r)=>t.d>=r.f&&t.d<r.to;
 const li=a=>'<ul>'+a.map(x=>'<li>'+x+'</li>').join('')+'</ul>';
 function answer(raw){
   const q=raw.toLowerCase().trim();
-  const r=rangeOf(q);const cat=Object.keys(CATQ).find(k=>CATQ[k].test(q));
+  const r=rangeOf(q);const cat=(S.cats.find(c=>q.includes(c.name.toLowerCase()))||{}).id||Object.keys(CATQ).find(k=>CATQ[k].test(q)&&S.cats.some(c=>c.id===k));
   const exps=S.tx.filter(t=>t.t==='exp'&&inR(t,r));
   if(/^(hi|hello|hey|help)\b|what can you do|paano/.test(q))return help();
+  const tq=(q.match(/#([\p{L}\p{N}_-]+)/u)||[])[1];
+  if(tq){const tg=tq.toLowerCase(),rr=/this month|last month|today|week|year/.test(q)?r:{f:'0000',to:'9999',l:'all time'};
+    const hit=S.tx.filter(t=>(t.tags||[]).includes(tg)&&inR(t,rr)),out=hit.filter(t=>['exp','lend','ccpay'].includes(t.t)),inn=hit.filter(t=>['inc','repay'].includes(t.t)),cc=S.cc.filter(c=>(c.tags||[]).includes(tg)&&inR(c,rr));
+    if(!hit.length&&!cc.length)return`Nothing tagged #${esc(tg)} for ${rr.l}.`;
+    return`#${esc(tg)} for ${rr.l}:`+li([`Spent: <b class="mono">${peso(sum(out))}</b> across ${out.length} entr${out.length===1?'y':'ies'}`,...(cc.length?[`Charged to cards: <span class="mono warn">${peso(sum(cc))}</span>`]:[]),...(inn.length?[`Money in: <span class="mono pos">${peso(sum(inn))}</span>`]:[]),
+      ...out.sort((a,b)=>b.a-a.a).slice(0,3).map(t=>`${esc(t.s||t.p||'Entry')} <span class="muted">(${dLabel(t.d)})</span>: <span class="mono">${peso(t.a)}</span>`)])}
   if(/who owes|owes me|owe me|receivable|utang (nila|sa akin)|may utang|pinahiram/.test(q)){
     const by={};loans().forEach(l=>{if(l.owed>0)by[l.p]=(by[l.p]||0)+l.owed});const k=Object.keys(by).sort((a,b)=>by[b]-by[a]);
     if(!k.length)return'Nobody owes you money right now.';
@@ -559,17 +748,17 @@ function answer(raw){
       `Expected spending for the rest of the month: <span class="mono">${peso(remaining)}</span>`,`Card bills due within 31 days: <span class="mono">${peso(due)}</span>`,
       `After buying this (<span class="mono">${peso(x)}</span>): <b class="mono">${peso(left)}</b>`])}
   if(/forecast|predict|project|end of (the )?month|aabot|will i|pace/.test(q)){const f=forecast(STATE.m),st=monthStats(STATE.m);
-    if(!f.live)return`${mLabel(STATE.m)} is not the current month. Its day-to-day spending was <b>${peso(st.exp)}</b>, about ${peso(f.avg)} per day.`;
+    if(!f.live)return`${pLabel(STATE.m)} is not the current month. Its day-to-day spending was <b>${peso(st.exp)}</b>, about ${peso(f.avg)} per day.`;
     const projOut=f.proj+st.lent+st.ccp,projNet=st.in-projOut;
     return`You have spent <b>${peso(f.exp)}</b> in ${f.days} days, about <span class="mono">${peso(f.avg)}</span> a day. At this pace:`+li([
       `Day-to-day spending by month end: <b class="mono">${peso(f.proj)}</b>`,`Projected net cashflow: <b class="mono ${projNet<0?'neg':'pos'}">${peso(projNet)}</b> (if no more income or loans)`,
       `To break even, keep daily spending under <span class="mono">${peso(Math.max(0,(st.in-st.lent-st.ccp-f.exp)/Math.max(1,f.left)))}</span> for the last ${f.left} days`])}
   if(/compare|\bvs\b|versus|than last/.test(q)){const a=monthStats(STATE.m),b=monthStats(addM(STATE.m,-1));
-    const rows=CATS.map(c=>[c,(a.cats[c.id]||0)-(b.cats[c.id]||0)]).filter(x=>Math.abs(x[1])>0.5).sort((x,y)=>Math.abs(y[1])-Math.abs(x[1])).slice(0,5);
-    return`${mLabel(STATE.m)} vs ${mLabel(addM(STATE.m,-1))}: day-to-day spending <b class="mono">${peso(a.exp)}</b> vs <span class="mono">${peso(b.exp)}</span> (${a.exp>=b.exp?'up':'down'} ${peso(Math.abs(a.exp-b.exp))}).`+
-      (rows.length?li(rows.map(([c,d])=>`${c.name}: <span class="mono ${d>0?'neg':'pos'}">${d>0?'+':'-'}${peso(Math.abs(d))}</span>`)):'')}
+    const rows=S.cats.map(c=>[c,(a.cats[c.id]||0)-(b.cats[c.id]||0)]).filter(x=>Math.abs(x[1])>0.5).sort((x,y)=>Math.abs(y[1])-Math.abs(x[1])).slice(0,5);
+    return`${pLabel(STATE.m)} vs ${pLabel(addM(STATE.m,-1))}: day-to-day spending <b class="mono">${peso(a.exp)}</b> vs <span class="mono">${peso(b.exp)}</span> (${a.exp>=b.exp?'up':'down'} ${peso(Math.abs(a.exp-b.exp))}).`+
+      (rows.length?li(rows.map(([c,d])=>`${esc(c.name)}: <span class="mono ${d>0?'neg':'pos'}">${d>0?'+':'-'}${peso(Math.abs(d))}</span>`)):'')}
   if(/biggest|largest|highest|most expensive|\btop\b|pinakamalaki|pinakamahal/.test(q)){const top=exps.filter(t=>!cat||t.c===cat).sort((a,b)=>b.a-a.a).slice(0,5);
-    if(!top.length)return`No expenses found for ${r.l}.`;return`Biggest ${cat?catName(cat).toLowerCase()+' ':''}expenses for ${r.l}:`+li(top.map(t=>`${esc(t.s)} <span class="muted">(${dLabel(t.d)})</span>: <span class="mono">${peso(t.a)}</span>`))}
+    if(!top.length)return`No expenses found for ${r.l}.`;return`Biggest ${cat?esc(catName(cat).toLowerCase())+' ':''}expenses for ${r.l}:`+li(top.map(t=>`${esc(t.s)} <span class="muted">(${dLabel(t.d)})</span>: <span class="mono">${peso(t.a)}</span>`))}
   const wq=walletHits(q);
   if(/balance|how much (money )?do i have|natitira|my wallets?|pera ko|money left/.test(q)||(wq.length&&!/spen|gastos|expense/.test(q))){const b=balances();
     const list=wq.length?wq.map(h=>W(h.id)):S.wallets;
@@ -581,47 +770,79 @@ function answer(raw){
   if(/summary|overview|report|kamusta|kumusta|how am i doing|status|recap/.test(q))return summary();
   if(/spen|spent|gastos|ginastos|gumastos|expense|magkano|how much|where.*money|saan napunta/.test(q)||cat){
     let list=exps,label='';
-    if(cat){list=exps.filter(t=>t.c===cat);label=' on '+catName(cat)}
+    if(cat){list=exps.filter(t=>t.c===cat);label=' on '+esc(catName(cat))}
     else{const mm=q.match(/\b(?:on|for|sa|at)\s+([a-z0-9ñ ]{2,30}?)(?:\s+(?:this|last|in|today|ngayon)\b|\?|$)/);
       if(mm){const term=mm[1].trim();const hit=exps.filter(t=>t.s.toLowerCase().includes(term));if(hit.length){list=hit;label=` on “${esc(term)}”`}
-        else{const pr=predict(term);if(pr&&pr.p>.5){list=exps.filter(t=>t.c===pr.c);label=' on '+catName(pr.c)}}}}
+        else{const pr=predict(term);if(pr&&pr.p>.5){list=exps.filter(t=>t.c===pr.c);label=' on '+esc(catName(pr.c))}}}}
     if(!label&&/where|saan|napunta|breakdown/.test(q)||(!label&&!cat)){const by={};exps.forEach(t=>by[t.c]=(by[t.c]||0)+t.a);const k=Object.keys(by).sort((a,b)=>by[b]-by[a]);
       if(!k.length)return`No expenses recorded for ${r.l}.`;
-      return`You spent <b>${peso(sum(exps))}</b> on day-to-day items in ${r.l}:`+li(k.map(c=>`${catName(c)}: <span class="mono">${peso(by[c])}</span> (${pct(by[c],sum(exps))})`))}
+      return`You spent <b>${peso(sum(exps))}</b> on day-to-day items in ${r.l}:`+li(k.map(c=>`${esc(catName(c))}: <span class="mono">${peso(by[c])}</span> (${pct(by[c],sum(exps))})`))}
     if(!list.length)return`Nothing spent${label} in ${r.l}.`;
     const big=list.slice().sort((a,b)=>b.a-a.a)[0];
     return`You spent <b>${peso(sum(list))}</b>${label} in ${r.l}, across ${list.length} entr${list.length>1?'ies':'y'} (${pct(sum(list),sum(exps))} of all spending). Biggest: ${esc(big.s)}, <span class="mono">${peso(big.a)}</span> on ${dLabel(big.d)}.`}
   return'I did not catch that. '+help()}
 function help(){return`I run fully on your phone, so nothing leaves it. Try:`+li([
   '<b>Add things:</b> “lunch 120 gcash”, “jeep 13 yesterday”, “salary 16000 gotyme”, “lent mama 500 for tuition”, “ate paid back 200”, “transfer 1000 gcash to cash”, “shopee 899 spaylater”',
+  '<b>Tag things:</b> add #words, like “dinner 850 gcash #family”, then ask “how much on #family?”',
   '<b>Ask:</b> “how much on food?”, “who owes me?”, “forecast”, “can I afford 2500?”, “compare vs last month”, “biggest expenses”, “tips”'])}
-function summary(){const m=STATE.m,st=monthStats(m),end=nextM(m)+'-01';const top=Object.keys(st.cats).sort((a,b)=>st.cats[b]-st.cats[a])[0];
-  return`<b>${mLabel(m)} so far</b>`+li([`Money in: <span class="mono pos">${peso(st.in)}</span>, money out: <span class="mono">${peso(st.out)}</span>`,
-    `Net: <b class="mono ${st.net<0?'neg':'pos'}">${peso(st.net)}</b>`,top?`Top category: ${catName(top)} at <span class="mono">${peso(st.cats[top])}</span>`:'No day-to-day spending yet',
+function summary(){const m=STATE.m,st=monthStats(m),end=pE(m);const top=Object.keys(st.cats).sort((a,b)=>st.cats[b]-st.cats[a])[0];
+  return`<b>${pLabel(m)} so far</b>`+li([`Money in: <span class="mono pos">${peso(st.in)}</span>, money out: <span class="mono">${peso(st.out)}</span>`,
+    `Net: <b class="mono ${st.net<0?'neg':'pos'}">${peso(st.net)}</b>`,top?`Top category: ${esc(catName(top))} at <span class="mono">${peso(st.cats[top])}</span>`:'No day-to-day spending yet',
     `Lent out this month: <span class="mono">${peso(st.lent)}</span>; still owed to you: <span class="mono">${peso(owedTotal(end))}</span>`,
     `Unpaid cards: <span class="mono warn">${peso(ccUnpaid(end))}</span>`,`All wallets at month end: <span class="mono">${peso(sumBal(balances(end)))}</span>`])}
 function tips(){const m=STATE.m,st=monthStats(m),f=forecast(m),out=[];const tot=st.exp||1;
   if(st.out&&st.lent/st.out>.25)out.push(`Lending took ${pct(st.lent,st.out)} of your cash out. Set a monthly lending cap (for example ${pesoS(st.in*.1)}, 10% of income) and log due dates so repayments get chased.`);
-  const tr=st.cats.transpo||0,trn=S.tx.filter(t=>t.t==='exp'&&t.c==='transpo'&&t.d.slice(0,7)===m).length;
+  const tr=st.cats.transpo||0,trn=S.tx.filter(t=>t.t==='exp'&&t.c==='transpo'&&inP(t.d,m)).length;
   if(trn>=6)out.push(`You logged ${trn} transport rides (${peso(tr)}). A fixed weekly fare budget of ${pesoS(tr/Math.max(1,f.days)*7)} keeps this predictable.`);
   if((st.cats.food||0)/tot>.3)out.push(`Food is ${pct(st.cats.food,tot)} of spending. Cooking or baon two extra days a week usually trims 10 to 15%.`);
-  const cc=ccUnpaid(nextM(m)+'-01');if(cc>0)out.push(`${peso(cc)} is unpaid on cards. Pay the earliest due date first to avoid interest and late fees.`);
-  const gw=S.goal&&S.goal.w,gb=gw?balances()[gw]:0;if(S.goal&&S.goal.amt>gb)out.push(`You are ${pesoS(S.goal.amt-gb)} away from your ${pesoS(S.goal.amt)} savings goal. Moving ${pesoS((S.goal.amt-gb)/3)} on each payday closes it in about 3 months.`);
+  const cc=ccUnpaid(pE(m));if(cc>0)out.push(`${peso(cc)} is unpaid on cards. Pay the earliest due date first to avoid interest and late fees.`);
+  const g0=S.goals.find(g=>g.amt>(balances()[g.w]||0));if(g0){const gb=balances()[g0.w]||0;out.push(`You are ${pesoS(g0.amt-gb)} away from “${esc(g0.name)}” (${pesoS(g0.amt)}). Moving ${pesoS((g0.amt-gb)/3)} on each payday closes it in about 3 months.`)}
   if(st.net<0)out.push(`This month is in a deficit of ${peso(-st.net)}. Pause non-essential shopping until the next payday.`);
   if(!out.length)out.push('Your month looks balanced. Keep logging daily so the forecast stays accurate.');
   return'Based on your own numbers:'+li(out)}
-function insights(m){const st=monthStats(m),end=nextM(m)+'-01',b=balances(end),out=[];
+function insights(m){const st=monthStats(m),end=pE(m),b=balances(end),out=[];
   if(st.in||st.out){if(st.net<0){const dr=[['money lent to others',st.lent],['day-to-day expenses',st.exp],['card payments',st.ccp]].sort((a,b)=>b[1]-a[1])[0];
       out.push({lv:'bad',t:`Deficit of ${peso(-st.net)}`,x:`${peso(st.in)} came in and ${peso(st.out)} went out. The biggest outflow is ${dr[0]} at ${peso(dr[1])} (${pct(dr[1],st.out)} of cash out).`})}
     else out.push({lv:'good',t:`Surplus of ${peso(st.net)}`,x:`You kept ${pct(st.net,st.in)} of the money that came in.`})}
   const od=S.wallets.filter(w=>b[w.id]<-0.004);if(od.length)out.push({lv:'warn',t:`${od.length} wallet${od.length>1?'s are':' is'} below zero`,x:od.map(w=>`${w.name} ${peso(b[w.id])}`).join(', ')+'. Usually an income or transfer was not logged.'});
   const soon=ccOpen().filter(c=>c.due&&c.due<=addDays(today(),7));if(soon.length)out.push({lv:'warn',t:`${peso(sum(soon))} in card bills due within 7 days`,x:soon.map(c=>`${c.s} (${dLabel(c.due)})`).join(', ')});
   const late=loans().filter(l=>l.owed>0&&l.due&&l.due<today());if(late.length)out.push({lv:'info',t:`${late.length} loan${late.length>1?'s':''} past the due date`,x:late.map(l=>`${l.p} owes ${peso(l.owed)}`).join(', ')});
+  const over=budgets(m).filter(b=>b.p>=.9).sort((a,b)=>b.p-a.p);
+  if(over.length){const b=over[0];out.push({lv:b.p>=1?'bad':'warn',t:b.p>=1?`${b.c.name} is over budget by ${peso(b.spent-b.limit)}`:`${b.c.name} is at ${Math.round(b.p*100)}% of its budget`,
+    x:over.map(o=>`${o.c.name}: ${peso(o.spent)} of ${peso(o.limit)}`).join(', ')+'.'})}
   const f=forecast(m);if(f.live&&f.exp)out.push({lv:'info',t:`On pace for ${pesoS(f.proj)} of spending`,x:`You average ${peso(f.avg)} a day across ${f.days} days.`});
   return out}
 
+/* ================= theme ================= */
+// 'auto' follows the phone's light/dark setting; 'light' and 'dark' are the user's own choice (header button or Settings).
+const DARK_MQ=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
+const ICON_SUN='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></svg>';
+const ICON_MOON='<svg viewBox="0 0 24 24"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2z"/></svg>';
+function themePref(){try{const t=localStorage.getItem('pitaka.theme');return t==='light'||t==='dark'?t:'auto'}catch(e){return'auto'}}
+const isDark=()=>{const p=themePref();return p==='dark'||(p==='auto'&&!!(DARK_MQ&&DARK_MQ.matches))};
+function applyTheme(p){const root=document.documentElement;
+  try{p==='auto'?localStorage.removeItem('pitaka.theme'):localStorage.setItem('pitaka.theme',p)}catch(e){}
+  if(p==='auto')delete root.dataset.theme;else root.dataset.theme=p;
+  const d=isDark(),b=$('#themebtn');
+  if(b){b.innerHTML=d?ICON_SUN:ICON_MOON;const l=d?'Switch to light theme':'Switch to dark theme';b.setAttribute('aria-label',l);b.title=l}
+  document.querySelectorAll('meta[name=theme-color]').forEach(m=>{m.removeAttribute('media');m.content=d?'#000000':'#f2f2f7'})}
+if(DARK_MQ&&DARK_MQ.addEventListener)DARK_MQ.addEventListener('change',()=>{if(themePref()==='auto')applyTheme('auto')});
+
+/* Applies the parts of S.cfg that are not drawn by render(): number format and text size. */
+function applyCfg(){const d=DEC();NF=new Intl.NumberFormat('en-PH',{minimumFractionDigits:d,maximumFractionDigits:d});
+  document.documentElement.style.zoom=({sm:.92,md:1,lg:1.12,xl:1.24})[S.cfg.text]||1}
+
+/* ================= smooth motion ================= */
+// Tab and month changes animate the main view (View Transitions where the browser has them, a CSS fade otherwise).
+const REDUCED=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+function transition(fn,dir){const root=document.documentElement,v=$('#view');
+  const after=()=>{v.classList.add('fresh');clearTimeout(transition.t);transition.t=setTimeout(()=>v.classList.remove('fresh'),900)};
+  if(REDUCED){fn();return}
+  if(document.startViewTransition){root.dataset.vt=dir||'fade';const t=document.startViewTransition(()=>{fn();after()});t.ready.catch(()=>{});t.updateCallbackDone.catch(()=>{});t.finished.catch(()=>{}).finally(()=>delete root.dataset.vt);return}
+  fn();after();v.classList.remove('enter','enter-next','enter-prev');void v.offsetWidth;v.classList.add(dir?'enter-'+dir:'enter')}
+
 /* ================= UI state ================= */
-const STATE={m:today().slice(0,7),tab:'home',filter:{cat:null,type:'all',q:'',limit:40},chat:[],drafts:[]};
+const STATE={m:'',tab:'home',filter:{cat:null,type:'all',q:'',limit:40},chat:[],drafts:[],scroll:{},setPage:'main',sheetKind:''};
 try{const t=localStorage.getItem('pitaka.tab');if(t)STATE.tab=t}catch(e){}
 const TABS=[['home','Home','<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'],
   ['wallets','Wallets','<path d="M3 7h15a3 3 0 0 1 3 3v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l12-3v3M16 14h2"/>'],
@@ -630,24 +851,65 @@ const TABS=[['home','Home','<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1
   ['ai','Assistant','<path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8zM19 15l.8 2.2 2.2.8-2.2.8L19 21l-.8-2.2-2.2-.8 2.2-.8z"/>']];
 
 function render(){
-  $('#mlabel').textContent=mLabel(STATE.m);
+  $('#mlabel').textContent=MS()===1?mLabel(STATE.m):dLabel(pS(STATE.m))+'–'+dLabel(addDays(pE(STATE.m),-1));document.documentElement.classList.toggle('mstart',MS()!==1);
   $('#tabs').innerHTML=TABS.map(([id,l,ic])=>`<button class="tab${STATE.tab===id?' on':''}" data-act="tab" data-id="${id}" aria-current="${STATE.tab===id}"><svg viewBox="0 0 24 24">${ic}</svg>${l}</button>`).join('');
   const v=VIEWS[STATE.tab]||VIEWS.home;$('#view').innerHTML=v();
   $('#composer').hidden=STATE.tab!=='ai';$('#fab').hidden=STATE.tab==='ai';
-  if(STATE.tab==='ai'){renderChips();const c=$('#chat');if(c)window.scrollTo(0,document.body.scrollHeight)}}
+  if(STATE.tab==='ai'){renderChips();const c=$('#chat');if(c)window.scrollTo({top:document.body.scrollHeight,behavior:STATE.chat.some(x=>x.fresh)&&!REDUCED?'smooth':'auto'});STATE.chat.forEach(x=>delete x.fresh)}}
 
-function hero(){const m=STATE.m,st=monthStats(m),end=nextM(m)+'-01',bal=sumBal(balances(end)),cur=m===today().slice(0,7);
-  return`<section class="card hero" aria-label="Month summary"><p class="eyebrow">All wallets · ${cur?'now':'end of '+mLabel(m)}</p><div class="big ${bal<0?'neg':''}">${peso(bal)}</div>
-  <div class="hero-k"><button data-act="tab" data-id="spend"><span>Net ${cur?'this month':mLabel(m).slice(0,3)}</span><b class="${st.net<0?'neg':'pos'}">${st.net>0.004?'+':''}${peso(st.net)}</b></button>
+function keepMine(){const tx=S.tx.filter(t=>t.mine),cc=S.cc.filter(c=>c.mine),ids=new Set(tx.map(t=>t.id)),cids=new Set(cc.map(c=>c.id));
+  // drop repayments and card payments that pointed at sample records
+  S.tx=tx.filter(t=>!(t.t==='repay'&&!ids.has(t.ref))&&!(t.t==='ccpay'&&!cids.has(t.ref)));S.cc=cc;
+  S.cc.forEach(c=>{if(c.pay&&!S.tx.some(t=>t.id===c.pay)){c.paid=false;delete c.pay}});
+  S.tx.forEach(t=>delete t.mine);S.cc.forEach(c=>delete c.mine);S.wallets.forEach(w=>w.init=0);S.demo=false;STATE.chat=[];STATE.drafts=[];
+  save();render();const n=S.tx.length+S.cc.length;toast(`Kept your ${n} record${n===1?'':'s'}. Set your wallet balances in Settings.`)}
+/* Overview notices that protect records: damaged save, records mixed into sample data, backup reminder. */
+function safetyNotices(){let h='';
+  if(DAMAGED)h+=`<div class="notice bad"><b>Your saved records could not be read</b><span>${DAMAGED==='unsaved'?'This phone is out of storage space, so the damaged copy could not be kept.':'The damaged copy was kept aside, not deleted.'} Open Settings and use <b>Restore</b> with your newest backup${NATIVE?' or a file from Documents › Pitaka › backups':''}.</span><div class="acts"><button class="btn sm pri" data-act="setpage" data-id="backup">Open Backup & restore</button></div></div>`;
+  const mine=S.demo?S.tx.filter(t=>t.mine).length+S.cc.filter(c=>c.mine).length:0;
+  if(mine)h+=`<div class="notice warn"><b>Your ${mine} record${mine>1?'s are':' is'} mixed into the sample data</b><span>Sample data is not saved${NATIVE?' to your Pitaka folder':''} or backed up. Keep your own records and remove the samples.</span><div class="acts"><button class="btn sm pri" data-act="keepmine">Keep mine, remove samples</button></div></div>`;
+  const n=S.demo?0:S.tx.length+S.cc.length;let snooze='';try{snooze=localStorage.getItem('pitaka.bksnooze')||''}catch(e){}
+  const lb=lastBackup(),ago=lb?-daysTo(lb):Infinity;
+  if(n>=3&&S.cfg.bkEvery>0&&ago>=S.cfg.bkEvery&&!(snooze&&today()<snooze))
+    h+=`<div class="notice warn"><b>${lb?`Last backup ${ago} days ago`:'No backup yet'}</b><span>Your ${n} records are only on this phone. Save a copy to Google Drive or iCloud so a lost or reset phone does not take them with it.</span>
+    <div class="acts"><button class="btn sm pri" data-act="drive">Back up now</button><button class="btn sm" data-act="bklater">Later</button></div></div>`;
+  // Daily reminder, in-app part (iPhone and browsers; Android also gets a phone notification)
+  const nz=S.cfg.nudge;let ok='';try{ok=localStorage.getItem('pitaka.nudgeok')||''}catch(e){}
+  const hm=new Date().toTimeString().slice(0,5),logged=S.tx.some(t=>t.d===today())||S.cc.some(c=>c.d===today());
+  if(nz.on&&!S.demo&&hm>=nz.time&&!logged&&ok!==today()&&STATE.m===curP())
+    h+=`<div class="notice info"><b>Nothing logged today</b><span>Add what you spent today while you still remember it.</span><div class="acts"><button class="btn sm pri" data-act="form" data-t="exp">Add expense</button><button class="btn sm" data-act="nudgeok">Nothing to log</button></div></div>`;
+  return h}
+/* Daily reminder on Android: one notification a day at the chosen time for the next 7 days, skipping today once
+   something is logged. Rescheduled on open and after each change, so the skip stays right. */
+// (declared before NATIVE further down, so it does its own Android check)
+const LN=(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform()&&Capacitor.Plugins.LocalNotifications)||null;
+let nudgeT;function scheduleNudges(){if(!LN)return;clearTimeout(nudgeT);nudgeT=setTimeout(async()=>{
+  try{await LN.cancel({notifications:[0,1,2,3,4,5,6,7].map(k=>({id:7100+k}))});
+    if(!S.cfg.nudge.on||S.demo)return;
+    const[hh,mm]=S.cfg.nudge.time.split(':').map(Number),logged=S.tx.some(t=>t.d===today())||S.cc.some(c=>c.d===today()),list=[];
+    for(let k=0;k<7;k++){const at=new Date();at.setDate(at.getDate()+k);at.setHours(hh,mm,0,0);if(at<=new Date()||(k===0&&logged))continue;
+      list.push({id:7100+k,title:'Pitaka',body:'Log today’s spending while you still remember it.',schedule:{at}})}
+    if(list.length)await LN.schedule({notifications:list})}catch(e){}},600)}
+/* One card per savings goal: progress is the goal wallet's balance; a target date gives the monthly amount needed. */
+function goalCard(g,gb){const gp=Math.max(0,Math.min(1,gb/(g.amt||1))),left=g.amt-gb,w=W(g.w);
+  const months=g.due?Math.max(1,(+g.due.slice(0,4)-+today().slice(0,4))*12+(+g.due.slice(5,7)-+today().slice(5,7))):0;
+  const pace=left<=0?'Goal reached 🎉':g.due?(g.due<today()?`Target date passed · ${peso(left)} to go`:`${peso(left/months)} a month to reach it by ${mLabel(g.due.slice(0,7))}`):`${peso(left)} to go`;
+  return`<section class="card"><div class="split"><p class="eyebrow">${esc(g.name)} · ${wIc(w)}${esc(w.name)}</p><button class="linkbtn" data-act="setpage" data-id="goaledit" data-arg="${g.id}">Edit</button></div>
+    <div class="split" style="align-items:baseline"><div class="big">${peso(gb)}</div><span class="sub mono">of ${peso(g.amt)}</span></div>
+    <div class="bar" style="margin-top:10px"><i style="width:${gp*100}%;background:${left<=0?'var(--pos)':'var(--accent)'}"></i></div>
+    <div class="split sub" style="margin-top:6px"><span>${Math.round(gp*100)}% reached</span><span>${pace}</span></div></section>`}
+function hero(){const m=STATE.m,st=monthStats(m),end=pE(m),bal=sumBal(balances(end)),cur=m===curP();
+  return`<section class="card hero" aria-label="Month summary"><p class="eyebrow">All wallets · ${cur?'now':'end of '+pLabel(m)}</p><div class="big ${bal<0?'neg':''}">${peso(bal)}</div>
+  <div class="hero-k"><button data-act="tab" data-id="spend"><span>Net ${cur?'this month':pShort(m).replace(/ 20\d\d$/,'')}</span><b class="${st.net<0?'neg':'pos'}">${st.net>0.004?'+':''}${peso(st.net)}</b></button>
   <button data-act="tab" data-id="debts"><span>Cards unpaid</span><b class="warn">${peso(ccUnpaid(end))}</b></button>
   <button data-act="tab" data-id="debts"><span>Owed to me</span><b class="owed">${peso(owedTotal(end))}</b></button></div></section>`}
 
 const VIEWS={
-home(){const m=STATE.m,st=monthStats(m),end=nextM(m)+'-01',ins=insights(m);
-  const gw=W(S.goal.w),gb=balances(end)[S.goal.w]||0,gp=Math.max(0,Math.min(1,gb/(S.goal.amt||1)));
+home(){const m=STATE.m,st=monthStats(m),end=pE(m),ins=insights(m);
+  const bal=balances(end);
   const outs=[['Money lent to others',st.lent,'var(--c3)'],['Day-to-day expenses',st.exp,'var(--c2)'],['Card & SPayLater paid',st.ccp,'var(--c4)']];
   const mx=Math.max(st.out,st.ccCharged,1);
-  return`<h1 class="ltitle">Overview</h1>`+updateNotice()+installNotice()+(S.demo?`<div class="notice info"><b>You are viewing sample data</b><span>Explore freely, then start with your own numbers. Sample entries are examples, not your records.</span><div class="acts"><button class="btn sm pri" data-act="fresh">Start fresh</button><button class="btn sm" data-act="settings">Set wallet balances</button></div></div>`:'')+
+  return`<h1 class="ltitle">Overview</h1>`+safetyNotices()+updateNotice()+installNotice()+(S.demo&&!S.tx.some(t=>t.mine)&&!S.cc.some(c=>c.mine)?`<div class="notice info"><b>You are viewing sample data</b><span>Explore freely, then start with your own numbers. Sample entries are examples, not your records.</span><div class="acts"><button class="btn sm pri" data-act="fresh">Start fresh</button><button class="btn sm" data-act="setpage" data-id="wallets">Set wallet balances</button></div></div>`:'')+
   hero()+
   (ins.length?`<div class="notice ${ins[0].lv}"><b>${esc(ins[0].t)}</b><span>${esc(ins[0].x)}</span><div class="acts"><button class="btn sm" data-act="ask" data-q="Give me tips">Get tips</button><button class="btn sm" data-act="ask" data-q="forecast">Forecast</button>${ins.length>1?`<button class="btn sm" data-act="insall" aria-expanded="${!!STATE.insAll}">${STATE.insAll?'Hide':'See'} ${ins.length-1} more</button>`:''}</div></div>`:'')+
   (STATE.insAll?ins.slice(1).map(n=>`<div class="notice ${n.lv}"><b>${esc(n.t)}</b><span>${esc(n.x)}</span></div>`).join(''):'')+
@@ -655,49 +917,56 @@ home(){const m=STATE.m,st=monthStats(m),end=nextM(m)+'-01',ins=insights(m);
     <section class="card"><p class="eyebrow">Cash in</p><div class="big pos">${peso(st.in)}</div><div class="rows"><div><span>Income</span><b>${peso(st.inc)}</b></div><div><span>Paid back</span><b>${peso(st.rep)}</b></div></div></section>
     <section class="card"><p class="eyebrow">Cash out</p><div class="big">${peso(st.out)}</div><div class="rows"><div><span>Spending</span><b>${peso(st.exp)}</b></div><div><span>Lent out</span><b class="neg">${peso(st.lent)}</b></div><div><span>Cards</span><b>${peso(st.ccp)}</b></div></div></section>
   </div>
-  <section class="card"><div class="split"><p class="eyebrow">Savings goal · ${esc(gw.name)}</p><span class="sub mono">Goal ${peso(S.goal.amt)}</span></div>
-    <div class="big">${peso(gb)}</div><div class="bar" style="margin-top:10px"><i style="width:${gp*100}%;background:var(--accent)"></i></div>
-    <div class="split sub" style="margin-top:6px"><span>${Math.round(gp*100)}% reached</span><span class="mono">${gb>=S.goal.amt?'Goal reached':'Remaining '+peso(S.goal.amt-gb)}</span></div></section>
+  ${S.goals.map(g=>goalCard(g,bal[g.w]||0)).join('')}
   <section class="card"><h2>Where the cash went</h2><div class="brk">
     ${outs.map(([l,v,c])=>`<div><div class="lbl"><span>${l}</span><b>${peso(v)} · ${pct(v,st.out)}</b></div><div class="bar"><i style="width:${v/mx*100}%;background:${c}"></i></div></div>`).join('')}
     <div><div class="lbl"><span>Charged to cards <span class="sub">(debt, not cash)</span></span><b class="warn">${peso(st.ccCharged)}</b></div><div class="bar"><i style="width:${st.ccCharged/mx*100}%;background:var(--warn)"></i></div></div>
   </div></section>
   <section class="card cv"><h2>Month by month</h2><div class="tscroll"><table><thead><tr><th>Month</th><th>Income</th><th>Spent</th><th>Lent</th><th>Out</th><th>Net</th><th>Cards left</th><th>Wallets</th></tr></thead><tbody>${trendRows()}</tbody></table></div></section>`},
 
-wallets(){const m=STATE.m,start=m+'-01',end=nextM(m)+'-01',open=balances(start);const flows={};
+wallets(){const m=STATE.m,start=pS(m),end=pE(m),open=balances(start);const flows={};
   S.wallets.forEach(w=>flows[w.id]={in:0,out:0,xf:0});
   const xfers=[];for(const t of S.tx){if(t.d<start||t.d>=end)continue;const f=flows[t.w]||(flows[t.w]={in:0,out:0,xf:0});
     if(t.t==='inc'||t.t==='repay')f.in+=t.a;else if(t.t==='xfer'){f.xf-=t.a;(flows[t.to]||(flows[t.to]={in:0,out:0,xf:0})).xf+=t.a;xfers.push(t)}else f.out+=t.a}
   const close=balances(end),tot=sumBal(close);
   return`<h1 class="ltitle">Wallets</h1><section class="notice ${tot<0?'bad':'info'}"><span class="eyebrow">All wallets combined</span><span class="big ${tot<0?'neg':''}">${peso(tot)}</span><span class="sub">Opened at ${peso(sumBal(open))}, with ${peso(monthStats(m).in)} in and ${peso(monthStats(m).out)} out.</span></section>
   <div class="split"><h2 style="font:600 20px var(--font-display);letter-spacing:-.02em;margin:0">Wallets at month end</h2><button class="btn sm pri" data-act="form" data-t="xfer">Transfer</button></div>
-  <div class="wgrid">${S.wallets.map(w=>{const c=close[w.id]||0,f=flows[w.id];const st=c<-0.004?['neg','Overdrawn']:c>0.004?['pos','Positive']:['zero','Zero'];
-    return`<section class="card wcard"><div class="head"><span class="dot" style="background:var(--c${w.col})"></span>${esc(w.name)}<span class="pill ${st[0]}">${st[1]}</span></div>
+  <div class="wgrid">${S.wallets.filter(w=>!w.hidden).map(w=>{const c=close[w.id]||0,f=flows[w.id];const st=c<-0.004?['neg','Overdrawn']:c>0.004?['pos','Positive']:['zero','Zero'];
+    return`<section class="card wcard"><div class="head"><span class="dot" style="background:var(--c${w.col})"></span>${wIc(w)}${esc(w.name)}<span class="pill ${st[0]}">${st[1]}</span></div>
     <div class="big ${c<0?'neg':''}" style="margin-top:8px">${peso(c)}</div>
     ${!(open[w.id]||0)&&!f.in&&!f.out&&!f.xf?`<div class="sub" style="margin-top:6px">No activity this month.</div>`:
     `<div class="rows"><div><span>Opening</span><b>${peso(open[w.id]||0)}</b></div><div><span>Money in</span><b class="pos">+${peso(f.in)}</b></div><div><span>Money out</span><b class="neg">-${peso(f.out)}</b></div><div><span>Net transfers</span><b>${peso(f.xf)}</b></div></div>`}</section>`}).join('')}</div>
+  ${S.wallets.some(w=>w.hidden)?`<button class="linkbtn" data-act="setpage" data-id="wallets" style="align-self:flex-start">${S.wallets.filter(w=>w.hidden).length} hidden wallet${S.wallets.filter(w=>w.hidden).length>1?'s':''} · ${peso(sum(S.wallets.filter(w=>w.hidden),w=>close[w.id]||0))} · Manage</button>`:''}
   <section class="card"><h2>Transfers between wallets<span class="right">${xfers.length} this month</span></h2><div class="list">
     ${xfers.length?xfers.sort((a,b)=>b.d.localeCompare(a.d)).map(t=>txRow(t)).join(''):'<div class="empty">No transfers this month. Transfers move money between wallets without changing your totals.</div>'}</div></section>`},
 
-spend(){const m=STATE.m,st=monthStats(m),F=STATE.filter;const cats=CATS.filter(c=>st.cats[c.id]).sort((a,b)=>st.cats[b.id]-st.cats[a.id]);
-  let acc=0;const arcs=cats.map(c=>{const p=st.cats[c.id]/(st.exp||1)*100;const s=`<circle r="15.915" cx="21" cy="21" fill="none" stroke="${catCol(c.id)}" stroke-width="6" stroke-dasharray="${Math.max(0,p-.4)} ${100-Math.max(0,p-.4)}" stroke-dashoffset="${25-acc}" data-act="cat" data-id="${c.id}" opacity="${F.cat&&F.cat!==c.id?.3:1}"><title>${c.name}</title></circle>`;acc+=p;return s}).join('');
-  let list=S.tx.filter(t=>t.d.slice(0,7)===m);
+spend(){const m=STATE.m,st=monthStats(m),F=STATE.filter;const cats=S.cats.filter(c=>st.cats[c.id]).sort((a,b)=>st.cats[b.id]-st.cats[a.id]);
+  let acc=0;const arcs=cats.map(c=>{const p=st.cats[c.id]/(st.exp||1)*100;const s=`<circle r="15.915" cx="21" cy="21" fill="none" stroke="${catCol(c.id)}" stroke-width="6" stroke-dasharray="${Math.max(0,p-.4)} ${100-Math.max(0,p-.4)}" stroke-dashoffset="${25-acc}" data-act="cat" data-id="${c.id}" opacity="${F.cat&&F.cat!==c.id?.3:1}"><title>${esc(c.name)}</title></circle>`;acc+=p;return s}).join('');
+  let list=S.tx.filter(t=>inP(t.d,m));
   if(F.type!=='all')list=list.filter(t=>F.type==='loan'?(t.t==='lend'||t.t==='repay'):t.t===F.type);
   if(F.cat)list=list.filter(t=>t.t==='exp'&&t.c===F.cat);
-  if(F.q){const q=F.q.toLowerCase();list=list.filter(t=>((t.s||'')+' '+(t.n||'')+' '+(t.p||'')+' '+W(t.w).name).toLowerCase().includes(q))}
+  const tagsHere=[...new Set(S.tx.filter(t=>inP(t.d,m)).flatMap(t=>t.tags||[]))].sort();
+  if(F.tag)list=list.filter(t=>(t.tags||[]).includes(F.tag));
+  if(F.q){const q=F.q.toLowerCase();list=list.filter(t=>((t.s||'')+' '+(t.n||'')+' '+(t.p||'')+' '+W(t.w).name+' '+tagStr(t.tags)).toLowerCase().includes(q))}
   list.sort((a,b)=>b.d.localeCompare(a.d));const shown=list.slice(0,F.limit);
-  return`<h1 class="ltitle">Spending</h1><section class="card"><h2>Spending by category<span class="right">${st.n} entries</span></h2>
+  const bs=budgets(m);
+  return`<h1 class="ltitle">Spending</h1>${bs.length?`<section class="card"><h2>Budgets<span class="right"><button class="linkbtn" data-act="setpage" data-id="cats">Edit</button></span></h2><div class="brk">
+    ${bs.map(b=>`<button class="budrow" data-act="cat" data-id="${b.c.id}"><div class="lbl"><span>${esc(b.c.ic?b.c.ic+' ':'')}${esc(b.c.name)}</span><b class="${b.p>=1?'neg':''}">${peso(b.spent)} <span class="muted">of ${peso(b.limit)}</span></b></div>
+      <div class="bar"><i style="width:${Math.min(100,b.p*100)}%;background:var(--${budgetLv(b.p)})"></i></div>
+      <div class="sub ${b.p>=1?'neg':b.p>=.8?'warn':''}" style="margin-top:4px">${b.p>=1?`${peso(b.spent-b.limit)} over`:`${peso(b.limit-b.spent)} left`} · ${Math.round(b.p*100)}%</div></button>`).join('')}</div></section>`:''}
+  <section class="card"><h2>Spending by category<span class="right">${st.n} entries</span></h2>
     ${st.exp?`<div class="donut"><svg viewBox="0 0 42 42" role="img" aria-label="Category donut chart"><circle r="15.915" cx="21" cy="21" fill="none" stroke="var(--surface-2)" stroke-width="6"/>${arcs}
       <text x="21" y="20" text-anchor="middle" font-size="3" fill="var(--muted)" font-family="var(--font-body)">Total</text><text x="21" y="24.5" text-anchor="middle" font-size="4.2" font-weight="700" fill="var(--fg)" font-family="var(--font-display)">${pesoS(st.exp)}</text></svg>
-      <div class="legend">${cats.map(c=>`<button data-act="cat" data-id="${c.id}" class="${F.cat&&F.cat!==c.id?'dim':''}"><i class="dot" style="background:${catCol(c.id)}"></i><span>${c.name}</span><b>${pesoS(st.cats[c.id])} · ${pct(st.cats[c.id],st.exp)}</b></button>`).join('')}</div></div>`
+      <div class="legend">${cats.map(c=>`<button data-act="cat" data-id="${c.id}" class="${F.cat&&F.cat!==c.id?'dim':''}"><i class="dot" style="background:${catCol(c.id)}"></i><span>${esc(c.ic?c.ic+' ':'')}${esc(c.name)}</span><b>${pesoS(st.cats[c.id])} · ${pct(st.cats[c.id],st.exp)}</b></button>`).join('')}</div></div>`
       :'<div class="empty">No expenses this month yet. Tap + to add one, or tell the assistant “lunch 120 gcash”.</div>'}</section>
-  <section class="card"><h2>Transactions${F.cat?`<span class="pill zero">${catName(F.cat)}</span>`:''}<span class="right">${list.length} shown</span></h2>
+  <section class="card"><h2>Transactions${F.cat?`<span class="pill zero">${esc(catName(F.cat))}</span>`:''}<span class="right">${list.length} shown</span></h2>
     <div style="display:flex;flex-direction:column;gap:10px"><input class="search" id="search" type="search" placeholder="Search description, person, wallet" value="${esc(F.q)}" aria-label="Search transactions">
-    <div class="chips">${[['all','All'],['exp','Expenses'],['inc','Income'],['xfer','Transfers'],['loan','Loans'],['ccpay','Card payments']].map(([k,l])=>`<button class="chip${F.type===k?' on':''}" data-act="type" data-id="${k}">${l}</button>`).join('')}${F.cat?`<button class="chip" data-act="cat" data-id="${F.cat}">Clear category ✕</button>`:''}</div></div>
+    <div class="chips">${[['all','All'],['exp','Expenses'],['inc','Income'],['xfer','Transfers'],['loan','Loans'],['ccpay','Card payments']].map(([k,l])=>`<button class="chip${F.type===k?' on':''}" data-act="type" data-id="${k}">${l}</button>`).join('')}${F.cat?`<button class="chip" data-act="cat" data-id="${F.cat}">Clear category ✕</button>`:''}</div>
+    ${tagsHere.length?`<div class="chips tagchips" role="group" aria-label="Tags">${tagsHere.map(g=>`<button class="chip tag${F.tag===g?' on':''}" data-act="tagf" data-id="${esc(g)}" aria-pressed="${F.tag===g}">#${esc(g)}</button>`).join('')}</div>`:''}</div>
     <div class="list" style="margin-top:6px">${shown.length?dayGroups(shown,list):'<div class="empty">Nothing matches.</div>'}</div>
     ${list.length>shown.length?`<button class="btn" style="width:100%;margin-top:8px" data-act="more">Show ${Math.min(40,list.length-shown.length)} more</button>`:''}</section>`},
 
-debts(){const end=nextM(STATE.m)+'-01',L=loans(),open=ccOpen();const owed=sum(L,l=>l.owed),people=new Set(L.filter(l=>l.owed>0).map(l=>l.p)).size;
+debts(){const end=pE(STATE.m),L=loans(),open=ccOpen();const owed=sum(L,l=>l.owed),people=new Set(L.filter(l=>l.owed>0).map(l=>l.p)).size;
   const byCard={};open.forEach(c=>byCard[c.card]=(byCard[c.card]||0)+c.a);
   const ccList=S.cc.slice().sort((a,b)=>(a.paid-b.paid)||(a.due||'9').localeCompare(b.due||'9'));
   return`<h1 class="ltitle">Debts</h1><div class="grid2">
@@ -710,134 +979,327 @@ debts(){const end=nextM(STATE.m)+'-01',L=loans(),open=ccOpen();const owed=sum(L,
       <div class="r">${l.owed>0?`<b class="neg">${peso(l.owed)}</b><button class="btn sm" data-act="repay" data-id="${l.id}" style="margin-top:4px">Repaid</button>`:`<span class="pill pos">Settled</span>`}</div></div>`).join(''):'<div class="empty">No loans yet. When family or friends borrow, log it here so you remember.</div>'}</div></section>
   <section class="card"><div class="split" style="margin-bottom:6px"><h2 style="margin:0">Card & SPayLater items</h2><button class="btn sm pri" data-act="form" data-t="cc">Add charge</button></div>
     <div class="list">${ccList.length?ccList.map(c=>`<div class="item"><div class="ic" style="--ic:var(--warn)" aria-hidden="true">${c.card.charAt(0)}</div>
-      <button class="mid" style="border:0;background:none;padding:0;text-align:left" data-act="editcc" data-id="${c.id}"><div class="t">${esc(c.s)}</div><div class="m">${esc(c.card)} · ${dLabel(c.d)} · for ${esc(c.who||'Me')}</div>${c.due&&!c.paid?dueTag(c.due):''}</button>
+      <button class="mid" style="border:0;background:none;padding:0;text-align:left" data-act="editcc" data-id="${c.id}"><div class="t">${esc(c.s)}</div><div class="m">${esc(c.card)} · ${dLabel(c.d)} · for ${esc(c.who||'Me')}${c.tags?' · <span class="tagtxt">'+esc(tagStr(c.tags))+'</span>':''}</div>${c.due&&!c.paid?dueTag(c.due):''}</button>
       <div class="r"><b>${peso(c.a)}</b>${c.paid?`<button class="btn sm" data-act="unpay" data-id="${c.id}" style="margin-top:4px">Paid ✓</button>`:`<button class="btn sm" data-act="paycc" data-id="${c.id}" style="margin-top:4px">Mark paid</button>`}</div></div>`).join(''):'<div class="empty">No card charges logged.</div>'}</div></section>`},
 
 ai(){if(!STATE.chat.length)STATE.chat.push({me:false,h:`<b>Hi! I am your on-device assistant.</b> `+summaryLine()+`<br><br>`+help()});
   return`<h1 class="ltitle">Assistant</h1><section class="ai-head"><div class="orb" aria-hidden="true">✦</div><div><div class="sub">Runs offline on your phone. No internet, no GPU, no data leaves the device.</div></div></section>
-  <div class="chat" id="chat">${STATE.chat.map((c,i)=>`<div class="msg ${c.me?'me':'bot'}">${c.me?esc(c.h):c.h}${c.draft!=null?draftCard(c.draft):''}</div>`).join('')}</div><div style="height:96px"></div>`}};
+  <div class="chat" id="chat">${STATE.chat.map((c,i)=>`<div class="msg ${c.me?'me':'bot'}${c.fresh?' new':''}">${c.me?esc(c.h):c.h}${c.draft!=null?draftCard(c.draft):''}</div>`).join('')}</div><div style="height:96px"></div>`}};
 
-function summaryLine(){const st=monthStats(STATE.m);return`For ${mLabel(STATE.m)} you are at <b class="${st.net<0?'neg':'pos'}">${peso(st.net)}</b> net.`}
-function trendRows(){const cur=today().slice(0,7),end=STATE.m>cur?STATE.m:cur;
-  const ms=S.tx.map(t=>t.d.slice(0,7)).concat(S.cc.map(c=>c.d.slice(0,7))).sort();
+function summaryLine(){const st=monthStats(STATE.m);return`For ${pLabel(STATE.m)} you are at <b class="${st.net<0?'neg':'pos'}">${peso(st.net)}</b> net.`}
+function trendRows(){const cur=curP(),end=STATE.m>cur?STATE.m:cur;
+  const ms=S.tx.map(t=>periodOf(t.d)).concat(S.cc.map(c=>periodOf(c.d))).sort();
   let start=ms[0]&&ms[0]<end?ms[0]:end;if(addM(start,11)<end)start=addM(end,-11);if(start>STATE.m)start=STATE.m;
   let h='';// newest first; past months only (no empty future rows). Tap a row to open that month.
-  for(let m=end;m>=start;m=addM(m,-1)){const st=monthStats(m),e=nextM(m)+'-01',wt=sumBal(balances(e)),cl=ccUnpaid(e);
-    h+=`<tr class="${m===STATE.m?'on':''}" data-act="setm" data-id="${m}"><td>${mLabel(m)}</td><td class="pos">${pesoS(st.in)}</td><td>${pesoS(st.exp)}</td><td>${pesoS(st.lent)}</td><td>${pesoS(st.out)}</td><td class="${st.net<0?'neg':st.net>0?'pos':''}">${pesoS(st.net)}</td><td class="warn">${pesoS(cl)}</td><td class="${wt<0?'neg':''}">${pesoS(wt)}</td></tr>`}
+  for(let m=end;m>=start;m=addM(m,-1)){const st=monthStats(m),e=pE(m),wt=sumBal(balances(e)),cl=ccUnpaid(e);
+    h+=`<tr class="${m===STATE.m?'on':''}" data-act="setm" data-id="${m}"><td>${pShort(m)}</td><td class="pos">${pesoS(st.in)}</td><td>${pesoS(st.exp)}</td><td>${pesoS(st.lent)}</td><td>${pesoS(st.out)}</td><td class="${st.net<0?'neg':st.net>0?'pos':''}">${pesoS(st.net)}</td><td class="warn">${pesoS(cl)}</td><td class="${wt<0?'neg':''}">${pesoS(wt)}</td></tr>`}
   return h}
 function dayGroups(shown,all){const spent={};all.forEach(t=>{if(t.t==='exp')spent[t.d]=(spent[t.d]||0)+t.a});let h='',last='';
   for(const t of shown){if(t.d!==last){last=t.d;h+=`<div class="dayhead"><span>${dayName(t.d)}</span>${spent[t.d]?`<span class="mono">${peso(spent[t.d])} spent</span>`:''}</div>`}h+=txRow(t,true)}return h}
-function txRow(t,noDate){const T={exp:[catCol(t.c),catName(t.c).charAt(0),t.s,catName(t.c),'-'],inc:['var(--pos)','+',t.s,t.k||'Income','+'],
+function txRow(t,noDate){const T={exp:[catCol(t.c),catIc(t.c),t.s,catName(t.c),'-'],inc:['var(--pos)','+',t.s,t.k||'Income','+'],
   xfer:['var(--muted)','⇄',t.s||`${W(t.w).name} → ${W(t.to).name}`,`${W(t.w).name} → ${W(t.to).name}`,''],lend:['var(--owed)','↗',`Lent to ${t.p}`,t.s||'Loan','-'],
   repay:['var(--pos)','↙',`${t.p} paid back`,'Repayment','+'],ccpay:['var(--warn)','▭',t.s||'Card payment','Card payment','-']}[t.t];
   const cls=T[4]==='+'?'pos':T[4]==='-'&&t.t!=='exp'?'neg':'';
-  return`<button class="item" data-act="edit" data-id="${t.id}"><div class="ic" style="--ic:${T[0]}" aria-hidden="true">${esc(T[1])}</div><div class="mid"><div class="t">${esc(T[2])}</div><div class="m">${noDate?'':dLabel(t.d)+' · '}${esc(T[3])}${t.t!=='xfer'?' · '+esc(W(t.w).name):''}${t.n?' · '+esc(t.n):''}</div></div><div class="r"><b class="${cls}">${T[4]}${peso(t.a)}</b></div></button>`}
+  return`<button class="item" data-act="edit" data-id="${t.id}"><div class="ic" style="--ic:${T[0]}" aria-hidden="true">${esc(T[1])}</div><div class="mid"><div class="t">${esc(T[2])}</div><div class="m">${noDate?'':dLabel(t.d)+' · '}${esc(T[3])}${t.t!=='xfer'?' · '+esc(W(t.w).name):''}${t.n?' · '+esc(t.n):''}${t.tags?' · <span class="tagtxt">'+esc(tagStr(t.tags))+'</span>':''}</div></div><div class="r"><b class="${cls}">${T[4]}${peso(t.a)}</b></div></button>`}
 
 /* ================= sheets & forms ================= */
-function sheet(html){$('#sheetBody').innerHTML=html;$('#sheet').hidden=false;const f=$('#sheetBody input:not([type=hidden]),#sheetBody select');if(f&&!('ontouchstart' in window))f.focus()}
-function closeSheet(){$('#sheet').hidden=true;$('#sheetBody').innerHTML=''}
-function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,2200)}
+// Sheets slide up and slide away. kind says what is showing ('settings' lets Settings refresh itself in place);
+// anim 'fwd'/'back' slides between Settings pages.
+const sheetOpen=()=>!$('#sheet').hidden&&!$('#sheet').classList.contains('closing');
+function sheet(html,kind,anim){clearTimeout(sheet.t);const w=$('#sheet'),b=$('#sheetBody'),was=sheetOpen();
+  w.classList.remove('closing');b.innerHTML=html;STATE.sheetKind=kind||'';w.hidden=false;
+  b.classList.remove('pg-fwd','pg-back');if(was&&anim&&!REDUCED){void b.offsetWidth;b.classList.add('pg-'+anim);$('.sheet',w).scrollTop=0}
+  const f=$('#sheetBody input:not([type=hidden]):not([data-nofocus]),#sheetBody select');if(f&&!was&&!('ontouchstart' in window))f.focus()}
+function closeSheet(){const w=$('#sheet');if(w.hidden||w.classList.contains('closing'))return;STATE.sheetKind='';w.classList.add('closing');
+  clearTimeout(sheet.t);sheet.t=setTimeout(()=>{w.hidden=true;w.classList.remove('closing');$('#sheetBody').innerHTML=''},REDUCED?0:230)}
+const refreshSettings=()=>{if(sheetOpen()&&STATE.sheetKind==='settings')settings()};
+function toast(msg,act,label){const t=$('#toast');t.innerHTML=esc(msg)+(act?` <button class="tact" data-act="${act}">${esc(label)}</button>`:'');
+  t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),act?6000:2400)}
 function askConfirm(msg,yes,label='Delete'){sheet(`<h3>${esc(msg)}</h3><div class="btns"><button class="btn pri" id="cyes" style="background:var(--neg);border-color:var(--neg)">${esc(label)}</button><button class="btn" data-act="close">Cancel</button></div>`);$('#cyes').onclick=()=>{closeSheet();yes()}}
-const wOpts=sel=>S.wallets.map(w=>`<option value="${w.id}"${w.id===sel?' selected':''}>${esc(w.name)}</option>`).join('');
-const defDate=()=>{const t=today();return t.slice(0,7)===STATE.m?t:(STATE.m<t.slice(0,7)?STATE.m+'-'+pad(dim(STATE.m)):STATE.m+'-01')};
+const wOpts=sel=>S.wallets.filter(w=>!w.hidden||w.id===sel).map(w=>`<option value="${w.id}"${w.id===sel?' selected':''}>${w.ic?esc(w.ic)+' ':''}${esc(w.name)}</option>`).join('');
+const defDate=()=>{const t=today();return inP(t,STATE.m)?t:pE(STATE.m)<=t?addDays(pE(STATE.m),-1):pS(STATE.m)};
 
 function addMenu(){sheet(`<h3>Add a record</h3><div class="actions-grid">
   ${[['exp','Expense','−','var(--c2)'],['inc','Income','+','var(--pos)'],['xfer','Transfer','⇄','var(--muted)'],['lend','Lend cash','↗','var(--owed)'],['cc','Card charge','▭','var(--warn)'],['ai','Type it','✦','var(--accent)']]
-   .map(([t,l,i,c])=>`<button class="act" data-act="${t==='ai'?'tab':'form'}" data-t="${t}" data-id="ai"><i style="background:${c}">${i}</i>${l}</button>`).join('')}</div>`)}
+   .map(([t,l,i,c])=>`<button class="act" data-act="${t==='ai'?'tab':'form'}" data-t="${t}" data-id="ai"><i style="background:${c}">${i}</i>${l}</button>`).join('')}</div>
+  ${S.cfg.shortcuts.length?`<p class="eyebrow" style="margin:16px 0 8px">Quick add</p><div class="chips">${S.cfg.shortcuts.map(q=>`<button class="chip sc" data-act="ask" data-q="${esc(q)}">⚡ ${esc(q)}</button>`).join('')}</div>`:''}`)}
 
 function openForm(type,x={}){const ed=!!x.id;const d=x.d||defDate();let body='',title='';
-  const amt=`<label>Amount (₱)<input class="amtin" id="f_a" inputmode="decimal" placeholder="0.00" value="${x.a!=null?x.a:''}" required></label>`;
+  const amt=`<label>Amount (${esc(CUR())})<input class="amtin" id="f_a" inputmode="decimal" placeholder="${DEC()?'0.00':'0'}" value="${x.a!=null?x.a:''}" required></label>`;
   const date=`<label>Date<input type="date" id="f_d" value="${d}" required></label>`;
   const note=`<label>Note<input id="f_n" value="${esc(x.n||'')}" placeholder="Optional"></label>`;
   if(type==='exp'){title=ed?'Edit expense':'Add expense';const c=x.c||'';
     body=amt+`<label>What was it for?<input id="f_s" value="${esc(x.s||'')}" placeholder="e.g. Jollibee lunch, jeep to work" required autocomplete="off"></label><div class="hint" id="f_hint"></div>
-    <div class="flabel" id="f_catl">Category</div><div class="chips" id="f_cats" role="group" aria-labelledby="f_catl" style="margin-top:-6px">${CATS.map(k=>`<button type="button" class="chip${k.id===c?' on':''}" data-cat="${k.id}"><i class="dot" style="background:${catCol(k.id)}"></i>${k.name}</button>`).join('')}</div>
-    <input type="hidden" id="f_c" value="${c}"><div class="row2"><label>Paid from<select id="f_w">${wOpts(x.w||'cash')}</select></label>${date}</div>`+note}
+    <div class="flabel" id="f_catl">Category</div><div class="chips" id="f_cats" role="group" aria-labelledby="f_catl" style="margin-top:-6px">${S.cats.map(k=>`<button type="button" class="chip${k.id===c?' on':''}" data-cat="${k.id}"><i class="dot" style="background:${catCol(k.id)}"></i>${esc(k.ic?k.ic+' ':'')}${esc(k.name)}</button>`).join('')}</div>
+    <input type="hidden" id="f_c" value="${c}"><div class="row2"><label>Paid from<select id="f_w">${wOpts(x.w||wid('cash'))}</select></label>${date}</div>`+note}
   if(type==='inc'){title=ed?'Edit income':'Add income';body=amt+`<label>Source<input id="f_s" value="${esc(x.s||'')}" placeholder="e.g. Salary, freelance client" required></label>
-    <div class="row2"><label>Type<select id="f_k">${['Salary','Freelance','Bonus','Allowance','Gift','Refund','Other'].map(k=>`<option${k===(x.k||'Salary')?' selected':''}>${k}</option>`).join('')}</select></label><label>Deposited to<select id="f_w">${wOpts(x.w||'gcash')}</select></label></div>`+date+note}
-  if(type==='xfer'){title=ed?'Edit transfer':'Transfer between wallets';body=amt+`<div class="row2"><label>From<select id="f_w">${wOpts(x.w||'gcash')}</select></label><label>To<select id="f_to">${wOpts(x.to||'cash')}</select></label></div>`+date+note}
+    <div class="row2"><label>Type<select id="f_k">${[...new Set([...S.incTypes,...(x.k&&!S.incTypes.includes(x.k)?[x.k]:[])])].map(k=>`<option${k===(x.k||S.incTypes[0])?' selected':''}>${esc(k)}</option>`).join('')}</select></label><label>Deposited to<select id="f_w">${wOpts(x.w||wid('gcash'))}</select></label></div>`+date+note}
+  if(type==='xfer'){title=ed?'Edit transfer':'Transfer between wallets';body=amt+`<div class="row2"><label>From<select id="f_w">${wOpts(x.w||wid('gcash'))}</select></label><label>To<select id="f_to">${wOpts(x.to||wid('cash'))}</select></label></div>`+date+note}
   if(type==='lend'){title=ed?'Edit loan':'Lend cash';const ppl=[...new Set(S.tx.filter(t=>t.p).map(t=>t.p))];
     body=`<label>Who borrowed<input id="f_p" list="ppl" value="${esc(x.p||'')}" placeholder="e.g. Mama, Kuya" required><datalist id="ppl">${ppl.map(p=>`<option value="${esc(p)}">`).join('')}</datalist></label>`+amt+
-    `<label>Reason<input id="f_s" value="${esc(x.s||'')}" placeholder="Optional"></label><div class="row2"><label>Taken from<select id="f_w">${wOpts(x.w||'gcash')}</select></label>${date}</div><label>Due date<input type="date" id="f_due" value="${x.due||''}"></label>`+note}
+    `<label>Reason<input id="f_s" value="${esc(x.s||'')}" placeholder="Optional"></label><div class="row2"><label>Taken from<select id="f_w">${wOpts(x.w||wid('gcash'))}</select></label>${date}</div><label>Due date<input type="date" id="f_due" value="${x.due||''}"></label>`+note}
   if(type==='repay'){const l=S.tx.find(t=>t.id===x.ref);const left=l?loans().find(z=>z.id===l.id).owed+(ed?x.a:0):0;title=`Repayment from ${esc(x.p||(l&&l.p)||'')}`;
-    body=amt.replace(`value="${x.a!=null?x.a:''}"`,`value="${x.a!=null?x.a:left}"`)+`<div class="sub">Still owed before this: ${peso(left)}</div><div class="row2"><label>Received in<select id="f_w">${wOpts(x.w||(l&&l.w)||'cash')}</select></label>${date}</div>`}
+    body=amt.replace(`value="${x.a!=null?x.a:''}"`,`value="${x.a!=null?x.a:left}"`)+`<div class="sub">Still owed before this: ${peso(left)}</div><div class="row2"><label>Received in<select id="f_w">${wOpts(x.w||(l&&l.w)||wid('cash'))}</select></label>${date}</div>`}
   if(type==='cc'){title=ed?'Edit card charge':'Add card charge';body=amt+`<label>Merchant or item<input id="f_s" value="${esc(x.s||'')}" placeholder="e.g. Shopee rice cooker" required></label>
     <div class="row2"><label>Card<select id="f_card">${S.cards.map(c=>`<option${c===x.card?' selected':''}>${esc(c)}</option>`).join('')}</select></label><label>For who<input id="f_who" value="${esc(x.who||'Me')}"></label></div>
-    <div class="row2">${date}<label>Due date<input type="date" id="f_due" value="${x.due||''}"></label></div>`+note}
+    <div class="row2">${date}<label>Due date<input type="date" id="f_due" value="${x.due||(ed?'':dueFor(x.card||S.cards[0],d))}"></label></div><div class="sub" id="f_duehint"></div>`+note}
+  if(type!=='repay')body+=`<label>Tags<input id="f_tags" value="${esc(tagStr(x.tags))}" placeholder="#family #trip" autocomplete="off" autocapitalize="off"></label>`;
+  if(!ed&&['exp','inc','xfer','cc'].includes(type))body+=`<label>Repeat<select id="f_rep"><option value="">Doesn’t repeat</option><option value="week"${x.every==='week'?' selected':''}>Every week</option><option value="month"${x.every==='month'?' selected':''}>Every month</option></select></label>`;
   sheet(`<h3>${title}</h3><form class="form" id="txform">${body}<div class="btns" style="margin-top:4px"><button class="btn pri" type="submit" style="flex:1">${ed?'Save changes':'Save'}</button>${ed?`<button class="btn danger" type="button" id="f_del">Delete</button>`:''}<button class="btn" type="button" data-act="close">Cancel</button></div></form>`);
   if(type==='exp'){let manual=!!x.c;const hint=$('#f_hint'),cin=$('#f_c');
     const pick=id=>{cin.value=id;document.querySelectorAll('#f_cats .chip').forEach(b=>b.classList.toggle('on',b.dataset.cat===id))};
     $('#f_cats').onclick=e=>{const b=e.target.closest('[data-cat]');if(b){manual=true;pick(b.dataset.cat);hint.textContent=''}};
     let tm;$('#f_s').oninput=e=>{clearTimeout(tm);tm=setTimeout(()=>{const p=predict(e.target.value);if(!p){hint.textContent='';return}
       const alt=p.alts.slice(1).filter(a=>a.p>=.12);
-      hint.innerHTML=`✦ ${catName(p.c)} · ${Math.round(p.p*100)}% sure · ${esc(p.why)}`+(alt.length?' · or '+alt.map(a=>`<button type="button" class="alt" data-cat="${a.c}">${catName(a.c)}</button>`).join(', '):'');
+       hint.innerHTML=`✦ ${esc(catName(p.c))} · ${Math.round(p.p*100)}% sure · ${esc(p.why)}`+(alt.length?' · or '+alt.map(a=>`<button type="button" class="alt" data-cat="${a.c}">${esc(catName(a.c))}</button>`).join(', '):'');
       if(!manual)pick(p.c)},120)};
     hint.onclick=e=>{const b=e.target.closest('[data-cat]');if(b){manual=true;pick(b.dataset.cat);hint.textContent=''}}}
+  if(type==='cc'){let manual=!!x.due&&ed;const due=$('#f_due'),hint=$('#f_duehint');
+    const fill=()=>{if(manual)return;const v=dueFor($('#f_card').value,$('#f_d').value);due.value=v;const c=S.cardCfg[$('#f_card').value];
+      hint.textContent=v?`Due date from ${$('#f_card').value}: statement on the ${ord(c.close||0)}${c.close?'':' (not set)'}, due on the ${ord(c.due)}.`:'Set this card’s statement and due days in Settings › Cards to fill this in.'};
+    due.oninput=()=>{manual=true;hint.textContent=''};$('#f_card').onchange=fill;$('#f_d').onchange=fill;if(!ed)fill()}
   if(ed)$('#f_del').onclick=()=>delRecord(type,x);
   $('#txform').onsubmit=e=>{e.preventDefault();const a=num($('#f_a').value);if(!(a>0)){toast('Enter an amount above zero.');return}
     const g=id=>{const el=$('#'+id);return el?el.value.trim():undefined};
-    if(type==='cc'){const c=ed?S.cc.find(z=>z.id===x.id):{id:uid(),paid:false};Object.assign(c,{a,s:g('f_s'),card:g('f_card'),who:g('f_who'),d:g('f_d'),due:g('f_due'),n:g('f_n')});if(!ed)S.cc.push(c)}
+    const rep_=g('f_rep'),tags=parseTags(g('f_tags'));let newRec=null;const setTags=o=>{if(tags.length)o.tags=tags;else delete o.tags};
+    if(type==='cc'){const c=ed?S.cc.find(z=>z.id===x.id):own({id:uid(),paid:false});Object.assign(c,{a,s:g('f_s'),card:g('f_card'),who:g('f_who'),d:g('f_d'),due:g('f_due'),n:g('f_n')});setTags(c);if(!ed){S.cc.push(c);newRec=c}}
     else{if(type==='xfer'&&g('f_w')===g('f_to')){toast('Pick two different wallets.');return}
-      if(type==='exp'&&!g('f_c')){const p=predict(g('f_s'));$('#f_c').value=p?p.c:'other'}
-      const t=ed?S.tx.find(z=>z.id===x.id):{id:uid(),t:type};
+      if(type==='exp'&&!g('f_c')){const p=predict(g('f_s'));$('#f_c').value=p?p.c:fallbackCat()}
+      const t=ed?S.tx.find(z=>z.id===x.id):own({id:uid(),t:type});
       Object.assign(t,{a,d:g('f_d'),w:g('f_w')});
       for(const[k,id]of[['s','f_s'],['c','f_c'],['k','f_k'],['to','f_to'],['p','f_p'],['due','f_due'],['n','f_n']]){const v=g(id);if(v!==undefined)t[k]=v}
-      if(type==='repay'){t.ref=x.ref;t.p=x.p}
-      if(!ed)S.tx.push(t)}
-    save();closeSheet();render();toast(ed?'Saved':'Added')}}
+      if(type==='repay'){t.ref=x.ref;t.p=x.p}else setTags(t);
+      if(!ed){S.tx.push(t);newRec=t}}
+    if(rep_&&newRec&&!S.demo)addRule(type,newRec,rep_);
+    save();closeSheet();render();if(rep_&&!S.demo&&runRecurring())return;
+    const bc=type==='exp'?catOf(g('f_c')):null,bb=bc&&bc.budget>0?budgets(STATE.m).find(x=>x.c.id===bc.id):null;
+    toast((ed?'Saved':'Added')+(bb?` · ${bc.name}: ${peso(bb.spent)} of ${peso(bb.limit)}`:''))}}
 
 function delRecord(type,x){
-  if(type==='cc')return askConfirm(`Delete “${x.s}”?`,()=>{if(x.pay)S.tx=S.tx.filter(t=>t.id!==x.pay);S.cc=S.cc.filter(c=>c.id!==x.id);save();render();toast('Deleted')});
+  if(type==='cc')return askConfirm(`Delete “${x.s}”?`,()=>{snapshot('delete');if(x.pay)S.tx=S.tx.filter(t=>t.id!==x.pay);S.cc=S.cc.filter(c=>c.id!==x.id);save();render();toast('Deleted',S.demo?'':'undo','Undo')});
   const extra=type==='lend'?S.tx.filter(t=>t.ref===x.id).length:0;
   askConfirm(type==='lend'&&extra?`Delete this loan and its ${extra} repayment${extra>1?'s':''}?`:'Delete this record?',()=>{
-    S.tx=S.tx.filter(t=>t.id!==x.id&&!(type==='lend'&&t.ref===x.id));
+    snapshot('delete');S.tx=S.tx.filter(t=>t.id!==x.id&&!(type==='lend'&&t.ref===x.id));
     if(type==='ccpay'){const c=S.cc.find(c=>c.pay===x.id);if(c){c.paid=false;delete c.pay}}
-    save();render();toast('Deleted')})}
+    save();render();toast('Deleted',S.demo?'':'undo','Undo')})}
 
 function payCard(c){sheet(`<h3>Pay “${esc(c.s)}”</h3><form class="form" id="payform"><div class="kv"><span>Amount</span><b class="mono">${peso(c.a)}</b></div>
-  <div class="row2"><label>Paid from<select id="p_w">${wOpts('gcash')}</select></label><label>Date<input type="date" id="p_d" value="${defDate()}"></label></div>
+  <div class="row2"><label>Paid from<select id="p_w">${wOpts(wid('gcash'))}</select></label><label>Date<input type="date" id="p_d" value="${defDate()}"></label></div>
   <div class="btns"><button class="btn pri" type="submit" style="flex:1">Mark paid</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`);
-  $('#payform').onsubmit=e=>{e.preventDefault();const t={id:uid(),t:'ccpay',a:c.a,d:$('#p_d').value,w:$('#p_w').value,ref:c.id,s:'Paid card: '+c.s};S.tx.push(t);c.paid=true;c.pay=t.id;save();closeSheet();render();toast('Marked paid')}}
+  $('#payform').onsubmit=e=>{e.preventDefault();const t=own({id:uid(),t:'ccpay',a:c.a,d:$('#p_d').value,w:$('#p_w').value,ref:c.id,s:'Paid card: '+c.s});S.tx.push(t);c.paid=true;c.pay=t.id;save();closeSheet();render();toast('Marked paid')}}
 
-function settings(){const b=balances();sheet(`<h3>Settings & backup</h3><form class="form" id="setform">
-  <p class="eyebrow" style="margin:0">Wallets and starting balances</p>
-  ${S.wallets.map(w=>`<div class="row2"><label>Name<input data-wn="${w.id}" value="${esc(w.name)}"></label><label>Starting balance<input data-wi="${w.id}" inputmode="decimal" value="${w.init||0}"></label></div>`).join('')}
-  <button class="btn" type="button" id="addw">+ Add wallet</button>
-  <p class="eyebrow" style="margin:6px 0 0">Savings goal</p>
-  <div class="row2"><label>Goal amount<input id="g_a" inputmode="decimal" value="${S.goal.amt}"></label><label>Savings wallet<select id="g_w">${wOpts(S.goal.w)}</select></label></div>
-  <label>Cards and pay-later accounts (comma separated)<input id="s_cards" value="${esc(S.cards.join(', '))}"></label>
-  <button class="btn pri" type="submit">Save settings</button></form>
-  ${NATIVE?`<div class="form" style="margin-top:18px"><p class="eyebrow" style="margin:0">Saved on this phone</p>
-  <span class="sub">${S.demo?'Sample data is not written to your phone. Tap Start fresh on Home to begin saving.':`Every change is saved to <span class="mono">Documents/Pitaka/pitaka-data.json</span>, plus one copy per day in <span class="mono">Documents/Pitaka/backups</span> (last ${PHONE.keep} days).`}</span>
-  ${PHONE.saved?`<span class="sub pos">Last saved ${new Date(PHONE.saved).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'})}</span>`:''}${PHONE.err?`<span class="sub neg">Last save failed: ${esc(PHONE.err)}</span>`:''}
-  ${S.demo?'':`<button class="btn" data-act="phonesave">Save to Pitaka folder now</button>`}</div>`:''}
-  <div class="form" style="margin-top:18px"><p class="eyebrow" style="margin:0">Backup to Google Drive</p>
-  <span class="sub">${NATIVE?'':'Your data is stored only on this phone. '}${lastBackup()?`Last backup: ${dLabel(lastBackup())}, ${lastBackup().slice(0,4)}.`:'No backup saved yet.'}</span>
-  ${INSTALLED||NATIVE?`<button class="btn pri" data-act="drive">Save to Drive</button><span class="sub">Opens your share menu. Choose Drive, then tap Save.</span>`
-    :`<span class="sub">Save to Drive works in the installed app. Here, use Copy backup.</span>`}
-  <div class="btns"><label class="btn" style="flex-direction:row;color:var(--fg);font-size:13.5px">Restore from Drive${NATIVE?' or phone':''}<input type="file" id="imp" hidden></label><button class="btn" data-act="copybk">Copy backup</button>${INSTALLED?'<button class="btn" data-act="dlbk">Download backup</button>':''}</div>
-  <span class="sub">Restore opens your file picker. Tap ☰ or Browse, choose Drive${NATIVE?' or Documents › Pitaka':''}, then pick a <span class="mono">pitaka</span> backup file.</span>
-  <label>Or paste a backup here<textarea id="pastebk" rows="3" placeholder='{"v":1,...}'></textarea></label><button class="btn" data-act="pastebk">Restore pasted backup</button>
-  ${UPD?`<p class="eyebrow" style="margin:10px 0 0">App version</p><span class="sub">${UP.cur?'Version '+esc(UP.cur.versionName):'Version unknown'}${UP.next?` · <b class="pos">${esc(UP.next.versionName)} available</b>`:''}</span>
-  <div class="btns">${UP.next?`<button class="btn pri" data-act="${UP.state==='ready'?'updinstall':'update'}"${UP.state==='dl'?' disabled':''}>${UP.state==='dl'?'Downloading…':UP.state==='ready'?'Install':'Update now'}</button>`:''}<button class="btn" data-act="updcheck"${UP.checking?' disabled':''}>Check for updates</button></div>`:''}
-  <p class="eyebrow" style="margin:10px 0 0">Data</p><div class="btns"><button class="btn danger" data-act="fresh">Erase everything</button><button class="btn" data-act="sample">Load sample data</button></div></div>`);
-  $('#addw').onclick=()=>{const n=S.wallets.length;S.wallets.push({id:'w'+uid(),name:'New wallet',col:(n%8)+1,init:0});save();settings()};
-  $('#setform').onsubmit=e=>{e.preventDefault();
-    document.querySelectorAll('[data-wn]').forEach(i=>{const w=W(i.dataset.wn);w.name=i.value.trim()||w.name});
-    document.querySelectorAll('[data-wi]').forEach(i=>{const w=W(i.dataset.wi);const v=num(i.value);w.init=isNaN(v)?0:v});
-    S.goal={amt:num($('#g_a').value)||0,w:$('#g_w').value};S.cards=$('#s_cards').value.split(',').map(s=>s.trim()).filter(Boolean);if(!S.cards.length)S.cards=['Credit Card'];
-    save();closeSheet();render();toast('Settings saved')};
-  $('#imp').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>restore(r.result);r.onerror=()=>toast('That file could not be opened. Try downloading it from Drive first.');r.readAsText(f)}}
+/* ================= settings ================= */
+// Settings is a menu of pages, like a phone's Settings app. settings() re-renders the page that is open;
+// settings('page') opens one. Each page has a title, its HTML, an optional parent and an optional bind() for its inputs.
+const CHEV='<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
+const setRow=(page,ic,label,val)=>`<button class="setrow" data-act="setpage" data-id="${page}"><span class="sic" aria-hidden="true">${ic}</span><span class="sl">${label}</span><span class="sv">${val||''}</span>${CHEV}</button>`;
+const choice=(k,opts,cur)=>`<div class="chips" role="group">${opts.map(([v,l])=>`<button class="chip${String(cur)===String(v)?' on':''}" data-act="cfgset" data-k="${k}" data-v="${v}" aria-pressed="${String(cur)===String(v)}">${l}</button>`).join('')}</div>`;
+const TABNAME={last:'Last tab used',home:'Overview',wallets:'Wallets',spend:'Spending',debts:'Debts',ai:'Assistant'};
+const SET={
+  main:{title:'Settings',html:()=>{const c=S.cfg,tp=themePref();
+    return`<div class="setgroup">${setRow('look','🎨','Appearance',{auto:'Match phone',light:'Light',dark:'Dark'}[tp]+' · '+{sm:'Small',md:'Default',lg:'Large',xl:'Extra large'}[c.text]+' text')}
+      ${setRow('format','💱','Currency & format',`${esc(c.cur)} · ${c.dec?'2 decimals':'whole numbers'}`)}</div>
+    <div class="setgroup">${setRow('wallets','👛','Wallets',`${S.wallets.filter(w=>!w.hidden).length} wallets`)}
+      ${setRow('goals','🎯','Savings goals',S.goals.length?S.goals.length+' goal'+(S.goals.length>1?'s':''):'None')}
+      ${setRow('cards','💳','Cards & pay later',S.cards.length+' card'+(S.cards.length>1?'s':''))}
+      ${setRow('inctypes','💰','Income types',S.incTypes.length+' types')}
+      ${setRow('recur','🔁','Recurring entries',S.recur.filter(r=>r.on).length?S.recur.filter(r=>r.on).length+' active':'None')}
+      ${setRow('period','📅','Month starts on','the '+ord(MS()))}
+      ${setRow('cats','🏷️','Categories & budgets',`${S.cats.length} categories${S.cats.some(c=>c.budget>0)?' · '+S.cats.filter(c=>c.budget>0).length+' budgets':''}`)}</div>
+    <div class="setgroup">${setRow('shortcuts','⚡','Assistant shortcuts',S.cfg.shortcuts.length?S.cfg.shortcuts.length+' saved':'None')}
+      ${setRow('lock','🔒','App lock',lockCfg()?'On':'Off')}
+      ${setRow('reminders','🔔','Reminders',[S.cfg.bkEvery?'Backup '+({7:'weekly',14:'every 2 weeks',30:'monthly'}[S.cfg.bkEvery]||''):'',S.cfg.nudge.on?'daily at '+S.cfg.nudge.time:''].filter(Boolean).join(' · ')||'Off')}</div>
+    <div class="setgroup">${setRow('backup','☁️','Backup & restore',lastBackup()?'Last '+dLabel(lastBackup()):'No backup yet')}
+      ${UPD?setRow('version','⬇️','App version',UP.cur?esc(UP.cur.versionName)+(UP.next?' · update ready':''):''):''}
+      ${setRow('data','🗂️','Data',prevSnap()?'Undo available':'')}</div>`}},
+  look:{title:'Appearance',parent:'main',html:()=>{const tp=themePref();return`<div class="form">
+    <div class="field"><span class="flabel">Theme</span><div class="chips" role="group">${[['auto','Match phone'],['light','Light'],['dark','Dark']].map(([k,l])=>`<button class="chip${tp===k?' on':''}" data-act="themeset" data-id="${k}" aria-pressed="${tp===k}">${l}</button>`).join('')}</div>
+      <span class="sub">The ${isDark()?'sun':'moon'} button at the top also switches it.</span></div>
+    <div class="field"><span class="flabel">Text size</span>${choice('text',[['sm','Small'],['md','Default'],['lg','Large'],['xl','Extra large']],S.cfg.text)}</div>
+    <div class="field"><span class="flabel">Open Pitaka on</span>${choice('start',Object.entries(TABNAME),S.cfg.start)}</div></div>`}},
+  format:{title:'Currency & format',parent:'main',html:()=>{const c=S.cfg;return`<div class="form">
+    <div class="field"><span class="flabel">Currency symbol</span>${choice('cur',[['₱','₱'],['$','$'],['€','€'],['¥','¥'],['£','£'],['₩','₩'],['฿','฿'],['RM','RM'],['Rp','Rp'],['₹','₹']],c.cur)}
+      <label>Or type your own<input id="cf_cur" maxlength="4" value="${esc(c.cur)}" data-nofocus></label></div>
+    <div class="field"><span class="flabel">Amounts</span>${choice('dec',[[2,`${esc(c.cur)}1,234.50`],[0,`${esc(c.cur)}1,235`]],c.dec)}</div>
+    <div class="field"><span class="flabel">Dates</span>${choice('date',[['md','Nov 7'],['dm','7 Nov']],c.date)}</div>
+    <span class="sub">Only how amounts look changes. Your records keep their exact values.</span></div>`},
+    bind:()=>{const i=$('#cf_cur');i.onchange=()=>{const v=i.value.trim();if(v){S.cfg.cur=v;save();applyCfg();render();settings()}}}},
+  wallets:{title:'Wallets',parent:'main',html:()=>{const bal=balances();return`<div class="form">
+    <span class="sub">Tap a wallet to rename it, set its starting balance, emoji or color, or hide it. Use the arrows to reorder.</span>
+    <div class="setgroup">${S.wallets.map((w,i)=>`<div class="catrow"><button class="catmain" data-act="setpage" data-id="walletedit" data-arg="${w.id}">
+      <span class="ic" style="--ic:var(--c${w.col})" aria-hidden="true">${esc(w.ic||w.name.charAt(0))}</span><span class="sl">${esc(w.name)}${w.hidden?' <span class="muted">· hidden</span>':''}</span>
+      <span class="sv">${peso(bal[w.id]||0)}</span></button>
+      <button class="icon-btn sm" data-act="listmove" data-l="wallets" data-id="${w.id}" data-k="-1" aria-label="Move ${esc(w.name)} up"${i?'':' disabled'}><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>
+      <button class="icon-btn sm" data-act="listmove" data-l="wallets" data-id="${w.id}" data-k="1" aria-label="Move ${esc(w.name)} down"${i<S.wallets.length-1?'':' disabled'}><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>`).join('')}</div>
+    <button class="btn" data-act="setpage" data-id="walletedit" data-arg="new">+ Add wallet</button></div>`}},
+  walletedit:{title:'Wallet',parent:'wallets',html:()=>{const id=STATE.setArg,w=id==='new'?{name:'',ic:'',col:(S.wallets.length%8)+1,init:0,hidden:false}:W(id);
+    const n=id==='new'?0:S.tx.filter(t=>t.w===id||t.to===id).length,goal=S.goals.some(g=>g.w===id);
+    return`<form class="form" id="weform">
+    <label>Name<input id="we_n" value="${esc(w.name)}" placeholder="e.g. Maya, BPI Savings, Coin purse" required maxlength="40"></label>
+    <label>Starting balance (${esc(CUR())})<input id="we_b" inputmode="decimal" value="${w.init||0}"></label><span class="sub" style="margin-top:-8px">What was in this wallet before your first record in Pitaka.</span>
+    <div class="field"><span class="flabel">Emoji</span><div class="chips" id="we_ics">${['💵','🪙','📱','🏦','💳','🐷','👛','💼','🏠','✈️'].map(e=>`<button type="button" class="chip emo${e===w.ic?' on':''}" data-ic="${e}">${e}</button>`).join('')}</div>
+      <label>Or type one<input id="we_i" value="${esc(w.ic||'')}" maxlength="8" placeholder="Leave empty to use the first letter"></label></div>
+    <div class="field"><span class="flabel">Color</span><div class="swatches" id="we_cols">${[1,2,3,4,5,6,7,8].map(k=>`<button type="button" class="sw${k===w.col?' on':''}" data-col="${k}" style="--sw:var(--c${k})" aria-label="Color ${k}" aria-pressed="${k===w.col}"></button>`).join('')}</div></div>
+    <div class="field"><span class="flabel">Show in lists</span><div class="chips" id="we_hid"><button type="button" class="chip${w.hidden?'':' on'}" data-h="0">Show</button><button type="button" class="chip${w.hidden?' on':''}" data-h="1">Hide</button></div>
+      <span class="sub">Hidden wallets keep their history and still count in your totals; they just stop appearing in forms and on the Wallets tab.</span></div>
+    <button class="btn pri" type="submit">${id==='new'?'Add wallet':'Save'}</button></form>
+    ${id!=='new'?`<div class="form" style="margin-top:22px"><span class="flabel">Delete this wallet</span>${n||goal||S.wallets.length<2?`<span class="sub">${S.wallets.length<2?'You need at least one wallet.':n?`${n} record${n>1?'s use':' uses'} this wallet, so it can’t be deleted. Hide it instead.`:'A savings goal uses this wallet. Change the goal first.'}</span>`:`<button class="btn danger" type="button" id="we_del">Delete ${esc(w.name)}</button>`}</div>`:''}`},
+    bind:()=>{const id=STATE.setArg,w=id==='new'?null:W(id);let col=w?w.col:(S.wallets.length%8)+1,hid=w?!!w.hidden:false;
+      $('#we_ics').onclick=e=>{const b=e.target.closest('[data-ic]');if(!b)return;$('#we_i').value=b.dataset.ic;document.querySelectorAll('#we_ics .chip').forEach(x=>x.classList.toggle('on',x===b))};
+      $('#we_cols').onclick=e=>{const b=e.target.closest('[data-col]');if(!b)return;col=+b.dataset.col;document.querySelectorAll('#we_cols .sw').forEach(x=>x.classList.toggle('on',x===b))};
+      $('#we_hid').onclick=e=>{const b=e.target.closest('[data-h]');if(!b)return;hid=b.dataset.h==='1';document.querySelectorAll('#we_hid .chip').forEach(x=>x.classList.toggle('on',x===b))};
+      $('#weform').onsubmit=e=>{e.preventDefault();const name=$('#we_n').value.trim();if(!name)return;const v=num($('#we_b').value);
+        if(hid&&S.wallets.filter(x=>!x.hidden&&x.id!==id).length===0){toast('Keep at least one wallet visible.');return}
+        const x=w||{id:'w'+uid()};Object.assign(x,{name,init:isNaN(v)?0:v,ic:$('#we_i').value.trim(),col,hidden:hid});if(!w)S.wallets.push(x);
+        save();render();toast(w?'Saved':'Wallet added');settings('wallets','back')};
+      const del=$('#we_del');if(del)del.onclick=()=>{snapshot('delete');S.wallets=S.wallets.filter(x=>x.id!==id);save();render();toast(`Deleted ${w.name}`,'undo','Undo');settings('wallets','back')}}},
+  goals:{title:'Savings goals',parent:'main',html:()=>{const bal=balances();return`<div class="form">
+    <span class="sub">Each goal tracks the balance of one wallet. Give it a target date to see how much to save each month.</span>
+    ${S.goals.length?`<div class="setgroup">${S.goals.map(g=>`<button class="setrow" data-act="setpage" data-id="goaledit" data-arg="${g.id}"><span class="sic" aria-hidden="true">🎯</span><span class="sl">${esc(g.name)}</span><span class="sv">${pct(Math.max(0,bal[g.w]||0),g.amt)} of ${pesoS(g.amt)}</span>${CHEV}</button>`).join('')}</div>`:'<span class="sub">No goals yet.</span>'}
+    <button class="btn" data-act="setpage" data-id="goaledit" data-arg="new">+ Add goal</button></div>`}},
+  goaledit:{title:'Savings goal',parent:'goals',html:()=>{const id=STATE.setArg,g=id==='new'?{name:'',amt:'',w:wid('gotyme'),due:''}:S.goals.find(x=>x.id===id)||{name:'',amt:'',w:wid(''),due:''};
+    return`<form class="form" id="geform">
+    <label>Name<input id="ge_n" value="${esc(g.name)}" placeholder="e.g. Emergency fund, New phone, Christmas" required maxlength="40"></label>
+    <div class="row2"><label>Target (${esc(CUR())})<input id="ge_a" inputmode="decimal" value="${g.amt||''}" required></label><label>Saved in<select id="ge_w">${wOpts(g.w)}</select></label></div>
+    <label>Target date (optional)<input type="date" id="ge_d" value="${g.due||''}"></label>
+    <button class="btn pri" type="submit">${id==='new'?'Add goal':'Save'}</button>${id!=='new'?`<button class="btn danger" type="button" id="ge_del">Delete goal</button>`:''}</form>`},
+    bind:()=>{const id=STATE.setArg;
+      $('#geform').onsubmit=e=>{e.preventDefault();const amt=num($('#ge_a').value);if(!(amt>0)){toast('Enter a target above zero.');return}
+        const g=id==='new'?{id:'g'+uid()}:S.goals.find(x=>x.id===id);Object.assign(g,{name:$('#ge_n').value.trim()||'Savings goal',amt,w:$('#ge_w').value,due:$('#ge_d').value});
+        if(id==='new')S.goals.push(g);save();render();toast(id==='new'?'Goal added':'Saved');settings('goals','back')};
+      const del=$('#ge_del');if(del)del.onclick=()=>{snapshot('delete');S.goals=S.goals.filter(x=>x.id!==id);save();render();toast('Goal deleted','undo','Undo');settings('goals','back')}}},
+  cards:{title:'Cards & pay later',parent:'main',html:()=>`<div class="form">
+    <span class="sub">Set each card’s statement day and due day, and new charges get their due date filled in for you.</span>
+    <div class="setgroup">${S.cards.map((c,i)=>{const k=S.cardCfg[c]||{};return`<button class="setrow" data-act="setpage" data-id="cardedit" data-arg="${i}"><span class="sic" aria-hidden="true">💳</span><span class="sl">${esc(c)}</span><span class="sv">${k.due?`${k.close?'Closes '+ord(k.close)+' · ':''}due ${ord(k.due)}`:'Days not set'}</span>${CHEV}</button>`}).join('')}</div>
+    <button class="btn" data-act="setpage" data-id="cardedit" data-arg="new">+ Add card</button></div>`},
+  cardedit:{title:'Card',parent:'cards',html:()=>{const i=STATE.setArg,name=i==='new'?'':S.cards[+i],k=S.cardCfg[name]||{},n=S.cc.filter(c=>c.card===name).length;
+    const days=(sel,none)=>`<option value="">${none}</option>`+Array.from({length:31},(_,j)=>`<option value="${j+1}"${+sel===j+1?' selected':''}>${ord(j+1)}</option>`).join('');
+    return`<form class="form" id="kdform">
+    <label>Name<input id="kd_n" value="${esc(name)}" placeholder="e.g. BPI Mastercard, SPayLater, GGives" required maxlength="40"></label>
+    <div class="row2"><label>Statement day<select id="kd_c">${days(k.close,'Not set')}</select></label><label>Due day<select id="kd_d">${days(k.due,'Not set')}</select></label></div>
+    <span class="sub">Example: statement on the 25th and due on the 15th means a charge on May 20 is due June 15, and a charge on May 27 is due July 15.</span>
+    <button class="btn pri" type="submit">${i==='new'?'Add card':'Save'}</button>
+    ${i!=='new'&&S.cards.length>1?`<button class="btn danger" type="button" id="kd_del">Remove from list</button>${n?`<span class="sub">Its ${n} charge${n>1?'s stay':' stays'} in Debts.</span>`:''}`:''}</form>`},
+    bind:()=>{const i=STATE.setArg,old=i==='new'?null:S.cards[+i];
+      $('#kdform').onsubmit=e=>{e.preventDefault();const name=$('#kd_n').value.trim();if(!name)return;
+        if(name!==old&&S.cards.includes(name)){toast('You already have a card with that name.');return}
+        const cfg={close:+$('#kd_c').value||0,due:+$('#kd_d').value||0};
+        if(old===null)S.cards.push(name);else if(name!==old){S.cards[+i]=name;S.cc.forEach(c=>{if(c.card===old)c.card=name});delete S.cardCfg[old]}
+        S.cardCfg[name]=cfg;save();render();toast(old===null?'Card added':'Saved');settings('cards','back')};
+      const del=$('#kd_del');if(del)del.onclick=()=>{S.cards.splice(+i,1);delete S.cardCfg[old];save();render();toast('Removed');settings('cards','back')}}},
+  period:{title:'Month starts on',parent:'main',html:()=>`<div class="form">
+    <span class="sub">Pick the day your money month begins, such as your payday. Totals, budgets, the forecast and the month-by-month table all follow it.</span>
+    <div class="chips daychips" role="group">${Array.from({length:28},(_,i)=>i+1).map(d=>`<button class="chip${MS()===d?' on':''}" data-act="mstart" data-v="${d}" aria-pressed="${MS()===d}">${d}</button>`).join('')}</div>
+    <span class="sub">${MS()===1?'Now: calendar months (Nov 1 – Nov 30).':`Now: ${pLabel(curP())}.`}</span></div>`},
+  recur:{title:'Recurring entries',parent:'main',html:()=>`<div class="form">
+    <span class="sub">Repeating entries are added on their date, the next time you open Pitaka. To make one, choose <b>Repeat</b> when adding an expense, income, transfer or card charge, or tell the assistant “netflix 549 every month”.</span>
+    ${S.recur.length?`<div class="setgroup">${S.recur.map(r=>`<button class="setrow" data-act="setpage" data-id="recuredit" data-arg="${r.id}"><span class="sic" aria-hidden="true">${r.on?'🔁':'⏸️'}</span><span class="sl">${esc(ruleName(r))}</span><span class="sv">${peso(r.tpl.a)} · ${r.on?'next '+dLabel(r.next):'paused'}</span>${CHEV}</button>`).join('')}</div>`:'<span class="sub">None yet.</span>'}</div>`},
+  recuredit:{title:'Repeating entry',parent:'recur',html:()=>{const r=S.recur.find(x=>x.id===STATE.setArg);if(!r)return'<span class="sub">This entry was removed.</span>';
+    const kind={exp:'Expense',inc:'Income',xfer:'Transfer',cc:'Card charge'}[r.kind],made=S.tx.filter(t=>t.rec===r.id).length+S.cc.filter(c=>c.rec===r.id).length;
+    return`<form class="form" id="reform"><span class="sub">${kind}${r.kind==='exp'?' · '+esc(catName(r.tpl.c)):''}${r.tpl.w?' · '+esc(W(r.tpl.w).name):''}${r.kind==='cc'?' · '+esc(r.tpl.card):''} · ${made} added so far</span>
+    <label>Description<input id="re_s" value="${esc(r.tpl.s||'')}" maxlength="60"></label>
+    <div class="row2"><label>Amount (${esc(CUR())})<input id="re_a" inputmode="decimal" value="${r.tpl.a}"></label><label>Repeats<select id="re_e">${Object.entries(EVERY).map(([k,l])=>`<option value="${k}"${r.every===k?' selected':''}>${l}</option>`).join('')}</select></label></div>
+    <label>Next date<input type="date" id="re_n" value="${r.next}"></label>
+    <div class="btns"><button class="btn pri" type="submit" style="flex:1">Save</button><button class="btn" type="button" id="re_p">${r.on?'Pause':'Resume'}</button></div>
+    <button class="btn danger" type="button" id="re_del">Stop repeating</button><span class="sub">Entries already added stay in your records.</span></form>`},
+    bind:()=>{const r=S.recur.find(x=>x.id===STATE.setArg);if(!r)return;
+      $('#reform').onsubmit=e=>{e.preventDefault();const a=num($('#re_a').value);if(!(a>0)){toast('Enter an amount above zero.');return}
+        Object.assign(r.tpl,{a,s:$('#re_s').value.trim()});r.every=$('#re_e').value;r.next=$('#re_n').value||r.next;r.day=+r.next.slice(8);save();runRecurring();render();toast('Saved');settings('recur','back')};
+      $('#re_p').onclick=()=>{r.on=!r.on;save();toast(r.on?'Resumed':'Paused');settings()};
+      $('#re_del').onclick=()=>{S.recur=S.recur.filter(x=>x.id!==r.id);save();render();toast('Stopped repeating');settings('recur','back')}}},
+  shortcuts:{title:'Assistant shortcuts',parent:'main',html:()=>`<form class="form" id="shform">
+    <span class="sub">One tap sends these to the assistant, which makes a draft you confirm. They appear above the message box and in the + menu. You can also tap <b>⚡ Save as shortcut</b> under any draft.</span>
+    <label>One per line<textarea id="sh_l" rows="7" placeholder="jeep 13 cash
+lunch 120 gcash
+load 99 gcash" data-nofocus>${esc(S.cfg.shortcuts.join('\n'))}</textarea></label>
+    <button class="btn pri" type="submit">Save</button></form>`,
+    bind:()=>{$('#shform').onsubmit=e=>{e.preventDefault();S.cfg.shortcuts=[...new Set($('#sh_l').value.split('\n').map(x=>x.trim()).filter(Boolean))].slice(0,12);save();render();toast('Saved');settings('main','back')}}},
+  lock:{title:'App lock',parent:'main',html:()=>{const c=lockCfg();return c?`<div class="form">
+    <div class="field"><span class="flabel">Lock when I leave Pitaka</span>
+      <div class="chips" role="group">${[[0,'Right away'],[60,'After 1 min'],[300,'After 5 min'],[900,'After 15 min']].map(([v,l])=>`<button class="chip${(c.after||0)===v?' on':''}" data-act="lockset" data-k="after" data-v="${v}">${l}</button>`).join('')}</div></div>
+    ${LK.bioOK?`<div class="field"><span class="flabel">Unlock with fingerprint or face</span><div class="chips" role="group"><button class="chip${c.bio?' on':''}" data-act="lockset" data-k="bio" data-v="1">On</button><button class="chip${c.bio?'':' on'}" data-act="lockset" data-k="bio" data-v="0">Off</button></div>
+      <span class="sub">Your phone’s own screen lock works here too, so you can still get in if you forget the PIN.</span></div>`:''}
+    <div class="btns"><button class="btn" data-act="lockchange">Change PIN</button><button class="btn danger" data-act="lockoff">Turn off</button></div>
+    <span class="sub">The PIN is stored only on this phone and is not part of your backups.${LK.bioOK?'':' If you forget it, the only way back in is to erase Pitaka on this phone and restore a backup, so keep a recent backup.'}</span></div>`
+    :`<div class="form"><span class="sub">Ask for a PIN when Pitaka opens${BIO?', with fingerprint or face unlock if your phone has it':''}. It keeps people who pick up your phone out of your records. It is a privacy screen, not encryption.</span>
+    <div class="btns"><button class="btn pri" data-act="lockon" data-v="4">Turn on with a 4-digit PIN</button><button class="btn" data-act="lockon" data-v="6">Use 6 digits</button></div>
+    <span class="sub">${BIO?'':'If you forget the PIN, the only way back in is to erase Pitaka on this phone and restore a backup. Make a backup first.'}</span></div>`}},
+  reminders:{title:'Reminders',parent:'main',html:()=>`<div class="form">
+    <div class="field"><span class="flabel">Backup reminder</span>${choice('bkEvery',[[0,'Off'],[7,'Weekly'],[14,'Every 2 weeks'],[30,'Monthly']],S.cfg.bkEvery)}
+      <span class="sub">Shows on Overview when your last backup is older than this.</span></div>
+    <div class="field"><span class="flabel">Daily “log your spending” reminder</span>
+      <div class="chips" role="group"><button class="chip${S.cfg.nudge.on?'':' on'}" data-act="nudgeon" data-v="0">Off</button><button class="chip${S.cfg.nudge.on?' on':''}" data-act="nudgeon" data-v="1">On</button></div>
+      <label>Time<input type="time" id="nz_t" value="${S.cfg.nudge.time}" data-nofocus></label>
+      <span class="sub">${LN?'A phone notification at this time on days you have not logged anything.':'On iPhone and in a browser, Pitaka cannot send notifications by itself. Instead, opening Pitaka after this time shows a reminder on Overview if nothing is logged yet today.'}</span></div></div>`,
+    bind:()=>{const t=$('#nz_t');t.onchange=()=>{if(t.value){S.cfg.nudge.time=t.value;save();render()}}}},
+  inctypes:{title:'Income types',parent:'main',html:()=>`<form class="form" id="itform">
+    <label>One type per line<textarea id="it_l" rows="8" data-nofocus>${esc(S.incTypes.join('\n'))}</textarea></label>
+    <span class="sub">These appear in the income form and the assistant understands them (“remittance 5000 gcash”). Renaming a type keeps old records as they are.</span>
+    <button class="btn pri" type="submit">Save</button></form>`,
+    bind:()=>{$('#itform').onsubmit=e=>{e.preventDefault();const l=[...new Set($('#it_l').value.split('\n').map(x=>x.trim()).filter(Boolean))];
+      if(!l.length){toast('Keep at least one income type.');return}S.incTypes=l;save();render();toast('Saved');settings('main','back')}}},
+  cats:{title:'Categories & budgets',parent:'main',html:()=>`<div class="form">
+    <span class="sub">Tap a category to rename it, change its emoji or color, or set a monthly budget. Use the arrows to reorder.</span>
+    <div class="setgroup">${S.cats.map((c,i)=>`<div class="catrow"><button class="catmain" data-act="setpage" data-id="catedit" data-arg="${c.id}">
+      <span class="ic" style="--ic:${catCol(c.id)}" aria-hidden="true">${esc(c.ic||c.name.charAt(0))}</span><span class="sl">${esc(c.name)}</span>
+      <span class="sv">${c.budget>0?peso(c.budget)+' / month':''}</span></button>
+      <button class="icon-btn sm" data-act="catmove" data-id="${c.id}" data-k="-1" aria-label="Move ${esc(c.name)} up"${i?'':' disabled'}><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>
+      <button class="icon-btn sm" data-act="catmove" data-id="${c.id}" data-k="1" aria-label="Move ${esc(c.name)} down"${i<S.cats.length-1?'':' disabled'}><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>`).join('')}</div>
+    <button class="btn" data-act="setpage" data-id="catedit" data-arg="new">+ Add category</button></div>`},
+  catedit:{title:'Category',parent:'cats',html:()=>{const id=STATE.setArg,c=id==='new'?{name:'',ic:'',col:(S.cats.length%8)+1,budget:0}:catOf(id);
+    const n=id==='new'?0:S.tx.filter(t=>t.t==='exp'&&t.c===id).length,others=S.cats.filter(k=>k.id!==id);
+    return`<form class="form" id="ceform">
+    <label>Name<input id="ce_n" value="${esc(c.name)}" placeholder="e.g. Pets, Coffee, Baby" required maxlength="40"></label>
+    <div class="field"><span class="flabel">Emoji</span><div class="chips" id="ce_ics">${['🍚','☕','🚌','⛽','💡','📶','🛍️','💊','📚','🏠','👶','🐶','🎮','🎁','✈️','💼','💄','🧾','📦'].map(e=>`<button type="button" class="chip emo${e===c.ic?' on':''}" data-ic="${e}">${e}</button>`).join('')}</div>
+      <label>Or type one<input id="ce_i" value="${esc(c.ic||'')}" maxlength="8" placeholder="Leave empty to use the first letter"></label></div>
+    <div class="field"><span class="flabel">Color</span><div class="swatches" id="ce_cols">${[1,2,3,4,5,6,7,8].map(k=>`<button type="button" class="sw${k===c.col?' on':''}" data-col="${k}" style="--sw:var(--c${k})" aria-label="Color ${k}" aria-pressed="${k===c.col}"></button>`).join('')}</div></div>
+    <label>Monthly budget (${esc(CUR())})<input id="ce_b" inputmode="decimal" value="${c.budget>0?c.budget:''}" placeholder="No budget"></label>
+    <button class="btn pri" type="submit">${id==='new'?'Add category':'Save'}</button></form>
+    ${id!=='new'&&others.length?`<div class="form" style="margin-top:22px"><span class="flabel">Delete this category</span>
+      ${n?`<label>Move its ${n} expense${n>1?'s':''} to<select id="ce_to">${others.map(k=>`<option value="${k.id}">${esc(k.name)}</option>`).join('')}</select></label>`:''}
+      <button class="btn danger" type="button" id="ce_del">Delete ${esc(c.name)}</button><span class="sub">You can undo this from Settings › Data.</span></div>`:''}`},
+    bind:()=>{const id=STATE.setArg;let col=id==='new'?(S.cats.length%8)+1:catOf(id).col;
+      $('#ce_ics').onclick=e=>{const b=e.target.closest('[data-ic]');if(!b)return;$('#ce_i').value=b.dataset.ic;document.querySelectorAll('#ce_ics .chip').forEach(x=>x.classList.toggle('on',x===b))};
+      $('#ce_cols').onclick=e=>{const b=e.target.closest('[data-col]');if(!b)return;col=+b.dataset.col;document.querySelectorAll('#ce_cols .sw').forEach(x=>{x.classList.toggle('on',x===b);x.setAttribute('aria-pressed',x===b)})};
+      $('#ceform').onsubmit=e=>{e.preventDefault();const name=$('#ce_n').value.trim();if(!name)return;const bud=num($('#ce_b').value);
+        const c=id==='new'?{id:'c'+uid()}:catOf(id);Object.assign(c,{name,ic:$('#ce_i').value.trim(),col,budget:bud>0?bud:0});
+        if(id==='new')S.cats.push(c);save();render();toast(id==='new'?'Category added':'Saved');settings('cats','back')};
+      const del=$('#ce_del');if(del)del.onclick=()=>{const to=$('#ce_to')?$('#ce_to').value:null,c=catOf(id);snapshot('delete');
+        if(to)S.tx.forEach(t=>{if(t.t==='exp'&&t.c===id)t.c=to});S.cats=S.cats.filter(k=>k.id!==id);
+        if(STATE.filter.cat===id)STATE.filter.cat=null;save();render();toast(`Deleted ${c.name}`,'undo','Undo');settings('cats','back')}}},
+  backup:{title:'Backup & restore',parent:'main',html:()=>`<div class="form">
+    ${NATIVE?`<div class="field"><span class="flabel">Saved on this phone</span>
+      <span class="sub">${S.demo?'Sample data is not written to your phone. Tap Start fresh on Overview to begin saving.':`Every change is saved to <span class="mono">Documents/Pitaka/pitaka-data.json</span>, plus one copy per day in <span class="mono">Documents/Pitaka/backups</span> (last ${PHONE.keep} days).`}</span>
+      ${PHONE.saved?`<span class="sub pos">Last saved ${new Date(PHONE.saved).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'})}</span>`:''}${PHONE.err?`<span class="sub neg">Last save failed: ${esc(PHONE.err)}</span>`:''}
+      ${S.demo?'':`<button class="btn" data-act="phonesave">Save to Pitaka folder now</button>`}</div>`:''}
+    <div class="field"><span class="flabel">Backup to Google Drive or iCloud</span>
+      <span class="sub">${NATIVE?'':'Your data is stored only on this phone. '}${lastBackup()?`Last backup: ${dLabel(lastBackup())}, ${lastBackup().slice(0,4)}.`:'No backup saved yet.'}</span>
+      ${INSTALLED||NATIVE?`<button class="btn pri" data-act="drive">Save to Drive</button><span class="sub">Opens your share menu. Choose Drive or Files, then tap Save.</span>`
+        :`<span class="sub">Save to Drive works in the installed app. Here, use Copy backup.</span>`}</div>
+    <div class="field"><span class="flabel">Restore</span>
+      <div class="btns"><label class="btn" style="flex-direction:row;color:var(--fg);font-size:13.5px">Restore from Drive${NATIVE?' or phone':''}<input type="file" id="imp" hidden></label><button class="btn" data-act="copybk">Copy backup</button>${INSTALLED?'<button class="btn" data-act="dlbk">Download backup</button>':''}</div>
+      <span class="sub">Restore opens your file picker. Tap ☰ or Browse, choose Drive${NATIVE?' or Documents › Pitaka':''}, then pick a <span class="mono">pitaka</span> backup file.</span>
+      <label>Or paste a backup here<textarea id="pastebk" rows="3" placeholder='{"v":1,...}' data-nofocus></textarea></label><button class="btn" data-act="pastebk">Restore pasted backup</button></div></div>`,
+    bind:()=>{$('#imp').onclick=awayOnPurpose;$('#imp').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>restore(r.result);r.onerror=()=>toast('That file could not be opened. Try downloading it from Drive first.');r.readAsText(f)}}},
+  version:{title:'App version',parent:'main',html:()=>`<div class="form"><span class="sub">${UP.cur?'Version '+esc(UP.cur.versionName):'Version unknown'}${UP.next?` · <b class="pos">${esc(UP.next.versionName)} available</b>`:''}</span>
+    <div class="btns">${UP.next?`<button class="btn pri" data-act="${UP.state==='ready'?'updinstall':'update'}"${UP.state==='dl'?' disabled':''}>${UP.state==='dl'?'Downloading…':UP.state==='ready'?'Install':'Update now'}</button>`:''}<button class="btn" data-act="updcheck"${UP.checking?' disabled':''}>Check for updates</button></div></div>`},
+  data:{title:'Data',parent:'main',html:()=>`<div class="form">
+    ${prevSnap()?(p=>`<div class="field"><span class="flabel">Undo</span><span class="sub">Your records from just before ${REASON[p.reason]||'the last change'} (${dLabel(p.at.slice(0,10))}) are kept on this phone.</span><div class="btns"><button class="btn" data-act="undoask">Bring them back</button></div></div>`)(prevSnap()):''}
+    <div class="field"><span class="flabel">Start over</span><div class="btns"><button class="btn danger" data-act="fresh">Erase everything</button><button class="btn" data-act="sample">Load sample data</button></div>
+    <span class="sub">Both can be undone here afterwards.</span></div></div>`}};
+function settings(page,anim){page=SET[page]?page:SET[STATE.setPage]?STATE.setPage:'main';const P=SET[page],was=STATE.setPage;STATE.setPage=page;
+  const back=P.parent?`<button class="back" data-act="setpage" data-id="${P.parent}" data-dir="back"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>${SET[P.parent].title}</button>`:'';
+  sheet(`<div class="shead">${back}<h3>${P.title}</h3></div>${P.html()}`,'settings',anim||(was!==page?'fwd':''));if(P.bind)P.bind()}
 function restore(txt){let d;try{d=JSON.parse(String(txt).trim());if(!d||!Array.isArray(d.tx)||!Array.isArray(d.wallets)||!d.wallets.length)throw 0}
   catch(e){toast('That file is not a Pitaka backup. Pick a file named pitaka-backup.');return}
   const n=d.tx.length+(d.cc||[]).length,when=d.savedAt?` saved ${dLabel(d.savedAt.slice(0,10))}, ${d.savedAt.slice(0,4)}`:'';
-  askConfirm(`Replace what is on this phone with this backup (${n} records${when})?`,()=>{delete d.savedAt;S=d;S.cc=S.cc||[];S.cards=S.cards||['Credit Card'];S.goal=S.goal||{amt:0,w:S.wallets[0].id};
-    STATE.chat=[];STATE.drafts=[];save();render();toast('Backup restored')},'Restore')}
+  askConfirm(`Replace what is on this phone with this backup (${n} records${when})? You can undo this.`,()=>{snapshot('restore');const had=!S.demo;delete d.savedAt;S=migrate(d);applyCfg();
+    STATE.chat=[];STATE.drafts=[];save();render();toast('Backup restored',had?'undo':'','Undo')},'Restore')}
 
 /* ================= backup files ================= */
 const INSTALLED=!!document.querySelector('link[rel=manifest]')&&!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
 function lastBackup(){try{return localStorage.getItem('pitaka.lastbk')||''}catch(e){return''}}
-function markBackup(){try{localStorage.setItem('pitaka.lastbk',today())}catch(e){}}
+function markBackup(){try{localStorage.setItem('pitaka.lastbk',today());localStorage.removeItem('pitaka.bksnooze')}catch(e){}render()}
 // Android's share menu only accepts certain file types, so the backup travels as .txt (it is JSON inside).
 const backupFile=ext=>new File([JSON.stringify({...S,savedAt:new Date().toISOString()},null,ext==='json'?1:0)],`pitaka-backup-${today()}.${ext}`,{type:ext==='json'?'application/json':'text/plain'});
 function saveFile(file){try{const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=file.name;document.body.appendChild(a);a.click();a.remove();
@@ -862,9 +1324,10 @@ function writePhone(now){if(!FS||S.demo)return;clearTimeout(phoneTimer);phoneTim
 async function bootPhone(){
   try{const p=await FS.checkPermissions();if(p.publicStorage!=='granted')await FS.requestPermissions()}catch(e){}
   if(!FRESH){writePhone();return}
+  try{if(localStorage.getItem('pitaka.noauto')){localStorage.removeItem('pitaka.noauto');return}}catch(e){}
   // Nothing saved in the app yet (new install or cleared data): pick up the copy in Documents/Pitaka if there is one.
   try{const r=await FS.readFile({path:PHONE.file,directory:'DOCUMENTS',encoding:'utf8'});const d=JSON.parse(r.data);
-    if(Array.isArray(d.tx)&&Array.isArray(d.wallets)){delete d.savedAt;S=d;S.cc=S.cc||[];S.cards=S.cards||['Credit Card'];FRESH=false;save();render();toast('Loaded your records from Documents/Pitaka')}}
+    if(Array.isArray(d.tx)&&Array.isArray(d.wallets)){delete d.savedAt;S=migrate(d);applyCfg();FRESH=false;DAMAGED='';save();render();toast('Loaded your records from Documents/Pitaka')}}
   catch(e){/* no file yet, or the file belongs to an earlier install: use Restore in Settings */}}
 /* ================= app updates (Android app only) ================= */
 // Each push to main publishes a GitHub Release with pitaka.apk and version.json. The app compares version numbers,
@@ -880,14 +1343,14 @@ async function checkUpdate(manual){if(!UPD||UP.checking)return;UP.checking=true;
     UP.next=+v.versionCode>+UP.cur.versionCode?v:null;
     if(manual)toast(UP.next?`Version ${v.versionName} is available`:'You have the latest version')}
   catch(e){if(manual)toast('Could not check for updates. Check your internet connection.')}
-  finally{UP.checking=false;render();if(manual&&!$('#sheet').hidden)settings()}}
+  finally{UP.checking=false;render();if(manual)refreshSettings()}}
 async function startUpdate(){const v=UP.next;if(!v||UP.state==='dl')return;
   writePhone();UP.state='dl';UP.pct=-1;render();
   const h=await UPD.addListener('progress',e=>{UP.pct=e.percent;const el=$('#updpct');if(el)el.textContent=e.percent>=0?e.percent+'%':''});
   try{await UPD.download({url:v.apk});UP.state='ready';render();await installUpdate()}
   catch(e){UP.state='';render();toast('Download failed. Try again on Wi-Fi.')}
   finally{h.remove()}}
-async function installUpdate(){try{await UPD.install()}
+async function installUpdate(){awayOnPurpose();try{await UPD.install()}
   catch(e){toast(e&&e.code==='PERMISSION'?'Turn on “Allow from this source”, then come back and tap Install.':'Could not open the installer.')}}
 function updateNotice(){const v=UP.next;if(!v||UP.later)return'';
   const btn=UP.state==='dl'?`<button class="btn sm pri" disabled>Downloading <span id="updpct">${UP.pct>=0?UP.pct+'%':''}</span></button>`
@@ -907,47 +1370,103 @@ function installNotice(){let hide=false;try{hide=localStorage.getItem('pitaka.in
     :`For the full app, <a href="${APK_URL}">download Pitaka for Android</a>. Or use your browser menu, then <b>Add to Home screen</b>.`;
   return`<div class="notice info"><b>${IOS?'Add Pitaka to your Home Screen':'Install Pitaka'}</b><span>${body}</span><div class="acts"><button class="btn sm" data-act="installhide">Got it</button></div></div>`}
 
-async function nativeShare(){const name=`pitaka-backup-${today()}.json`;
+async function nativeShare(){awayOnPurpose();const name=`pitaka-backup-${today()}.json`;
   try{await FS.writeFile({path:name,data:phoneData(),directory:'CACHE',encoding:'utf8'});const{uri}=await FS.getUri({path:name,directory:'CACHE'});
-    await SHARE.share({title:'Pitaka backup',files:[uri],dialogTitle:'Save backup to Drive'});markBackup();if(!$('#sheet').hidden)settings();toast('Backup shared')}
+    await SHARE.share({title:'Pitaka backup',files:[uri],dialogTitle:'Save backup to Drive'});markBackup();refreshSettings();toast('Backup shared')}
   catch(e){if(!/cancel/i.test(String(e&&e.message||e)))toast('Could not open the share menu.')}}
 
-function saveToDrive(){if(NATIVE)return nativeShare();const file=backupFile('txt');
+function saveToDrive(){if(NATIVE)return nativeShare();awayOnPurpose();const file=backupFile('txt');
   if(navigator.canShare&&navigator.canShare({files:[file]})){
-    navigator.share({files:[file],title:'Pitaka backup'}).then(()=>{markBackup();if(!$('#sheet').hidden)settings();toast('Backup shared')},
+    navigator.share({files:[file],title:'Pitaka backup'}).then(()=>{markBackup();refreshSettings();toast('Backup shared')},
       e=>{if(e&&e.name==='AbortError')return;if(saveFile(file))toast('Saved to Downloads. Upload it in the Drive app.')})}
   else if(saveFile(file))toast('Sharing is not available here. Saved to Downloads; upload it in the Drive app.')}
+
+/* ================= app lock ================= */
+/* A PIN (and on Android, fingerprint / face / the phone's screen lock) shown over the app when it opens and when it
+   comes back after the chosen delay. The PIN is kept only on this phone, as a PBKDF2 hash with a random salt; it is
+   never in backups, so restoring a backup elsewhere does not carry a PIN you might not know there. It is a privacy
+   screen, not encryption: the records themselves are stored as before. */
+const LOCK_KEY='pitaka.lock';
+const lockCfg=()=>{try{const c=JSON.parse(localStorage.getItem(LOCK_KEY)||'null');return c&&c.hash?c:null}catch(e){return null}};
+const BIO=(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform()&&Capacitor.Plugins.Biometric)||null;
+const LK={on:false,mode:'',entry:'',first:'',len:4,fails:0,until:0,hiddenAt:0,skip:false,msg:'',bioOK:false,done:null,forgot:0};
+async function pinHash(pin,salt){const e=new TextEncoder(),k=await crypto.subtle.importKey('raw',e.encode(pin),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:e.encode(salt),iterations:150000,hash:'SHA-256'},k,256);
+  return[...new Uint8Array(bits)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+// mode: unlock (app start/return), check (confirm current PIN before a change), set1/set2 (choose a new PIN)
+function showLock(mode,done,len){const c=lockCfg();LK.on=true;LK.mode=mode;LK.entry='';LK.first=mode==='set2'?LK.first:'';LK.done=done||null;LK.forgot=0;
+  LK.len=len||(c?c.len:4);LK.msg='';$('#lock').hidden=false;document.documentElement.classList.add('locked');drawLock();
+  if(mode==='unlock'&&c&&c.bio&&LK.bioOK)setTimeout(bioUnlock,250)}
+function hideLock(){LK.on=false;$('#lock').hidden=true;document.documentElement.classList.remove('locked')}
+function drawLock(){const c=lockCfg(),wait=Math.max(0,Math.ceil((LK.until-Date.now())/1000));
+  const title={unlock:'Enter your PIN',check:'Enter your current PIN',set1:`Choose a ${LK.len}-digit PIN`,set2:'Enter it again'}[LK.mode];
+  const keys=['1','2','3','4','5','6','7','8','9',LK.mode==='unlock'&&c&&c.bio&&LK.bioOK?'bio':'','0','del'];
+  $('#lock').innerHTML=`<div class="lockbox"><div class="lockic" aria-hidden="true">₱</div><h2>${title}</h2>
+    <div class="dots${LK.msg==='wrong'?' shake':''}" aria-label="${LK.entry.length} of ${LK.len} digits">${Array.from({length:LK.len},(_,i)=>`<i class="${i<LK.entry.length?'on':''}"></i>`).join('')}</div>
+    <p class="lockmsg">${wait?`Too many tries. Try again in ${wait} s.`:LK.msg==='wrong'?'Wrong PIN':LK.msg==='mismatch'?'The PINs did not match. Try again.':'&nbsp;'}</p>
+    <div class="keypad">${keys.map(k=>k===''?'<span></span>':k==='del'?`<button class="key fn" data-act="lockkey" data-k="del" aria-label="Delete">⌫</button>`:k==='bio'?`<button class="key fn" data-act="lockbio" aria-label="Use fingerprint or face">◉</button>`:`<button class="key" data-act="lockkey" data-k="${k}"${wait?' disabled':''}>${k}</button>`).join('')}</div>
+    ${LK.mode==='unlock'?`<button class="linkbtn" data-act="lockforgot">Forgot PIN?</button>`:`<button class="linkbtn" data-act="lockcancel">Cancel</button>`}
+    ${LK.forgot?`<div class="forgot"><p>${LK.bioOK&&c&&c.bio?'Use the ◉ button to unlock with your fingerprint, face or phone screen lock.':'Without the PIN, the only way in is to erase Pitaka’s records on this phone and restore them from a backup.'}</p>
+      ${LK.forgot===1?`<button class="btn danger" data-act="lockerase">Erase and start over</button>`:`<button class="btn danger" data-act="lockerase">Tap again to erase everything on this phone</button>`}</div>`:''}</div>`}
+async function lockKey(k){if(Date.now()<LK.until)return;if(k==='del'){LK.entry=LK.entry.slice(0,-1);LK.msg='';drawLock();return}
+  if(LK.entry.length>=LK.len)return;LK.entry+=k;LK.msg='';drawLock();if(LK.entry.length<LK.len)return;
+  const pin=LK.entry,c=lockCfg();
+  if(LK.mode==='set1'){LK.first=pin;showLock('set2',LK.done,LK.len);return}
+  if(LK.mode==='set2'){if(pin!==LK.first){LK.first='';LK.mode='set1';LK.entry='';LK.msg='mismatch';drawLock();return}
+    const salt=[...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,'0')).join('');
+    const next={...(c||{after:0,bio:LK.bioOK}),salt,len:LK.len,hash:await pinHash(pin,salt)};
+    try{localStorage.setItem(LOCK_KEY,JSON.stringify(next))}catch(e){toast('Could not save the PIN on this phone.');hideLock();return}
+    hideLock();const d=LK.done;LK.done=null;if(d)d(true);return}
+  if(!c){hideLock();return}
+  if(await pinHash(pin,c.salt)===c.hash){LK.fails=0;hideLock();const d=LK.done;LK.done=null;if(d)d(true)}
+  else{LK.fails++;LK.entry='';LK.msg='wrong';if(LK.fails>=5){LK.until=Date.now()+30000;LK.fails=0;const t=setInterval(()=>{if(!LK.on||Date.now()>=LK.until){clearInterval(t);LK.msg=''}if(LK.on)drawLock()},1000)}drawLock()}}
+async function bioUnlock(){if(!BIO||!LK.on)return;try{const r=await BIO.verify({reason:'Unlock Pitaka'});if(r&&r.verified){LK.fails=0;hideLock();const d=LK.done;LK.done=null;if(d)d(true)}}catch(e){}}
+function lockNow(){if(lockCfg()&&!LK.on)showLock('unlock')}
+document.addEventListener('visibilitychange',()=>{const c=lockCfg();if(!c)return;
+  if(document.visibilityState==='hidden'){LK.hiddenAt=Date.now();if(!c.after&&!LK.skip)lockNow()} // locked before the app-switcher snapshot
+  else{if(LK.skip){LK.skip=false;return}if(Date.now()-LK.hiddenAt>=(c.after||0)*1000)lockNow()}});
+// Leaving for a moment on purpose (share menu, file picker, installer) does not lock.
+const awayOnPurpose=()=>{LK.skip=true;setTimeout(()=>LK.skip=false,120000)};
 
 /* ================= assistant chat ================= */
 function draftCard(i){const x=STATE.drafts[i];if(!x)return'';if(x.done)return`<div class="draft"><span class="sub">${x.done}</span></div>`;
   const L={exp:'Expense',inc:'Income',xfer:'Transfer',lend:'Loan',repay:'Repayment',cc:'Card charge'}[x.t];
+  const rp=x.every?` · repeats ${x.every==='week'?'weekly':'monthly'}`:'';
   const det=x.t==='exp'?`${catName(x.c)} · ${W(x.w).name}`:x.t==='xfer'?`${W(x.w).name} → ${W(x.to).name}`:x.t==='lend'?`to ${x.p} · from ${W(x.w).name}`:x.t==='repay'?`from ${x.p} · into ${W(x.w).name}`:x.t==='cc'?x.card:W(x.w).name;
-  const opts=x.t==='exp'?[...new Set([x.c,...(x.conf?x.conf.alts.filter(a=>a.p>=.08).map(a=>a.c):[]),'food','transpo','shop'])].slice(0,4):[];
+  const opts=x.t==='exp'?[...new Set([x.c,...(x.conf?x.conf.alts.filter(a=>a.p>=.08).map(a=>a.c):[]),...S.cats.map(c=>c.id)])].filter(id=>S.cats.some(c=>c.id===id)).slice(0,4):[];
   const sure=x.conf&&!x.picked?` · ✦ ${Math.round(x.conf.p*100)}% sure of category`:'';
-  return`<div class="draft"><div class="split"><b>${L}${x.s&&x.t!=='repay'?': '+esc(x.s):''}</b><b class="mono">${peso(x.a)}</b></div><span class="sub">${esc(det)} · ${dLabel(x.d)}${sure}</span>${x.warn?`<span class="sub warn">${esc(x.warn)}</span>`:''}
-  ${opts.length?`<div class="chips" role="group" aria-label="Category">${opts.map(c=>`<button class="chip${c===x.c?' on':''}" data-act="dcat" data-id="${i}" data-c="${c}" aria-pressed="${c===x.c}"><i class="dot" style="background:${catCol(c)}"></i>${catName(c)}</button>`).join('')}</div>`:''}
-  <div class="btns"><button class="btn sm pri" data-act="dsave" data-id="${i}">Add it</button><button class="btn sm" data-act="dedit" data-id="${i}">Edit</button><button class="btn sm" data-act="dskip" data-id="${i}">Discard</button></div></div>`}
-function renderChips(){$('#aichips').innerHTML=['Summary','Where did my money go?','Who owes me?','Forecast','Tips','Can I afford 2000?','Compare vs last month','Biggest expenses'].map(q=>`<button class="chip" data-act="ask" data-q="${q}">${q}</button>`).join('')}
-function ask(text){text=text.trim();if(!text)return;STATE.chat.push({me:true,h:text});
+  return`<div class="draft"><div class="split"><b>${L}${x.s&&x.t!=='repay'?': '+esc(x.s):''}</b><b class="mono">${peso(x.a)}</b></div><span class="sub">${esc(det)} · ${dLabel(x.d)}${rp}${x.tags?' · '+esc(tagStr(x.tags)):''}${sure}</span>${x.warn?`<span class="sub warn">${esc(x.warn)}</span>`:''}
+  ${opts.length?`<div class="chips" role="group" aria-label="Category">${opts.map(c=>`<button class="chip${c===x.c?' on':''}" data-act="dcat" data-id="${i}" data-c="${c}" aria-pressed="${c===x.c}"><i class="dot" style="background:${catCol(c)}"></i>${esc(catName(c))}</button>`).join('')}</div>`:''}
+  <div class="btns"><button class="btn sm pri" data-act="dsave" data-id="${i}">Add it</button><button class="btn sm" data-act="dedit" data-id="${i}">Edit</button><button class="btn sm" data-act="dskip" data-id="${i}">Discard</button>${x.raw&&!S.cfg.shortcuts.includes(x.raw)?`<button class="btn sm" data-act="dshort" data-id="${i}">⚡ Save as shortcut</button>`:''}</div></div>`}
+function renderChips(){$('#aichips').innerHTML=S.cfg.shortcuts.map(q=>`<button class="chip sc" data-act="ask" data-q="${esc(q)}">⚡ ${esc(q)}</button>`).join('')+['Summary','Where did my money go?','Who owes me?','Forecast','Tips','Can I afford 2000?','Compare vs last month','Biggest expenses'].map(q=>`<button class="chip" data-act="ask" data-q="${q}">${q}</button>`).join('')}
+function ask(text){text=text.trim();if(!text)return;STATE.chat.push({me:true,h:text,fresh:1});
   const isQ=RX.q.test(text.toLowerCase())&&!/^(lunch|dinner|breakfast)/i.test(text);const cmd=isQ?null:parseCommand(text);
   if(cmd){STATE.drafts.push(cmd);const i=STATE.drafts.length-1;
-    STATE.chat.push({me:false,h:cmd.t!=='exp'?'Here is what I understood:':!cmd.conf?'I could not tell the category from that. Pick one below:':cmd.conf.p<.6?`My best guess is <b>${catName(cmd.c)}</b> (${esc(cmd.conf.why)}), but I am not sure. Pick another below if it is wrong.`:`Got it. I filed this under <b>${catName(cmd.c)}</b> (${esc(cmd.conf.why)}).`,draft:i})}
-  else STATE.chat.push({me:false,h:answer(text)});
+    STATE.chat.push({me:false,fresh:1,h:cmd.t!=='exp'?'Here is what I understood:':!cmd.conf?'I could not tell the category from that. Pick one below:':cmd.conf.p<.6?`My best guess is <b>${esc(catName(cmd.c))}</b> (${esc(cmd.conf.why)}), but I am not sure. Pick another below if it is wrong.`:`Got it. I filed this under <b>${esc(catName(cmd.c))}</b> (${esc(cmd.conf.why)}).`,draft:i})}
+  else STATE.chat.push({me:false,fresh:1,h:answer(text)});
   if(STATE.chat.length>60)STATE.chat.splice(1,STATE.chat.length-60);
   if(STATE.tab!=='ai'){STATE.tab='ai'}render()}
 function commitDraft(i){const x=STATE.drafts[i];if(!x||x.done)return;
-  if(x.t==='cc')S.cc.push({id:uid(),d:x.d,s:x.s,a:x.a,card:x.card,who:x.who||'Me',due:x.due||'',paid:false});
+  if(x.t==='cc')S.cc.push(own({id:uid(),d:x.d,s:x.s,a:x.a,card:x.card,who:x.who||'Me',due:x.due||dueFor(x.card,x.d),paid:false,...(x.tags?{tags:x.tags}:{})}));
   else{if(x.t==='repay'&&!x.ref){toast('Open the loan in Debts to log this repayment.');return}
-    const t={id:uid(),t:x.t,a:x.a,d:x.d,w:x.w};['s','c','k','to','p','ref'].forEach(k=>{if(x[k]!=null&&x[k]!=='')t[k]=x[k]});S.tx.push(t)}
-  x.done='Added '+peso(x.a)+'. ✓';save();render()}
+    const t=own({id:uid(),t:x.t,a:x.a,d:x.d,w:x.w});['s','c','k','to','p','ref','tags'].forEach(k=>{if(x[k]!=null&&x[k]!=='')t[k]=x[k]});S.tx.push(t);if(x.every&&!S.demo)addRule(x.t,t,x.every)}
+  if(x.t==='cc'&&x.every&&!S.demo)addRule('cc',S.cc[S.cc.length-1],x.every);
+  x.done='Added '+peso(x.a)+(x.every&&!S.demo?`, repeating ${x.every==='week'?'weekly':'monthly'}`:'')+'. ✓';save();render();if(x.every)runRecurring()}
 
 /* ================= events ================= */
 const ACT={
-  tab:d=>{closeSheet();STATE.tab=d.id;try{localStorage.setItem('pitaka.tab',d.id)}catch(e){}render();window.scrollTo(0,STATE.tab==='ai'?document.body.scrollHeight:0)},
-  month:d=>{STATE.m=addM(STATE.m,+d.k);STATE.filter.limit=40;render()},
-  setm:d=>{STATE.m=d.id;STATE.filter.limit=40;render();window.scrollTo(0,0)},
+  tab:d=>{closeSheet();if(d.id===STATE.tab){window.scrollTo({top:0,behavior:REDUCED?'auto':'smooth'});return}
+    STATE.scroll[STATE.tab]=window.scrollY;transition(()=>{STATE.tab=d.id;try{localStorage.setItem('pitaka.tab',d.id)}catch(e){}render();
+    window.scrollTo(0,STATE.tab==='ai'?document.body.scrollHeight:(STATE.scroll[STATE.tab]||0))})},
+  month:d=>transition(()=>{STATE.m=addM(STATE.m,+d.k);STATE.filter.limit=40;render()},+d.k>0?'next':'prev'),
+  setm:d=>transition(()=>{const dir=d.id>STATE.m?'next':'prev';STATE.m=d.id;STATE.filter.limit=40;render();window.scrollTo(0,0)},d.id>STATE.m?'next':'prev'),
   insall:()=>{STATE.insAll=!STATE.insAll;render()},
-  add:()=>addMenu(),close:()=>closeSheet(),settings:()=>settings(),
+  add:()=>addMenu(),close:()=>closeSheet(),settings:()=>{STATE.setPage='main';settings('main')},
+  setpage:d=>{if(d.arg)STATE.setArg=d.arg;settings(d.id,d.dir||'fwd')},
+  listmove:d=>{const L=S[d.l],i=L.findIndex(x=>x.id===d.id),j=i+(+d.k);if(i<0||j<0||j>=L.length)return;[L[i],L[j]]=[L[j],L[i]];save();render();settings()},
+  catmove:d=>{const i=S.cats.findIndex(c=>c.id===d.id),j=i+(+d.k);if(i<0||j<0||j>=S.cats.length)return;[S.cats[i],S.cats[j]]=[S.cats[j],S.cats[i]];save();render();settings()},
+  mstart:d=>{S.cfg.mstart=+d.v;save();STATE.m=curP();render();settings()},
+  cfgset:d=>{const k=d.k;let v=d.v;if(k==='dec'||k==='mstart'||k==='bkEvery')v=+v;S.cfg[k]=v;save();applyCfg();render();settings()},
   form:d=>openForm(d.t),
   edit:d=>{const t=S.tx.find(x=>x.id===d.id);if(t){if(t.t==='ccpay')delRecord('ccpay',t);else openForm(t.t,t)}},
   editcc:d=>{const c=S.cc.find(x=>x.id===d.id);if(c)openForm('cc',c)},
@@ -957,13 +1476,35 @@ const ACT={
   cat:d=>{STATE.filter.cat=STATE.filter.cat===d.id?null:d.id;if(STATE.filter.cat)STATE.filter.type='all';render()},
   type:d=>{STATE.filter.type=d.id;if(d.id!=='all'&&d.id!=='exp')STATE.filter.cat=null;render()},
   more:()=>{STATE.filter.limit+=40;render()},
+  tagf:d=>{STATE.filter.tag=STATE.filter.tag===d.id?null:d.id;render()},
   ask:d=>ask(d.q),
   dsave:d=>commitDraft(+d.id),
   dcat:d=>{const x=STATE.drafts[+d.id];if(x&&!x.done){x.c=d.c;x.picked=true;render()}},
+  dshort:d=>{const x=STATE.drafts[+d.id];if(!x||!x.raw)return;S.cfg.shortcuts=[...S.cfg.shortcuts.filter(q=>q!==x.raw),x.raw].slice(-12);save();render();toast('Shortcut saved. It appears above the message box and in the + menu.')},
   dskip:d=>{const x=STATE.drafts[+d.id];if(x){x.done='Discarded.';render()}},
+  recurview:()=>{STATE.setArg='';settings('recur')},
   dedit:d=>{const x=STATE.drafts[+d.id];if(!x||x.done)return;if(x.t==='repay'&&x.ref)openForm('repay',{ref:x.ref,p:x.p,w:x.w,a:x.a,d:x.d});else openForm(x.t==='repay'?'lend':x.t,{...x,id:undefined});x.done='Opened in the form.'},
-  fresh:()=>askConfirm('Erase all records and start fresh?',()=>{const keep=S.demo?null:S.wallets;S=blank();if(keep)S.wallets=keep.map(w=>({...w,init:0}));STATE.chat=[];STATE.drafts=[];save();render();toast('Starting fresh. Set your wallet balances in Settings.')},'Erase'),
-  sample:()=>askConfirm('Replace your data with sample data?',()=>{S=demo();STATE.chat=[];save();render()},'Load sample'),
+  fresh:()=>askConfirm(S.demo?'Remove the sample data and start fresh?':'Erase all records and start fresh? You can undo this from Settings.',()=>{const had=!S.demo;snapshot('erase');const keep=S.demo?null:S.wallets;S=blank();if(keep)S.wallets=keep.map(w=>({...w,init:0}));STATE.chat=[];STATE.drafts=[];save();render();had?toast('Erased. Set your wallet balances in Settings.','undo','Undo'):toast('Starting fresh. Set your wallet balances in Settings.')},S.demo?'Start fresh':'Erase'),
+  sample:()=>askConfirm(S.demo?'Reload the sample data?':'Replace your records with sample data? You can undo this from Settings.',()=>{const had=!S.demo;snapshot('sample');S=demo();STATE.chat=[];save();render();if(had)toast('Sample data loaded','undo','Undo')},'Load sample'),
+  undo:()=>undoLast(),
+  theme:()=>applyTheme(isDark()?'light':'dark'),
+  themeset:d=>{applyTheme(d.id);refreshSettings()},
+  undoask:()=>{const p=prevSnap();if(p)askConfirm(`Bring back your records from just before ${REASON[p.reason]||'the last change'} (${dLabel(p.at.slice(0,10))}, ${new Date(p.at).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'})})? Changes made since then will be replaced.`,undoLast,'Bring back')},
+  keepmine:()=>keepMine(),
+  lockkey:d=>lockKey(d.k),
+  lockbio:()=>bioUnlock(),
+  lockcancel:()=>{hideLock();const d=LK.done;LK.done=null;if(d)d(false)},
+  lockforgot:()=>{LK.forgot=LK.forgot||1;drawLock()},
+  lockerase:()=>{if(LK.forgot<2){LK.forgot=2;drawLock();return}
+    try{[KEY,PREV,LOCK_KEY,'pitaka.lastbk','pitaka.bksnooze'].forEach(k=>localStorage.removeItem(k));localStorage.setItem('pitaka.noauto','1')}catch(e){}location.reload()},
+  lockon:d=>{const len=+d.v||4;showLock('set1',ok=>{if(ok){toast('App lock is on');refreshSettings()}},len)},
+  lockoff:()=>showLock('check',ok=>{if(!ok)return;try{localStorage.removeItem(LOCK_KEY)}catch(e){}toast('App lock is off');refreshSettings()}),
+  lockchange:()=>showLock('check',ok=>{if(!ok)return;const c=lockCfg();showLock('set1',ok2=>{if(ok2){toast('PIN changed');refreshSettings()}},c?c.len:4)}),
+  lockset:d=>{const c=lockCfg();if(!c)return;if(d.k==='after')c.after=+d.v;if(d.k==='bio')c.bio=d.v==='1';try{localStorage.setItem(LOCK_KEY,JSON.stringify(c))}catch(e){}settings()},
+  nudgeok:()=>{try{localStorage.setItem('pitaka.nudgeok',today())}catch(e){}render()},
+  nudgeon:async d=>{const on=d.v==='1';if(on&&LN){try{const p=await LN.requestPermissions();if(p.display!=='granted'){toast('Allow notifications for Pitaka in your phone settings to get the reminder.');return}}catch(e){}}
+    S.cfg.nudge.on=on;save();render();settings();if(on)toast(LN?`You’ll get a reminder at ${S.cfg.nudge.time} on days with nothing logged.`:'Pitaka will remind you when you open it after that time.')},
+  bklater:()=>{try{localStorage.setItem('pitaka.bksnooze',addDays(today(),3))}catch(e){}render()},
   copybk:()=>{const txt=JSON.stringify(S);const done=()=>toast('Backup copied');
     if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done,()=>fallbackCopy(txt));else fallbackCopy(txt)},
   dlbk:()=>{if(saveFile(backupFile('json')))toast('Backup downloaded')},
@@ -977,10 +1518,16 @@ function fallbackCopy(txt){const ta=$('#pastebk');if(ta){ta.value=txt;ta.select(
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const f=ACT[b.dataset.act];if(f){e.preventDefault();f(b.dataset,b)}});
 let st_;document.addEventListener('input',e=>{if(e.target.id==='search'){clearTimeout(st_);st_=setTimeout(()=>{STATE.filter.q=e.target.value;STATE.filter.limit=40;const pos=e.target.selectionStart;render();const s=$('#search');s.focus();try{s.setSelectionRange(pos,pos)}catch(_){}},180)}});
 $('#aiform').onsubmit=e=>{e.preventDefault();const i=$('#aiinput');const v=i.value;i.value='';ask(v)};
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#sheet').hidden)closeSheet()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheetOpen())closeSheet()});
 
-load();render();
-if(NATIVE)bootPhone();
+if(lockCfg()){document.documentElement.classList.add('locked')}
+load();applyCfg();STATE.m=curP();if(S.cfg.start!=='last')STATE.tab=S.cfg.start;applyTheme(themePref());render();
+if(lockCfg())showLock('unlock');
+if(BIO)BIO.available().then(r=>{LK.bioOK=!!(r&&r.available);if(LK.on&&LK.mode==='unlock')drawLock();const c=lockCfg();if(LK.bioOK&&LK.on&&c&&c.bio)bioUnlock()}).catch(()=>{});
+if(NATIVE)bootPhone();else try{localStorage.removeItem('pitaka.noauto')}catch(e){}
+runRecurring();scheduleNudges();
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(curP()!==STATE.m&&STATE.lastSeen&&STATE.lastSeen!==today())STATE.m=curP();runRecurring();STATE.lastSeen=today()}});
+STATE.lastSeen=today();
 if(UPD)setTimeout(()=>checkUpdate(false),3000);
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 if(!NATIVE&&'serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js').catch(()=>{});

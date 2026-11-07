@@ -76,9 +76,11 @@ jobs:
       # Never publish an APK that is not signed with the key above: it could not update anyone's installed app.
       - name: Check the APK's signature
         run: |
-          BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
-          GOT=$("$BT/apksigner" verify --print-certs pitaka.apk | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+          GOT=$(python3 -I .github/scripts/apk-cert.py pitaka.apk)
           echo "APK signed with: $GOT"
+          # apksigner's own report, for the log
+          BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
+          "$BT/apksigner" verify --verbose --print-certs pitaka.apk 2>&1 | grep -Ei 'verified using|SHA-256|DOES NOT|error' || true
           if [ "$GOT" != "$KEY_SHA256" ]; then
             echo "::error::The APK is signed with a different key than DEBUG_KEYSTORE_B64 ($KEY_SHA256). Not publishing."
             exit 1

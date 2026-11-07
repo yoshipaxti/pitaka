@@ -282,6 +282,25 @@ main#view{view-transition-name:view}
 .field{display:flex;flex-direction:column;gap:8px}
 .daychips .chip{min-width:44px;justify-content:center}
 .tagtxt{color:var(--accent)}
+/* ---- lock screen ---- */
+.lock{position:fixed;inset:0;z-index:50;background:var(--bg);display:grid;place-items:center;padding:calc(24px + env(safe-area-inset-top,0px)) 24px calc(24px + env(safe-area-inset-bottom,0px));animation:fade .2s ease-out}
+:root.locked #view,:root.locked .tabs,:root.locked .fab,:root.locked .composer,:root.locked .top{visibility:hidden}
+.lockbox{width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.lockbox h2{font:600 20px var(--font-display);margin:0}
+.lockic{width:56px;height:56px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(180deg,#3d9bff,#0066cc);color:#fff;font:700 26px var(--font-display)}
+.dots{display:flex;gap:16px;margin:6px 0 2px}
+.dots i{width:13px;height:13px;border-radius:50%;border:1.5px solid var(--fg);transition:background-color .12s}
+.dots i.on{background:var(--fg)}
+.dots.shake{animation:shake .38s}
+@keyframes shake{20%,60%{transform:translateX(-9px)}40%,80%{transform:translateX(9px)}}
+.lockmsg{min-height:20px;margin:0;color:var(--neg);font-size:14px}
+.keypad{display:grid;grid-template-columns:repeat(3,76px);gap:14px 24px;justify-content:center}
+.key{width:76px;height:76px;border-radius:50%;border:0;background:var(--surface-2);font:400 30px var(--font-display);color:var(--fg);transition:background-color .1s,transform .1s}
+.key:active{background:color-mix(in srgb,var(--fg) 18%,var(--surface-2));transform:scale(.94)}
+.key.fn{background:none;font-size:24px;color:var(--accent)}
+.key:disabled{opacity:.35}
+.forgot{background:var(--surface);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;font-size:14px}
+.forgot p{margin:0}
 .tagchips{margin-top:-2px}
 .chip.tag{background:color-mix(in srgb,var(--accent) 10%,var(--surface-2));color:var(--accent)}
 .chip.tag.on{background:var(--accent-fill);color:var(--accent-fg)}
@@ -341,6 +360,7 @@ main#view{view-transition-name:view}
 
 <div class="sheet-wrap" id="sheet" hidden><div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div><div id="sheetBody"></div></div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="lock" id="lock" hidden role="dialog" aria-modal="true" aria-label="Pitaka is locked"></div>
 
 <script>
 "use strict";
@@ -1087,6 +1107,7 @@ const SET={
       ${setRow('period','📅','Month starts on','the '+ord(MS()))}
       ${setRow('cats','🏷️','Categories & budgets',`${S.cats.length} categories${S.cats.some(c=>c.budget>0)?' · '+S.cats.filter(c=>c.budget>0).length+' budgets':''}`)}</div>
     <div class="setgroup">${setRow('shortcuts','⚡','Assistant shortcuts',S.cfg.shortcuts.length?S.cfg.shortcuts.length+' saved':'None')}
+      ${setRow('lock','🔒','App lock',lockCfg()?'On':'Off')}
       ${setRow('reminders','🔔','Reminders',[S.cfg.bkEvery?'Backup '+({7:'weekly',14:'every 2 weeks',30:'monthly'}[S.cfg.bkEvery]||''):'',S.cfg.nudge.on?'daily at '+S.cfg.nudge.time:''].filter(Boolean).join(' · ')||'Off')}</div>
     <div class="setgroup">${setRow('backup','☁️','Backup & restore',lastBackup()?'Last '+dLabel(lastBackup()):'No backup yet')}
       ${UPD?setRow('version','⬇️','App version',UP.cur?esc(UP.cur.versionName)+(UP.next?' · update ready':''):''):''}
@@ -1193,6 +1214,16 @@ lunch 120 gcash
 load 99 gcash" data-nofocus>${esc(S.cfg.shortcuts.join('\n'))}</textarea></label>
     <button class="btn pri" type="submit">Save</button></form>`,
     bind:()=>{$('#shform').onsubmit=e=>{e.preventDefault();S.cfg.shortcuts=[...new Set($('#sh_l').value.split('\n').map(x=>x.trim()).filter(Boolean))].slice(0,12);save();render();toast('Saved');settings('main','back')}}},
+  lock:{title:'App lock',parent:'main',html:()=>{const c=lockCfg();return c?`<div class="form">
+    <div class="field"><span class="flabel">Lock when I leave Pitaka</span>
+      <div class="chips" role="group">${[[0,'Right away'],[60,'After 1 min'],[300,'After 5 min'],[900,'After 15 min']].map(([v,l])=>`<button class="chip${(c.after||0)===v?' on':''}" data-act="lockset" data-k="after" data-v="${v}">${l}</button>`).join('')}</div></div>
+    ${LK.bioOK?`<div class="field"><span class="flabel">Unlock with fingerprint or face</span><div class="chips" role="group"><button class="chip${c.bio?' on':''}" data-act="lockset" data-k="bio" data-v="1">On</button><button class="chip${c.bio?'':' on'}" data-act="lockset" data-k="bio" data-v="0">Off</button></div>
+      <span class="sub">Your phone’s own screen lock works here too, so you can still get in if you forget the PIN.</span></div>`:''}
+    <div class="btns"><button class="btn" data-act="lockchange">Change PIN</button><button class="btn danger" data-act="lockoff">Turn off</button></div>
+    <span class="sub">The PIN is stored only on this phone and is not part of your backups.${LK.bioOK?'':' If you forget it, the only way back in is to erase Pitaka on this phone and restore a backup, so keep a recent backup.'}</span></div>`
+    :`<div class="form"><span class="sub">Ask for a PIN when Pitaka opens${BIO?', with fingerprint or face unlock if your phone has it':''}. It keeps people who pick up your phone out of your records. It is a privacy screen, not encryption.</span>
+    <div class="btns"><button class="btn pri" data-act="lockon" data-v="4">Turn on with a 4-digit PIN</button><button class="btn" data-act="lockon" data-v="6">Use 6 digits</button></div>
+    <span class="sub">${BIO?'':'If you forget the PIN, the only way back in is to erase Pitaka on this phone and restore a backup. Make a backup first.'}</span></div>`}},
   reminders:{title:'Reminders',parent:'main',html:()=>`<div class="form">
     <div class="field"><span class="flabel">Backup reminder</span>${choice('bkEvery',[[0,'Off'],[7,'Weekly'],[14,'Every 2 weeks'],[30,'Monthly']],S.cfg.bkEvery)}
       <span class="sub">Shows on Overview when your last backup is older than this.</span></div>
@@ -1249,7 +1280,7 @@ load 99 gcash" data-nofocus>${esc(S.cfg.shortcuts.join('\n'))}</textarea></label
       <div class="btns"><label class="btn" style="flex-direction:row;color:var(--fg);font-size:13.5px">Restore from Drive${NATIVE?' or phone':''}<input type="file" id="imp" hidden></label><button class="btn" data-act="copybk">Copy backup</button>${INSTALLED?'<button class="btn" data-act="dlbk">Download backup</button>':''}</div>
       <span class="sub">Restore opens your file picker. Tap ☰ or Browse, choose Drive${NATIVE?' or Documents › Pitaka':''}, then pick a <span class="mono">pitaka</span> backup file.</span>
       <label>Or paste a backup here<textarea id="pastebk" rows="3" placeholder='{"v":1,...}' data-nofocus></textarea></label><button class="btn" data-act="pastebk">Restore pasted backup</button></div></div>`,
-    bind:()=>{$('#imp').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>restore(r.result);r.onerror=()=>toast('That file could not be opened. Try downloading it from Drive first.');r.readAsText(f)}}},
+    bind:()=>{$('#imp').onclick=awayOnPurpose;$('#imp').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>restore(r.result);r.onerror=()=>toast('That file could not be opened. Try downloading it from Drive first.');r.readAsText(f)}}},
   version:{title:'App version',parent:'main',html:()=>`<div class="form"><span class="sub">${UP.cur?'Version '+esc(UP.cur.versionName):'Version unknown'}${UP.next?` · <b class="pos">${esc(UP.next.versionName)} available</b>`:''}</span>
     <div class="btns">${UP.next?`<button class="btn pri" data-act="${UP.state==='ready'?'updinstall':'update'}"${UP.state==='dl'?' disabled':''}>${UP.state==='dl'?'Downloading…':UP.state==='ready'?'Install':'Update now'}</button>`:''}<button class="btn" data-act="updcheck"${UP.checking?' disabled':''}>Check for updates</button></div></div>`},
   data:{title:'Data',parent:'main',html:()=>`<div class="form">
@@ -1293,6 +1324,7 @@ function writePhone(now){if(!FS||S.demo)return;clearTimeout(phoneTimer);phoneTim
 async function bootPhone(){
   try{const p=await FS.checkPermissions();if(p.publicStorage!=='granted')await FS.requestPermissions()}catch(e){}
   if(!FRESH){writePhone();return}
+  try{if(localStorage.getItem('pitaka.noauto')){localStorage.removeItem('pitaka.noauto');return}}catch(e){}
   // Nothing saved in the app yet (new install or cleared data): pick up the copy in Documents/Pitaka if there is one.
   try{const r=await FS.readFile({path:PHONE.file,directory:'DOCUMENTS',encoding:'utf8'});const d=JSON.parse(r.data);
     if(Array.isArray(d.tx)&&Array.isArray(d.wallets)){delete d.savedAt;S=migrate(d);applyCfg();FRESH=false;DAMAGED='';save();render();toast('Loaded your records from Documents/Pitaka')}}
@@ -1318,7 +1350,7 @@ async function startUpdate(){const v=UP.next;if(!v||UP.state==='dl')return;
   try{await UPD.download({url:v.apk});UP.state='ready';render();await installUpdate()}
   catch(e){UP.state='';render();toast('Download failed. Try again on Wi-Fi.')}
   finally{h.remove()}}
-async function installUpdate(){try{await UPD.install()}
+async function installUpdate(){awayOnPurpose();try{await UPD.install()}
   catch(e){toast(e&&e.code==='PERMISSION'?'Turn on “Allow from this source”, then come back and tap Install.':'Could not open the installer.')}}
 function updateNotice(){const v=UP.next;if(!v||UP.later)return'';
   const btn=UP.state==='dl'?`<button class="btn sm pri" disabled>Downloading <span id="updpct">${UP.pct>=0?UP.pct+'%':''}</span></button>`
@@ -1338,16 +1370,63 @@ function installNotice(){let hide=false;try{hide=localStorage.getItem('pitaka.in
     :`For the full app, <a href="${APK_URL}">download Pitaka for Android</a>. Or use your browser menu, then <b>Add to Home screen</b>.`;
   return`<div class="notice info"><b>${IOS?'Add Pitaka to your Home Screen':'Install Pitaka'}</b><span>${body}</span><div class="acts"><button class="btn sm" data-act="installhide">Got it</button></div></div>`}
 
-async function nativeShare(){const name=`pitaka-backup-${today()}.json`;
+async function nativeShare(){awayOnPurpose();const name=`pitaka-backup-${today()}.json`;
   try{await FS.writeFile({path:name,data:phoneData(),directory:'CACHE',encoding:'utf8'});const{uri}=await FS.getUri({path:name,directory:'CACHE'});
     await SHARE.share({title:'Pitaka backup',files:[uri],dialogTitle:'Save backup to Drive'});markBackup();refreshSettings();toast('Backup shared')}
   catch(e){if(!/cancel/i.test(String(e&&e.message||e)))toast('Could not open the share menu.')}}
 
-function saveToDrive(){if(NATIVE)return nativeShare();const file=backupFile('txt');
+function saveToDrive(){if(NATIVE)return nativeShare();awayOnPurpose();const file=backupFile('txt');
   if(navigator.canShare&&navigator.canShare({files:[file]})){
     navigator.share({files:[file],title:'Pitaka backup'}).then(()=>{markBackup();refreshSettings();toast('Backup shared')},
       e=>{if(e&&e.name==='AbortError')return;if(saveFile(file))toast('Saved to Downloads. Upload it in the Drive app.')})}
   else if(saveFile(file))toast('Sharing is not available here. Saved to Downloads; upload it in the Drive app.')}
+
+/* ================= app lock ================= */
+/* A PIN (and on Android, fingerprint / face / the phone's screen lock) shown over the app when it opens and when it
+   comes back after the chosen delay. The PIN is kept only on this phone, as a PBKDF2 hash with a random salt; it is
+   never in backups, so restoring a backup elsewhere does not carry a PIN you might not know there. It is a privacy
+   screen, not encryption: the records themselves are stored as before. */
+const LOCK_KEY='pitaka.lock';
+const lockCfg=()=>{try{const c=JSON.parse(localStorage.getItem(LOCK_KEY)||'null');return c&&c.hash?c:null}catch(e){return null}};
+const BIO=(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform()&&Capacitor.Plugins.Biometric)||null;
+const LK={on:false,mode:'',entry:'',first:'',len:4,fails:0,until:0,hiddenAt:0,skip:false,msg:'',bioOK:false,done:null,forgot:0};
+async function pinHash(pin,salt){const e=new TextEncoder(),k=await crypto.subtle.importKey('raw',e.encode(pin),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:e.encode(salt),iterations:150000,hash:'SHA-256'},k,256);
+  return[...new Uint8Array(bits)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+// mode: unlock (app start/return), check (confirm current PIN before a change), set1/set2 (choose a new PIN)
+function showLock(mode,done,len){const c=lockCfg();LK.on=true;LK.mode=mode;LK.entry='';LK.first=mode==='set2'?LK.first:'';LK.done=done||null;LK.forgot=0;
+  LK.len=len||(c?c.len:4);LK.msg='';$('#lock').hidden=false;document.documentElement.classList.add('locked');drawLock();
+  if(mode==='unlock'&&c&&c.bio&&LK.bioOK)setTimeout(bioUnlock,250)}
+function hideLock(){LK.on=false;$('#lock').hidden=true;document.documentElement.classList.remove('locked')}
+function drawLock(){const c=lockCfg(),wait=Math.max(0,Math.ceil((LK.until-Date.now())/1000));
+  const title={unlock:'Enter your PIN',check:'Enter your current PIN',set1:`Choose a ${LK.len}-digit PIN`,set2:'Enter it again'}[LK.mode];
+  const keys=['1','2','3','4','5','6','7','8','9',LK.mode==='unlock'&&c&&c.bio&&LK.bioOK?'bio':'','0','del'];
+  $('#lock').innerHTML=`<div class="lockbox"><div class="lockic" aria-hidden="true">₱</div><h2>${title}</h2>
+    <div class="dots${LK.msg==='wrong'?' shake':''}" aria-label="${LK.entry.length} of ${LK.len} digits">${Array.from({length:LK.len},(_,i)=>`<i class="${i<LK.entry.length?'on':''}"></i>`).join('')}</div>
+    <p class="lockmsg">${wait?`Too many tries. Try again in ${wait} s.`:LK.msg==='wrong'?'Wrong PIN':LK.msg==='mismatch'?'The PINs did not match. Try again.':'&nbsp;'}</p>
+    <div class="keypad">${keys.map(k=>k===''?'<span></span>':k==='del'?`<button class="key fn" data-act="lockkey" data-k="del" aria-label="Delete">⌫</button>`:k==='bio'?`<button class="key fn" data-act="lockbio" aria-label="Use fingerprint or face">◉</button>`:`<button class="key" data-act="lockkey" data-k="${k}"${wait?' disabled':''}>${k}</button>`).join('')}</div>
+    ${LK.mode==='unlock'?`<button class="linkbtn" data-act="lockforgot">Forgot PIN?</button>`:`<button class="linkbtn" data-act="lockcancel">Cancel</button>`}
+    ${LK.forgot?`<div class="forgot"><p>${LK.bioOK&&c&&c.bio?'Use the ◉ button to unlock with your fingerprint, face or phone screen lock.':'Without the PIN, the only way in is to erase Pitaka’s records on this phone and restore them from a backup.'}</p>
+      ${LK.forgot===1?`<button class="btn danger" data-act="lockerase">Erase and start over</button>`:`<button class="btn danger" data-act="lockerase">Tap again to erase everything on this phone</button>`}</div>`:''}</div>`}
+async function lockKey(k){if(Date.now()<LK.until)return;if(k==='del'){LK.entry=LK.entry.slice(0,-1);LK.msg='';drawLock();return}
+  if(LK.entry.length>=LK.len)return;LK.entry+=k;LK.msg='';drawLock();if(LK.entry.length<LK.len)return;
+  const pin=LK.entry,c=lockCfg();
+  if(LK.mode==='set1'){LK.first=pin;showLock('set2',LK.done,LK.len);return}
+  if(LK.mode==='set2'){if(pin!==LK.first){LK.first='';LK.mode='set1';LK.entry='';LK.msg='mismatch';drawLock();return}
+    const salt=[...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,'0')).join('');
+    const next={...(c||{after:0,bio:LK.bioOK}),salt,len:LK.len,hash:await pinHash(pin,salt)};
+    try{localStorage.setItem(LOCK_KEY,JSON.stringify(next))}catch(e){toast('Could not save the PIN on this phone.');hideLock();return}
+    hideLock();const d=LK.done;LK.done=null;if(d)d(true);return}
+  if(!c){hideLock();return}
+  if(await pinHash(pin,c.salt)===c.hash){LK.fails=0;hideLock();const d=LK.done;LK.done=null;if(d)d(true)}
+  else{LK.fails++;LK.entry='';LK.msg='wrong';if(LK.fails>=5){LK.until=Date.now()+30000;LK.fails=0;const t=setInterval(()=>{if(!LK.on||Date.now()>=LK.until){clearInterval(t);LK.msg=''}if(LK.on)drawLock()},1000)}drawLock()}}
+async function bioUnlock(){if(!BIO||!LK.on)return;try{const r=await BIO.verify({reason:'Unlock Pitaka'});if(r&&r.verified){LK.fails=0;hideLock();const d=LK.done;LK.done=null;if(d)d(true)}}catch(e){}}
+function lockNow(){if(lockCfg()&&!LK.on)showLock('unlock')}
+document.addEventListener('visibilitychange',()=>{const c=lockCfg();if(!c)return;
+  if(document.visibilityState==='hidden'){LK.hiddenAt=Date.now();if(!c.after&&!LK.skip)lockNow()} // locked before the app-switcher snapshot
+  else{if(LK.skip){LK.skip=false;return}if(Date.now()-LK.hiddenAt>=(c.after||0)*1000)lockNow()}});
+// Leaving for a moment on purpose (share menu, file picker, installer) does not lock.
+const awayOnPurpose=()=>{LK.skip=true;setTimeout(()=>LK.skip=false,120000)};
 
 /* ================= assistant chat ================= */
 function draftCard(i){const x=STATE.drafts[i];if(!x)return'';if(x.done)return`<div class="draft"><span class="sub">${x.done}</span></div>`;
@@ -1412,6 +1491,16 @@ const ACT={
   themeset:d=>{applyTheme(d.id);refreshSettings()},
   undoask:()=>{const p=prevSnap();if(p)askConfirm(`Bring back your records from just before ${REASON[p.reason]||'the last change'} (${dLabel(p.at.slice(0,10))}, ${new Date(p.at).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'})})? Changes made since then will be replaced.`,undoLast,'Bring back')},
   keepmine:()=>keepMine(),
+  lockkey:d=>lockKey(d.k),
+  lockbio:()=>bioUnlock(),
+  lockcancel:()=>{hideLock();const d=LK.done;LK.done=null;if(d)d(false)},
+  lockforgot:()=>{LK.forgot=LK.forgot||1;drawLock()},
+  lockerase:()=>{if(LK.forgot<2){LK.forgot=2;drawLock();return}
+    try{[KEY,PREV,LOCK_KEY,'pitaka.lastbk','pitaka.bksnooze'].forEach(k=>localStorage.removeItem(k));localStorage.setItem('pitaka.noauto','1')}catch(e){}location.reload()},
+  lockon:d=>{const len=+d.v||4;showLock('set1',ok=>{if(ok){toast('App lock is on');refreshSettings()}},len)},
+  lockoff:()=>showLock('check',ok=>{if(!ok)return;try{localStorage.removeItem(LOCK_KEY)}catch(e){}toast('App lock is off');refreshSettings()}),
+  lockchange:()=>showLock('check',ok=>{if(!ok)return;const c=lockCfg();showLock('set1',ok2=>{if(ok2){toast('PIN changed');refreshSettings()}},c?c.len:4)}),
+  lockset:d=>{const c=lockCfg();if(!c)return;if(d.k==='after')c.after=+d.v;if(d.k==='bio')c.bio=d.v==='1';try{localStorage.setItem(LOCK_KEY,JSON.stringify(c))}catch(e){}settings()},
   nudgeok:()=>{try{localStorage.setItem('pitaka.nudgeok',today())}catch(e){}render()},
   nudgeon:async d=>{const on=d.v==='1';if(on&&LN){try{const p=await LN.requestPermissions();if(p.display!=='granted'){toast('Allow notifications for Pitaka in your phone settings to get the reminder.');return}}catch(e){}}
     S.cfg.nudge.on=on;save();render();settings();if(on)toast(LN?`You’ll get a reminder at ${S.cfg.nudge.time} on days with nothing logged.`:'Pitaka will remind you when you open it after that time.')},
@@ -1431,8 +1520,11 @@ let st_;document.addEventListener('input',e=>{if(e.target.id==='search'){clearTi
 $('#aiform').onsubmit=e=>{e.preventDefault();const i=$('#aiinput');const v=i.value;i.value='';ask(v)};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheetOpen())closeSheet()});
 
+if(lockCfg()){document.documentElement.classList.add('locked')}
 load();applyCfg();STATE.m=curP();if(S.cfg.start!=='last')STATE.tab=S.cfg.start;applyTheme(themePref());render();
-if(NATIVE)bootPhone();
+if(lockCfg())showLock('unlock');
+if(BIO)BIO.available().then(r=>{LK.bioOK=!!(r&&r.available);if(LK.on&&LK.mode==='unlock')drawLock();const c=lockCfg();if(LK.bioOK&&LK.on&&c&&c.bio)bioUnlock()}).catch(()=>{});
+if(NATIVE)bootPhone();else try{localStorage.removeItem('pitaka.noauto')}catch(e){}
 runRecurring();scheduleNudges();
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(curP()!==STATE.m&&STATE.lastSeen&&STATE.lastSeen!==today())STATE.m=curP();runRecurring();STATE.lastSeen=today()}});
 STATE.lastSeen=today();

@@ -70,7 +70,7 @@ button{cursor:pointer}
 .month{margin-left:auto;display:flex;align-items:center;gap:0;background:var(--surface-2);border-radius:999px;padding:2px}
 .month b{font:600 15px/1 var(--font-display);min-width:80px;text-align:center}
 .icon-btn{display:grid;place-items:center;width:40px;height:40px;border:0;background:none;border-radius:999px;color:var(--accent)}
-.icon-btn:active{opacity:.5}
+.icon-btn:active{opacity:.5;transform:scale(.9)}
 .icon-btn svg,.tab svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
 main.wrap{padding-block:4px 160px;display:flex;flex-direction:column;gap:16px}
@@ -110,7 +110,7 @@ main.wrap{padding-block:4px 160px;display:flex;flex-direction:column;gap:16px}
 .btn.pri{background:var(--accent-fill);color:var(--accent-fg)}
 .btn.sm{padding:6px 13px;font-size:13.5px;min-height:34px}
 .btn.danger{color:var(--neg)}
-.btn:active{opacity:.6}
+.btn:active{transform:scale(.96);opacity:.85}
 .btns{display:flex;gap:8px;flex-wrap:wrap}
 
 .pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 8px;border-radius:99px;white-space:nowrap}
@@ -176,9 +176,17 @@ tbody tr{cursor:pointer}
 /* sheet */
 .sheet-wrap{position:fixed;inset:0;z-index:20;display:flex;align-items:flex-end;justify-content:center}
 .scrim{position:absolute;inset:0;background:rgba(0,0,0,.35)}
-.sheet{position:relative;width:100%;max-width:560px;max-height:92%;overflow:auto;background:var(--surface);border-radius:14px 14px 0 0;padding:6px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));animation:up .28s cubic-bezier(.2,.9,.3,1)}
-@keyframes up{from{transform:translateY(40px);opacity:.4}}
-@media (prefers-reduced-motion:reduce){.sheet{animation:none}}
+.sheet{position:relative;will-change:transform;width:100%;max-width:560px;max-height:92%;overflow:auto;background:var(--surface);border-radius:14px 14px 0 0;padding:6px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));animation:up .28s cubic-bezier(.2,.9,.3,1)}
+@keyframes up{from{transform:translateY(100%)}}
+@keyframes fade{from{opacity:0}}
+.sheet-wrap .scrim{animation:fade .25s ease-out}
+.sheet-wrap.closing .scrim{opacity:0;transition:opacity .22s ease-in}
+.sheet-wrap.closing .sheet{transform:translateY(105%);transition:transform .23s cubic-bezier(.4,0,1,1)}
+.sheet-wrap.closing{pointer-events:none}
+#sheetBody.pg-fwd{animation:pg-fwd .28s cubic-bezier(.2,.9,.3,1)}
+#sheetBody.pg-back{animation:pg-back .28s cubic-bezier(.2,.9,.3,1)}
+@keyframes pg-fwd{from{opacity:0;transform:translateX(28px)}}
+@keyframes pg-back{from{opacity:0;transform:translateX(-28px)}}
 .grab{width:36px;height:5px;border-radius:9px;background:color-mix(in srgb,var(--muted) 45%,transparent);margin:2px auto 12px}
 .sheet h3{font:700 22px var(--font-display);letter-spacing:-.02em;margin:0 0 14px}
 .form{display:flex;flex-direction:column;gap:14px}
@@ -216,10 +224,59 @@ tbody tr{cursor:pointer}
 .composer .chips::-webkit-scrollbar{display:none}
 
 .tact{border:0;background:none;color:#5ab0ff;font:inherit;font-weight:700;padding:4px 2px 4px 10px;min-height:32px}
-.toast{display:flex;align-items:center;gap:4px;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));z-index:30;background:rgba(28,28,30,.92);color:#fff;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);padding:10px 18px;border-radius:999px;font-size:14px;font-weight:500;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
+.toast{opacity:0;pointer-events:none;transition:opacity .2s ease,transform .3s cubic-bezier(.2,.9,.3,1);display:flex;align-items:center;gap:4px;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));z-index:30;background:rgba(28,28,30,.92);color:#fff;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);padding:10px 18px;border-radius:999px;font-size:14px;font-weight:500;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
 .kv{display:flex;justify-content:space-between;gap:8px;font-size:14px}
 .split{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .cv{content-visibility:auto;contain-intrinsic-size:auto 400px}
+.toast{transform:translate(-50%,14px)}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+
+/* ---- motion: press feedback, view changes, growing bars, new chat bubbles ---- */
+.btn,.chip,.act,.icon-btn,.tab svg,.setrow,.item,.legend button,.hero-k button,.fab{transition:transform .14s ease,background-color .2s ease,color .2s ease,opacity .2s ease;touch-action:manipulation}
+.chip:active,.act:active,.hero-k button:active{transform:scale(.95)}
+.fab:active{transform:scale(.9)}
+.tab:active svg{transform:scale(.86)}
+.item:active,.setrow:active{background:color-mix(in srgb,var(--fg) 6%,transparent)}
+.item{border-radius:10px}
+main#view{view-transition-name:view}
+::view-transition-old(root),::view-transition-new(root){animation:none}
+::view-transition-old(view){animation:vt-out .14s ease-in both}
+::view-transition-new(view){animation:vt-in .26s cubic-bezier(.2,.9,.3,1) both}
+:root[data-vt=next]::view-transition-new(view){animation-name:vt-in-r}
+:root[data-vt=prev]::view-transition-new(view){animation-name:vt-in-l}
+:root[data-vt=next]::view-transition-old(view){animation:vt-out-l .16s ease-in both}
+:root[data-vt=prev]::view-transition-old(view){animation:vt-out-r .16s ease-in both}
+#view.enter{animation:vt-in .26s cubic-bezier(.2,.9,.3,1)}
+#view.enter-next{animation:vt-in-r .26s cubic-bezier(.2,.9,.3,1)}
+#view.enter-prev{animation:vt-in-l .26s cubic-bezier(.2,.9,.3,1)}
+@keyframes vt-in{from{opacity:0;transform:translateY(10px)}}
+@keyframes vt-in-r{from{opacity:0;transform:translateX(32px)}}
+@keyframes vt-in-l{from{opacity:0;transform:translateX(-32px)}}
+@keyframes vt-out{to{opacity:0}}
+@keyframes vt-out-l{to{opacity:0;transform:translateX(-24px)}}
+@keyframes vt-out-r{to{opacity:0;transform:translateX(24px)}}
+.bar i{transform-origin:left center}
+#view.fresh .bar i{animation:grow .7s cubic-bezier(.2,.9,.3,1) both}
+#view.fresh .donut svg{animation:pop .45s cubic-bezier(.2,.9,.3,1) both}
+@keyframes grow{from{transform:scaleX(0)}}
+@keyframes pop{from{opacity:0;transform:scale(.9) rotate(-20deg)}}
+.msg.new{animation:msg-in .3s cubic-bezier(.2,.9,.3,1) both}
+@keyframes msg-in{from{opacity:0;transform:translateY(10px) scale(.97)}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* ---- settings pages ---- */
+.shead{display:flex;flex-direction:column;gap:2px;margin-bottom:10px}
+.shead h3{margin:0}
+.back{display:inline-flex;align-items:center;gap:2px;align-self:flex-start;border:0;background:none;color:var(--accent);font-size:15px;font-weight:500;padding:6px 6px 6px 0;margin-left:-4px;min-height:36px}
+.back svg,.chev{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.setgroup{background:var(--surface-2);border-radius:14px;margin-bottom:14px;overflow:hidden}
+.setrow{position:relative;display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;padding:12px 12px 12px 14px;min-height:52px;text-align:left;font-size:16px}
+.setrow+.setrow::before{content:"";position:absolute;top:0;left:54px;right:0;border-top:.5px solid var(--line)}
+.sic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:var(--surface);font-size:17px;flex:none}
+.sl{flex:1 0 auto;white-space:nowrap}
+.sv{flex:0 1 auto;min-width:0;color:var(--muted);font-size:14px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.setrow .chev{color:var(--muted);opacity:.6}
+.field{display:flex;flex-direction:column;gap:8px}
 /* home hero */
 .hero .big{font-size:36px}
 .grid2 .big{font-size:23px;overflow-wrap:anywhere}
@@ -259,7 +316,7 @@ tbody tr{cursor:pointer}
 <nav class="tabs" aria-label="Sections"><div class="wrap" id="tabs"></div></nav>
 
 <div class="sheet-wrap" id="sheet" hidden><div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div><div id="sheetBody"></div></div></div>
-<div class="toast" id="toast" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 "use strict";
@@ -276,18 +333,21 @@ const addM=(m,k)=>{let[y,mo]=m.split('-').map(Number);mo+=k;while(mo>12){mo-=12;
 const nextM=m=>addM(m,1);
 const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const mLabel=m=>MN[+m.slice(5,7)-1]+' '+m.slice(0,4);
-const dLabel=s=>s?MN[+s.slice(5,7)-1]+' '+(+s.slice(8,10)):'—';
+const dLabel=s=>s?(S&&S.cfg&&S.cfg.date==='dm'?(+s.slice(8,10))+' '+MN[+s.slice(5,7)-1]:MN[+s.slice(5,7)-1]+' '+(+s.slice(8,10))):'—';
 const daysTo=s=>Math.round((parseISO(s)-parseISO(today()))/864e5);
 const dayName=s=>{const k=daysTo(s);return k===0?'Today':k===-1?'Yesterday':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][parseISO(s).getDay()]+', '+dLabel(s)};
 function dueTag(due){const k=daysTo(due);
   const [c,t]=k<0?['neg',`Overdue ${-k} day${k<-1?'s':''} · was due ${dLabel(due)}`]:k===0?['neg','Due today']:k<=7?['warn',`Due ${dLabel(due)} · in ${k} day${k>1?'s':''}`]:['muted',`Due ${dLabel(due)}`];
   return`<div class="due ${c}">${t}</div>`}
 const dim=m=>new Date(+m.slice(0,4),+m.slice(5,7),0).getDate();
-const num=v=>{const n=parseFloat(String(v??'').replace(/[₱,\s]/g,''));return isFinite(n)?Math.round(n*100)/100:NaN};
-const nf=new Intl.NumberFormat('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
-const nf0=new Intl.NumberFormat('en-PH',{maximumFractionDigits:0});
-const peso=n=>(n<-0.004?'-':'')+'₱'+nf.format(Math.abs(n)||0);
-const pesoS=n=>(n<-0.5?'-':'')+'₱'+nf0.format(Math.abs(n)||0);
+const num=v=>{const n=parseFloat(String(v??'').replace(/[^\d.\-]/g,''));return isFinite(n)?Math.round(n*100)/100:NaN};
+/* Money and date formatting follow Settings › Currency & format (S.cfg). */
+let NF=new Intl.NumberFormat('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const NF0=new Intl.NumberFormat('en-PH',{maximumFractionDigits:0});
+const CUR=()=>S&&S.cfg?S.cfg.cur:'₱';
+const DEC=()=>S&&S.cfg?S.cfg.dec:2;
+const peso=n=>(n<-(DEC()?0.004:0.5)?'-':'')+CUR()+NF.format(Math.abs(n)||0);
+const pesoS=n=>(n<-0.5?'-':'')+CUR()+NF0.format(Math.abs(n)||0);
 const pct=(a,b)=>b?Math.round(a/b*100)+'%':'0%';
 const sum=(arr,f=x=>x.a)=>arr.reduce((s,x)=>s+f(x),0);
 const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
@@ -302,10 +362,15 @@ const CAT=Object.fromEntries(CATS.map(c=>[c.id,c]));
 const catName=id=>(CAT[id]||CAT.other).name;
 const catCol=id=>`var(--c${(CAT[id]||CAT.other).col})`;
 
-function blank(){return{v:1,demo:false,
+/* Everything the person can customize lives in S.cfg (and the lists next to it), so it travels with backups.
+   migrate() fills in anything missing, for records saved by older versions of the app. */
+const CFG0={cur:'₱',dec:2,date:'md',text:'md',start:'last',mstart:1,bkEvery:7,nudge:{on:false,time:'20:00'},shortcuts:[],lockAfter:0};
+function migrate(d){d.cfg={...CFG0,...(d.cfg||{})};d.cfg.nudge={...CFG0.nudge,...(d.cfg.nudge||{})};
+  d.cc=d.cc||[];d.cards=d.cards&&d.cards.length?d.cards:['Credit Card'];d.goal=d.goal||{amt:0,w:d.wallets[0].id};return d}
+function blank(){return migrate({v:1,demo:false,
   wallets:[{id:'cash',name:'Cash',col:1,init:0},{id:'gcash',name:'GCash',col:2,init:0},{id:'cimb',name:'CIMB (GSave)',col:3,init:0},
     {id:'uno',name:'UNO Digital',col:4,init:0},{id:'mari',name:'Maribank',col:5,init:0},{id:'gotyme',name:'GoTyme',col:6,init:0}],
-  cards:['Credit Card','SPayLater'],tx:[],cc:[],goal:{amt:20000,w:'gotyme'}}}
+  cards:['Credit Card','SPayLater'],tx:[],cc:[],goal:{amt:20000,w:'gotyme'}})}
 
 function demo(){
   const s=blank();s.demo=true;s.wallets[0].init=2000;s.wallets[1].init=3500;s.wallets[5].init=12000;
@@ -345,7 +410,7 @@ function demo(){
 let S,FRESH=false,DAMAGED='';
 // If the saved records cannot be read, keep the raw text under another key instead of letting the next save overwrite it.
 function load(){let r=null;try{r=localStorage.getItem(KEY)}catch(e){}
-  if(r){try{const d=JSON.parse(r);if(!d||!Array.isArray(d.tx)||!Array.isArray(d.wallets))throw 0;S=d;S.cc=S.cc||[];return}
+  if(r){try{const d=JSON.parse(r);if(!d||!Array.isArray(d.tx)||!Array.isArray(d.wallets)||!d.wallets.length)throw 0;S=migrate(d);return}
     catch(e){DAMAGED=KEY+'.damaged-'+Date.now();try{localStorage.setItem(DAMAGED,r)}catch(_){DAMAGED='unsaved'}}}
   S=demo();FRESH=true}
 function save(){MODEL=null;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Could not save on this device. Copy a backup from Settings.')}writePhone()}
@@ -358,7 +423,7 @@ function snapshot(reason){if(S.demo)return;const snap={reason,at:new Date().toIS
   try{localStorage.setItem(PREV,JSON.stringify(snap))}catch(e){}
   if(FS)FS.writeFile({path:`${PHONE.dir}/pitaka-before-${reason}-${today()}.json`,data:JSON.stringify(snap.data,null,1),directory:'DOCUMENTS',encoding:'utf8',recursive:true}).catch(()=>{})}
 function prevSnap(){try{const p=JSON.parse(localStorage.getItem(PREV)||'null');return p&&p.data&&Array.isArray(p.data.tx)?p:null}catch(e){return null}}
-function undoLast(){const p=prevSnap();if(!p)return toast('Nothing to undo.');snapshot('undo');S=p.data;S.cc=S.cc||[];STATE.chat=[];STATE.drafts=[];save();closeSheet();render();toast('Records brought back')}
+function undoLast(){const p=prevSnap();if(!p)return toast('Nothing to undo.');snapshot('undo');S=migrate(p.data);applyCfg();STATE.chat=[];STATE.drafts=[];save();closeSheet();render();toast('Records brought back')}
 // New records made while sample data is showing are marked, so they can be kept when the samples are removed.
 const own=x=>{if(S.demo)x.mine=1;return x};
 
@@ -509,7 +574,8 @@ function parseDate(q){
   R(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})\b/,mm=>{const mo=MN.findIndex(x=>x.toLowerCase()===mm[1])+1;const y=+t.slice(0,4);return y+'-'+pad(mo)+'-'+pad(+mm[2])});
   R(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/,mm=>{let y=mm[3]?+mm[3]:+t.slice(0,4);if(y<100)y+=2000;return y+'-'+pad(+mm[1])+'-'+pad(+mm[2])});
   return{d,rm}}
-function parseAmounts(q){const out=[];const re=/(₱|php\s?)?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?\s*(k\b)?/g;let mm;
+function parseAmounts(q){const out=[];const cs=CUR().toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const re=new RegExp('('+cs+'|₱|php\\s?)?(\\d{1,3}(?:,\\d{3})+|\\d+)(?:\\.(\\d{1,2}))?\\s*(k\\b)?','g');let mm;
   while((mm=re.exec(q))){let v=parseFloat(mm[2].replace(/,/g,'')+(mm[3]?'.'+mm[3]:''));if(mm[4])v*=1000;out.push({v,s:mm[0],cur:!!mm[1]})}return out}
 const RX={
   q:/(\?\s*$)|^(how|what|who|whom|when|where|why|which|show|list|magkano|ilan|sino|kailan|saan|can|could|should|is|am|are|do|does|did|give|tell|summary|summari[sz]e|forecast|predict|tips?|advice|help|compare|top|biggest|largest|balance|report|kamusta|kumusta|paano|ano)\b/,
@@ -654,8 +720,21 @@ function applyTheme(p){const root=document.documentElement;
   document.querySelectorAll('meta[name=theme-color]').forEach(m=>{m.removeAttribute('media');m.content=d?'#000000':'#f2f2f7'})}
 if(DARK_MQ&&DARK_MQ.addEventListener)DARK_MQ.addEventListener('change',()=>{if(themePref()==='auto')applyTheme('auto')});
 
+/* Applies the parts of S.cfg that are not drawn by render(): number format and text size. */
+function applyCfg(){const d=DEC();NF=new Intl.NumberFormat('en-PH',{minimumFractionDigits:d,maximumFractionDigits:d});
+  document.documentElement.style.zoom=({sm:.92,md:1,lg:1.12,xl:1.24})[S.cfg.text]||1}
+
+/* ================= smooth motion ================= */
+// Tab and month changes animate the main view (View Transitions where the browser has them, a CSS fade otherwise).
+const REDUCED=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+function transition(fn,dir){const root=document.documentElement,v=$('#view');
+  const after=()=>{v.classList.add('fresh');clearTimeout(transition.t);transition.t=setTimeout(()=>v.classList.remove('fresh'),900)};
+  if(REDUCED){fn();return}
+  if(document.startViewTransition){root.dataset.vt=dir||'fade';const t=document.startViewTransition(()=>{fn();after()});t.ready.catch(()=>{});t.updateCallbackDone.catch(()=>{});t.finished.catch(()=>{}).finally(()=>delete root.dataset.vt);return}
+  fn();after();v.classList.remove('enter','enter-next','enter-prev');void v.offsetWidth;v.classList.add(dir?'enter-'+dir:'enter')}
+
 /* ================= UI state ================= */
-const STATE={m:today().slice(0,7),tab:'home',filter:{cat:null,type:'all',q:'',limit:40},chat:[],drafts:[]};
+const STATE={m:today().slice(0,7),tab:'home',filter:{cat:null,type:'all',q:'',limit:40},chat:[],drafts:[],scroll:{},setPage:'main',sheetKind:''};
 try{const t=localStorage.getItem('pitaka.tab');if(t)STATE.tab=t}catch(e){}
 const TABS=[['home','Home','<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'],
   ['wallets','Wallets','<path d="M3 7h15a3 3 0 0 1 3 3v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l12-3v3M16 14h2"/>'],
@@ -668,7 +747,7 @@ function render(){
   $('#tabs').innerHTML=TABS.map(([id,l,ic])=>`<button class="tab${STATE.tab===id?' on':''}" data-act="tab" data-id="${id}" aria-current="${STATE.tab===id}"><svg viewBox="0 0 24 24">${ic}</svg>${l}</button>`).join('');
   const v=VIEWS[STATE.tab]||VIEWS.home;$('#view').innerHTML=v();
   $('#composer').hidden=STATE.tab!=='ai';$('#fab').hidden=STATE.tab==='ai';
-  if(STATE.tab==='ai'){renderChips();const c=$('#chat');if(c)window.scrollTo(0,document.body.scrollHeight)}}
+  if(STATE.tab==='ai'){renderChips();const c=$('#chat');if(c)window.scrollTo({top:document.body.scrollHeight,behavior:STATE.chat.some(x=>x.fresh)&&!REDUCED?'smooth':'auto'});STATE.chat.forEach(x=>delete x.fresh)}}
 
 function keepMine(){const tx=S.tx.filter(t=>t.mine),cc=S.cc.filter(c=>c.mine),ids=new Set(tx.map(t=>t.id)),cids=new Set(cc.map(c=>c.id));
   // drop repayments and card payments that pointed at sample records
@@ -678,7 +757,7 @@ function keepMine(){const tx=S.tx.filter(t=>t.mine),cc=S.cc.filter(c=>c.mine),id
   save();render();const n=S.tx.length+S.cc.length;toast(`Kept your ${n} record${n===1?'':'s'}. Set your wallet balances in Settings.`)}
 /* Overview notices that protect records: damaged save, records mixed into sample data, backup reminder. */
 function safetyNotices(){let h='';
-  if(DAMAGED)h+=`<div class="notice bad"><b>Your saved records could not be read</b><span>${DAMAGED==='unsaved'?'This phone is out of storage space, so the damaged copy could not be kept.':'The damaged copy was kept aside, not deleted.'} Open Settings and use <b>Restore</b> with your newest backup${NATIVE?' or a file from Documents › Pitaka › backups':''}.</span><div class="acts"><button class="btn sm pri" data-act="settings">Open Settings</button></div></div>`;
+  if(DAMAGED)h+=`<div class="notice bad"><b>Your saved records could not be read</b><span>${DAMAGED==='unsaved'?'This phone is out of storage space, so the damaged copy could not be kept.':'The damaged copy was kept aside, not deleted.'} Open Settings and use <b>Restore</b> with your newest backup${NATIVE?' or a file from Documents › Pitaka › backups':''}.</span><div class="acts"><button class="btn sm pri" data-act="setpage" data-id="backup">Open Backup & restore</button></div></div>`;
   const mine=S.demo?S.tx.filter(t=>t.mine).length+S.cc.filter(c=>c.mine).length:0;
   if(mine)h+=`<div class="notice warn"><b>Your ${mine} record${mine>1?'s are':' is'} mixed into the sample data</b><span>Sample data is not saved${NATIVE?' to your Pitaka folder':''} or backed up. Keep your own records and remove the samples.</span><div class="acts"><button class="btn sm pri" data-act="keepmine">Keep mine, remove samples</button></div></div>`;
   const n=S.demo?0:S.tx.length+S.cc.length;let snooze='';try{snooze=localStorage.getItem('pitaka.bksnooze')||''}catch(e){}
@@ -698,7 +777,7 @@ home(){const m=STATE.m,st=monthStats(m),end=nextM(m)+'-01',ins=insights(m);
   const gw=W(S.goal.w),gb=balances(end)[S.goal.w]||0,gp=Math.max(0,Math.min(1,gb/(S.goal.amt||1)));
   const outs=[['Money lent to others',st.lent,'var(--c3)'],['Day-to-day expenses',st.exp,'var(--c2)'],['Card & SPayLater paid',st.ccp,'var(--c4)']];
   const mx=Math.max(st.out,st.ccCharged,1);
-  return`<h1 class="ltitle">Overview</h1>`+safetyNotices()+updateNotice()+installNotice()+(S.demo&&!S.tx.some(t=>t.mine)&&!S.cc.some(c=>c.mine)?`<div class="notice info"><b>You are viewing sample data</b><span>Explore freely, then start with your own numbers. Sample entries are examples, not your records.</span><div class="acts"><button class="btn sm pri" data-act="fresh">Start fresh</button><button class="btn sm" data-act="settings">Set wallet balances</button></div></div>`:'')+
+  return`<h1 class="ltitle">Overview</h1>`+safetyNotices()+updateNotice()+installNotice()+(S.demo&&!S.tx.some(t=>t.mine)&&!S.cc.some(c=>c.mine)?`<div class="notice info"><b>You are viewing sample data</b><span>Explore freely, then start with your own numbers. Sample entries are examples, not your records.</span><div class="acts"><button class="btn sm pri" data-act="fresh">Start fresh</button><button class="btn sm" data-act="setpage" data-id="money">Set wallet balances</button></div></div>`:'')+
   hero()+
   (ins.length?`<div class="notice ${ins[0].lv}"><b>${esc(ins[0].t)}</b><span>${esc(ins[0].x)}</span><div class="acts"><button class="btn sm" data-act="ask" data-q="Give me tips">Get tips</button><button class="btn sm" data-act="ask" data-q="forecast">Forecast</button>${ins.length>1?`<button class="btn sm" data-act="insall" aria-expanded="${!!STATE.insAll}">${STATE.insAll?'Hide':'See'} ${ins.length-1} more</button>`:''}</div></div>`:'')+
   (STATE.insAll?ins.slice(1).map(n=>`<div class="notice ${n.lv}"><b>${esc(n.t)}</b><span>${esc(n.x)}</span></div>`).join(''):'')+
@@ -766,7 +845,7 @@ debts(){const end=nextM(STATE.m)+'-01',L=loans(),open=ccOpen();const owed=sum(L,
 
 ai(){if(!STATE.chat.length)STATE.chat.push({me:false,h:`<b>Hi! I am your on-device assistant.</b> `+summaryLine()+`<br><br>`+help()});
   return`<h1 class="ltitle">Assistant</h1><section class="ai-head"><div class="orb" aria-hidden="true">✦</div><div><div class="sub">Runs offline on your phone. No internet, no GPU, no data leaves the device.</div></div></section>
-  <div class="chat" id="chat">${STATE.chat.map((c,i)=>`<div class="msg ${c.me?'me':'bot'}">${c.me?esc(c.h):c.h}${c.draft!=null?draftCard(c.draft):''}</div>`).join('')}</div><div style="height:96px"></div>`}};
+  <div class="chat" id="chat">${STATE.chat.map((c,i)=>`<div class="msg ${c.me?'me':'bot'}${c.fresh?' new':''}">${c.me?esc(c.h):c.h}${c.draft!=null?draftCard(c.draft):''}</div>`).join('')}</div><div style="height:96px"></div>`}};
 
 function summaryLine(){const st=monthStats(STATE.m);return`For ${mLabel(STATE.m)} you are at <b class="${st.net<0?'neg':'pos'}">${peso(st.net)}</b> net.`}
 function trendRows(){const cur=today().slice(0,7),end=STATE.m>cur?STATE.m:cur;
@@ -785,10 +864,18 @@ function txRow(t,noDate){const T={exp:[catCol(t.c),catName(t.c).charAt(0),t.s,ca
   return`<button class="item" data-act="edit" data-id="${t.id}"><div class="ic" style="--ic:${T[0]}" aria-hidden="true">${esc(T[1])}</div><div class="mid"><div class="t">${esc(T[2])}</div><div class="m">${noDate?'':dLabel(t.d)+' · '}${esc(T[3])}${t.t!=='xfer'?' · '+esc(W(t.w).name):''}${t.n?' · '+esc(t.n):''}</div></div><div class="r"><b class="${cls}">${T[4]}${peso(t.a)}</b></div></button>`}
 
 /* ================= sheets & forms ================= */
-function sheet(html){$('#sheetBody').innerHTML=html;$('#sheet').hidden=false;const f=$('#sheetBody input:not([type=hidden]),#sheetBody select');if(f&&!('ontouchstart' in window))f.focus()}
-function closeSheet(){$('#sheet').hidden=true;$('#sheetBody').innerHTML=''}
-function toast(msg,act,label){const t=$('#toast');t.innerHTML=esc(msg)+(act?` <button class="tact" data-act="${act}">${esc(label)}</button>`:'');t.hidden=false;
-  clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,act?6000:2200)}
+// Sheets slide up and slide away. kind says what is showing ('settings' lets Settings refresh itself in place);
+// anim 'fwd'/'back' slides between Settings pages.
+const sheetOpen=()=>!$('#sheet').hidden&&!$('#sheet').classList.contains('closing');
+function sheet(html,kind,anim){clearTimeout(sheet.t);const w=$('#sheet'),b=$('#sheetBody'),was=sheetOpen();
+  w.classList.remove('closing');b.innerHTML=html;STATE.sheetKind=kind||'';w.hidden=false;
+  b.classList.remove('pg-fwd','pg-back');if(was&&anim&&!REDUCED){void b.offsetWidth;b.classList.add('pg-'+anim);$('.sheet',w).scrollTop=0}
+  const f=$('#sheetBody input:not([type=hidden]):not([data-nofocus]),#sheetBody select');if(f&&!was&&!('ontouchstart' in window))f.focus()}
+function closeSheet(){const w=$('#sheet');if(w.hidden||w.classList.contains('closing'))return;STATE.sheetKind='';w.classList.add('closing');
+  clearTimeout(sheet.t);sheet.t=setTimeout(()=>{w.hidden=true;w.classList.remove('closing');$('#sheetBody').innerHTML=''},REDUCED?0:230)}
+const refreshSettings=()=>{if(sheetOpen()&&STATE.sheetKind==='settings')settings()};
+function toast(msg,act,label){const t=$('#toast');t.innerHTML=esc(msg)+(act?` <button class="tact" data-act="${act}">${esc(label)}</button>`:'');
+  t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),act?6000:2400)}
 function askConfirm(msg,yes,label='Delete'){sheet(`<h3>${esc(msg)}</h3><div class="btns"><button class="btn pri" id="cyes" style="background:var(--neg);border-color:var(--neg)">${esc(label)}</button><button class="btn" data-act="close">Cancel</button></div>`);$('#cyes').onclick=()=>{closeSheet();yes()}}
 const wOpts=sel=>S.wallets.map(w=>`<option value="${w.id}"${w.id===sel?' selected':''}>${esc(w.name)}</option>`).join('');
 const defDate=()=>{const t=today();return t.slice(0,7)===STATE.m?t:(STATE.m<t.slice(0,7)?STATE.m+'-'+pad(dim(STATE.m)):STATE.m+'-01')};
@@ -798,7 +885,7 @@ function addMenu(){sheet(`<h3>Add a record</h3><div class="actions-grid">
    .map(([t,l,i,c])=>`<button class="act" data-act="${t==='ai'?'tab':'form'}" data-t="${t}" data-id="ai"><i style="background:${c}">${i}</i>${l}</button>`).join('')}</div>`)}
 
 function openForm(type,x={}){const ed=!!x.id;const d=x.d||defDate();let body='',title='';
-  const amt=`<label>Amount (₱)<input class="amtin" id="f_a" inputmode="decimal" placeholder="0.00" value="${x.a!=null?x.a:''}" required></label>`;
+  const amt=`<label>Amount (${esc(CUR())})<input class="amtin" id="f_a" inputmode="decimal" placeholder="${DEC()?'0.00':'0'}" value="${x.a!=null?x.a:''}" required></label>`;
   const date=`<label>Date<input type="date" id="f_d" value="${d}" required></label>`;
   const note=`<label>Note<input id="f_n" value="${esc(x.n||'')}" placeholder="Optional"></label>`;
   if(type==='exp'){title=ed?'Edit expense':'Add expense';const c=x.c||'';
@@ -851,44 +938,74 @@ function payCard(c){sheet(`<h3>Pay “${esc(c.s)}”</h3><form class="form" id="
   <div class="btns"><button class="btn pri" type="submit" style="flex:1">Mark paid</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`);
   $('#payform').onsubmit=e=>{e.preventDefault();const t=own({id:uid(),t:'ccpay',a:c.a,d:$('#p_d').value,w:$('#p_w').value,ref:c.id,s:'Paid card: '+c.s});S.tx.push(t);c.paid=true;c.pay=t.id;save();closeSheet();render();toast('Marked paid')}}
 
-function settings(){const b=balances(),tp=themePref();sheet(`<h3>Settings & backup</h3>
-  <div class="form" style="margin-bottom:18px"><p class="eyebrow" style="margin:0">Appearance</p>
-  <div class="chips" role="group" aria-label="Theme">${[['auto','Match phone'],['light','Light'],['dark','Dark']].map(([k,l])=>`<button class="chip${tp===k?' on':''}" data-act="themeset" data-id="${k}" aria-pressed="${tp===k}">${l}</button>`).join('')}</div>
-  <span class="sub">The ${isDark()?'sun':'moon'} button at the top switches between light and dark.</span></div>
-  <form class="form" id="setform">
-  <p class="eyebrow" style="margin:0">Wallets and starting balances</p>
-  ${S.wallets.map(w=>`<div class="row2"><label>Name<input data-wn="${w.id}" value="${esc(w.name)}"></label><label>Starting balance<input data-wi="${w.id}" inputmode="decimal" value="${w.init||0}"></label></div>`).join('')}
-  <button class="btn" type="button" id="addw">+ Add wallet</button>
-  <p class="eyebrow" style="margin:6px 0 0">Savings goal</p>
-  <div class="row2"><label>Goal amount<input id="g_a" inputmode="decimal" value="${S.goal.amt}"></label><label>Savings wallet<select id="g_w">${wOpts(S.goal.w)}</select></label></div>
-  <label>Cards and pay-later accounts (comma separated)<input id="s_cards" value="${esc(S.cards.join(', '))}"></label>
-  <button class="btn pri" type="submit">Save settings</button></form>
-  ${NATIVE?`<div class="form" style="margin-top:18px"><p class="eyebrow" style="margin:0">Saved on this phone</p>
-  <span class="sub">${S.demo?'Sample data is not written to your phone. Tap Start fresh on Home to begin saving.':`Every change is saved to <span class="mono">Documents/Pitaka/pitaka-data.json</span>, plus one copy per day in <span class="mono">Documents/Pitaka/backups</span> (last ${PHONE.keep} days).`}</span>
-  ${PHONE.saved?`<span class="sub pos">Last saved ${new Date(PHONE.saved).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'})}</span>`:''}${PHONE.err?`<span class="sub neg">Last save failed: ${esc(PHONE.err)}</span>`:''}
-  ${S.demo?'':`<button class="btn" data-act="phonesave">Save to Pitaka folder now</button>`}</div>`:''}
-  <div class="form" style="margin-top:18px"><p class="eyebrow" style="margin:0">Backup to Google Drive</p>
-  <span class="sub">${NATIVE?'':'Your data is stored only on this phone. '}${lastBackup()?`Last backup: ${dLabel(lastBackup())}, ${lastBackup().slice(0,4)}.`:'No backup saved yet.'}</span>
-  ${INSTALLED||NATIVE?`<button class="btn pri" data-act="drive">Save to Drive</button><span class="sub">Opens your share menu. Choose Drive, then tap Save.</span>`
-    :`<span class="sub">Save to Drive works in the installed app. Here, use Copy backup.</span>`}
-  <div class="btns"><label class="btn" style="flex-direction:row;color:var(--fg);font-size:13.5px">Restore from Drive${NATIVE?' or phone':''}<input type="file" id="imp" hidden></label><button class="btn" data-act="copybk">Copy backup</button>${INSTALLED?'<button class="btn" data-act="dlbk">Download backup</button>':''}</div>
-  <span class="sub">Restore opens your file picker. Tap ☰ or Browse, choose Drive${NATIVE?' or Documents › Pitaka':''}, then pick a <span class="mono">pitaka</span> backup file.</span>
-  <label>Or paste a backup here<textarea id="pastebk" rows="3" placeholder='{"v":1,...}'></textarea></label><button class="btn" data-act="pastebk">Restore pasted backup</button>
-  ${UPD?`<p class="eyebrow" style="margin:10px 0 0">App version</p><span class="sub">${UP.cur?'Version '+esc(UP.cur.versionName):'Version unknown'}${UP.next?` · <b class="pos">${esc(UP.next.versionName)} available</b>`:''}</span>
-  <div class="btns">${UP.next?`<button class="btn pri" data-act="${UP.state==='ready'?'updinstall':'update'}"${UP.state==='dl'?' disabled':''}>${UP.state==='dl'?'Downloading…':UP.state==='ready'?'Install':'Update now'}</button>`:''}<button class="btn" data-act="updcheck"${UP.checking?' disabled':''}>Check for updates</button></div>`:''}
-  ${prevSnap()?(p=>`<p class="eyebrow" style="margin:10px 0 0">Undo</p><span class="sub">Your records from just before ${REASON[p.reason]||'the last change'} (${dLabel(p.at.slice(0,10))}) are kept on this phone.</span><div class="btns"><button class="btn" data-act="undoask">Bring them back</button></div>`)(prevSnap()):''}
-  <p class="eyebrow" style="margin:10px 0 0">Data</p><div class="btns"><button class="btn danger" data-act="fresh">Erase everything</button><button class="btn" data-act="sample">Load sample data</button></div></div>`);
-  $('#addw').onclick=()=>{const n=S.wallets.length;S.wallets.push({id:'w'+uid(),name:'New wallet',col:(n%8)+1,init:0});save();settings()};
-  $('#setform').onsubmit=e=>{e.preventDefault();
-    document.querySelectorAll('[data-wn]').forEach(i=>{const w=W(i.dataset.wn);w.name=i.value.trim()||w.name});
-    document.querySelectorAll('[data-wi]').forEach(i=>{const w=W(i.dataset.wi);const v=num(i.value);w.init=isNaN(v)?0:v});
-    S.goal={amt:num($('#g_a').value)||0,w:$('#g_w').value};S.cards=$('#s_cards').value.split(',').map(s=>s.trim()).filter(Boolean);if(!S.cards.length)S.cards=['Credit Card'];
-    save();closeSheet();render();toast('Settings saved')};
-  $('#imp').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>restore(r.result);r.onerror=()=>toast('That file could not be opened. Try downloading it from Drive first.');r.readAsText(f)}}
+/* ================= settings ================= */
+// Settings is a menu of pages, like a phone's Settings app. settings() re-renders the page that is open;
+// settings('page') opens one. Each page has a title, its HTML, an optional parent and an optional bind() for its inputs.
+const CHEV='<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
+const setRow=(page,ic,label,val)=>`<button class="setrow" data-act="setpage" data-id="${page}"><span class="sic" aria-hidden="true">${ic}</span><span class="sl">${label}</span><span class="sv">${val||''}</span>${CHEV}</button>`;
+const choice=(k,opts,cur)=>`<div class="chips" role="group">${opts.map(([v,l])=>`<button class="chip${String(cur)===String(v)?' on':''}" data-act="cfgset" data-k="${k}" data-v="${v}" aria-pressed="${String(cur)===String(v)}">${l}</button>`).join('')}</div>`;
+const TABNAME={last:'Last tab used',home:'Overview',wallets:'Wallets',spend:'Spending',debts:'Debts',ai:'Assistant'};
+const SET={
+  main:{title:'Settings',html:()=>{const c=S.cfg,tp=themePref();
+    return`<div class="setgroup">${setRow('look','🎨','Appearance',{auto:'Match phone',light:'Light',dark:'Dark'}[tp]+' · '+{sm:'Small',md:'Default',lg:'Large',xl:'Extra large'}[c.text]+' text')}
+      ${setRow('format','💱','Currency & format',`${esc(c.cur)} · ${c.dec?'2 decimals':'whole numbers'}`)}</div>
+    <div class="setgroup">${setRow('money','👛','Wallets, goal & cards',`${S.wallets.length} wallets`)}</div>
+    <div class="setgroup">${setRow('backup','☁️','Backup & restore',lastBackup()?'Last '+dLabel(lastBackup()):'No backup yet')}
+      ${UPD?setRow('version','⬇️','App version',UP.cur?esc(UP.cur.versionName)+(UP.next?' · update ready':''):''):''}
+      ${setRow('data','🗂️','Data',prevSnap()?'Undo available':'')}</div>`}},
+  look:{title:'Appearance',parent:'main',html:()=>{const tp=themePref();return`<div class="form">
+    <div class="field"><span class="flabel">Theme</span><div class="chips" role="group">${[['auto','Match phone'],['light','Light'],['dark','Dark']].map(([k,l])=>`<button class="chip${tp===k?' on':''}" data-act="themeset" data-id="${k}" aria-pressed="${tp===k}">${l}</button>`).join('')}</div>
+      <span class="sub">The ${isDark()?'sun':'moon'} button at the top also switches it.</span></div>
+    <div class="field"><span class="flabel">Text size</span>${choice('text',[['sm','Small'],['md','Default'],['lg','Large'],['xl','Extra large']],S.cfg.text)}</div>
+    <div class="field"><span class="flabel">Open Pitaka on</span>${choice('start',Object.entries(TABNAME),S.cfg.start)}</div></div>`}},
+  format:{title:'Currency & format',parent:'main',html:()=>{const c=S.cfg;return`<div class="form">
+    <div class="field"><span class="flabel">Currency symbol</span>${choice('cur',[['₱','₱'],['$','$'],['€','€'],['¥','¥'],['£','£'],['₩','₩'],['฿','฿'],['RM','RM'],['Rp','Rp'],['₹','₹']],c.cur)}
+      <label>Or type your own<input id="cf_cur" maxlength="4" value="${esc(c.cur)}" data-nofocus></label></div>
+    <div class="field"><span class="flabel">Amounts</span>${choice('dec',[[2,`${esc(c.cur)}1,234.50`],[0,`${esc(c.cur)}1,235`]],c.dec)}</div>
+    <div class="field"><span class="flabel">Dates</span>${choice('date',[['md','Nov 7'],['dm','7 Nov']],c.date)}</div>
+    <span class="sub">Only how amounts look changes. Your records keep their exact values.</span></div>`},
+    bind:()=>{const i=$('#cf_cur');i.onchange=()=>{const v=i.value.trim();if(v){S.cfg.cur=v;save();applyCfg();render();settings()}}}},
+  money:{title:'Wallets, goal & cards',parent:'main',html:()=>`<form class="form" id="setform">
+    <p class="eyebrow" style="margin:0">Wallets and starting balances</p>
+    ${S.wallets.map(w=>`<div class="row2"><label>Name<input data-wn="${w.id}" value="${esc(w.name)}" data-nofocus></label><label>Starting balance<input data-wi="${w.id}" inputmode="decimal" value="${w.init||0}"></label></div>`).join('')}
+    <button class="btn" type="button" id="addw">+ Add wallet</button>
+    <p class="eyebrow" style="margin:6px 0 0">Savings goal</p>
+    <div class="row2"><label>Goal amount<input id="g_a" inputmode="decimal" value="${S.goal.amt}"></label><label>Savings wallet<select id="g_w">${wOpts(S.goal.w)}</select></label></div>
+    <label>Cards and pay-later accounts (comma separated)<input id="s_cards" value="${esc(S.cards.join(', '))}"></label>
+    <button class="btn pri" type="submit">Save</button></form>`,
+    bind:()=>{$('#addw').onclick=()=>{const n=S.wallets.length;S.wallets.push({id:'w'+uid(),name:'New wallet',col:(n%8)+1,init:0});save();settings()};
+      $('#setform').onsubmit=e=>{e.preventDefault();
+        document.querySelectorAll('[data-wn]').forEach(i=>{const w=W(i.dataset.wn);w.name=i.value.trim()||w.name});
+        document.querySelectorAll('[data-wi]').forEach(i=>{const w=W(i.dataset.wi);const v=num(i.value);w.init=isNaN(v)?0:v});
+        S.goal={amt:num($('#g_a').value)||0,w:$('#g_w').value};S.cards=$('#s_cards').value.split(',').map(s=>s.trim()).filter(Boolean);if(!S.cards.length)S.cards=['Credit Card'];
+        save();render();toast('Saved');settings('main','back')}}},
+  backup:{title:'Backup & restore',parent:'main',html:()=>`<div class="form">
+    ${NATIVE?`<div class="field"><span class="flabel">Saved on this phone</span>
+      <span class="sub">${S.demo?'Sample data is not written to your phone. Tap Start fresh on Overview to begin saving.':`Every change is saved to <span class="mono">Documents/Pitaka/pitaka-data.json</span>, plus one copy per day in <span class="mono">Documents/Pitaka/backups</span> (last ${PHONE.keep} days).`}</span>
+      ${PHONE.saved?`<span class="sub pos">Last saved ${new Date(PHONE.saved).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'})}</span>`:''}${PHONE.err?`<span class="sub neg">Last save failed: ${esc(PHONE.err)}</span>`:''}
+      ${S.demo?'':`<button class="btn" data-act="phonesave">Save to Pitaka folder now</button>`}</div>`:''}
+    <div class="field"><span class="flabel">Backup to Google Drive or iCloud</span>
+      <span class="sub">${NATIVE?'':'Your data is stored only on this phone. '}${lastBackup()?`Last backup: ${dLabel(lastBackup())}, ${lastBackup().slice(0,4)}.`:'No backup saved yet.'}</span>
+      ${INSTALLED||NATIVE?`<button class="btn pri" data-act="drive">Save to Drive</button><span class="sub">Opens your share menu. Choose Drive or Files, then tap Save.</span>`
+        :`<span class="sub">Save to Drive works in the installed app. Here, use Copy backup.</span>`}</div>
+    <div class="field"><span class="flabel">Restore</span>
+      <div class="btns"><label class="btn" style="flex-direction:row;color:var(--fg);font-size:13.5px">Restore from Drive${NATIVE?' or phone':''}<input type="file" id="imp" hidden></label><button class="btn" data-act="copybk">Copy backup</button>${INSTALLED?'<button class="btn" data-act="dlbk">Download backup</button>':''}</div>
+      <span class="sub">Restore opens your file picker. Tap ☰ or Browse, choose Drive${NATIVE?' or Documents › Pitaka':''}, then pick a <span class="mono">pitaka</span> backup file.</span>
+      <label>Or paste a backup here<textarea id="pastebk" rows="3" placeholder='{"v":1,...}' data-nofocus></textarea></label><button class="btn" data-act="pastebk">Restore pasted backup</button></div></div>`,
+    bind:()=>{$('#imp').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>restore(r.result);r.onerror=()=>toast('That file could not be opened. Try downloading it from Drive first.');r.readAsText(f)}}},
+  version:{title:'App version',parent:'main',html:()=>`<div class="form"><span class="sub">${UP.cur?'Version '+esc(UP.cur.versionName):'Version unknown'}${UP.next?` · <b class="pos">${esc(UP.next.versionName)} available</b>`:''}</span>
+    <div class="btns">${UP.next?`<button class="btn pri" data-act="${UP.state==='ready'?'updinstall':'update'}"${UP.state==='dl'?' disabled':''}>${UP.state==='dl'?'Downloading…':UP.state==='ready'?'Install':'Update now'}</button>`:''}<button class="btn" data-act="updcheck"${UP.checking?' disabled':''}>Check for updates</button></div></div>`},
+  data:{title:'Data',parent:'main',html:()=>`<div class="form">
+    ${prevSnap()?(p=>`<div class="field"><span class="flabel">Undo</span><span class="sub">Your records from just before ${REASON[p.reason]||'the last change'} (${dLabel(p.at.slice(0,10))}) are kept on this phone.</span><div class="btns"><button class="btn" data-act="undoask">Bring them back</button></div></div>`)(prevSnap()):''}
+    <div class="field"><span class="flabel">Start over</span><div class="btns"><button class="btn danger" data-act="fresh">Erase everything</button><button class="btn" data-act="sample">Load sample data</button></div>
+    <span class="sub">Both can be undone here afterwards.</span></div></div>`}};
+function settings(page,anim){page=SET[page]?page:SET[STATE.setPage]?STATE.setPage:'main';const P=SET[page],was=STATE.setPage;STATE.setPage=page;
+  const back=P.parent?`<button class="back" data-act="setpage" data-id="${P.parent}" data-dir="back"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>${SET[P.parent].title}</button>`:'';
+  sheet(`<div class="shead">${back}<h3>${P.title}</h3></div>${P.html()}`,'settings',anim||(was!==page?'fwd':''));if(P.bind)P.bind()}
 function restore(txt){let d;try{d=JSON.parse(String(txt).trim());if(!d||!Array.isArray(d.tx)||!Array.isArray(d.wallets)||!d.wallets.length)throw 0}
   catch(e){toast('That file is not a Pitaka backup. Pick a file named pitaka-backup.');return}
   const n=d.tx.length+(d.cc||[]).length,when=d.savedAt?` saved ${dLabel(d.savedAt.slice(0,10))}, ${d.savedAt.slice(0,4)}`:'';
-  askConfirm(`Replace what is on this phone with this backup (${n} records${when})? You can undo this.`,()=>{snapshot('restore');const had=!S.demo;delete d.savedAt;S=d;S.cc=S.cc||[];S.cards=S.cards||['Credit Card'];S.goal=S.goal||{amt:0,w:S.wallets[0].id};
+  askConfirm(`Replace what is on this phone with this backup (${n} records${when})? You can undo this.`,()=>{snapshot('restore');const had=!S.demo;delete d.savedAt;S=migrate(d);applyCfg();
     STATE.chat=[];STATE.drafts=[];save();render();toast('Backup restored',had?'undo':'','Undo')},'Restore')}
 
 /* ================= backup files ================= */
@@ -921,7 +1038,7 @@ async function bootPhone(){
   if(!FRESH){writePhone();return}
   // Nothing saved in the app yet (new install or cleared data): pick up the copy in Documents/Pitaka if there is one.
   try{const r=await FS.readFile({path:PHONE.file,directory:'DOCUMENTS',encoding:'utf8'});const d=JSON.parse(r.data);
-    if(Array.isArray(d.tx)&&Array.isArray(d.wallets)){delete d.savedAt;S=d;S.cc=S.cc||[];S.cards=S.cards||['Credit Card'];FRESH=false;DAMAGED='';save();render();toast('Loaded your records from Documents/Pitaka')}}
+    if(Array.isArray(d.tx)&&Array.isArray(d.wallets)){delete d.savedAt;S=migrate(d);applyCfg();FRESH=false;DAMAGED='';save();render();toast('Loaded your records from Documents/Pitaka')}}
   catch(e){/* no file yet, or the file belongs to an earlier install: use Restore in Settings */}}
 /* ================= app updates (Android app only) ================= */
 // Each push to main publishes a GitHub Release with pitaka.apk and version.json. The app compares version numbers,
@@ -937,7 +1054,7 @@ async function checkUpdate(manual){if(!UPD||UP.checking)return;UP.checking=true;
     UP.next=+v.versionCode>+UP.cur.versionCode?v:null;
     if(manual)toast(UP.next?`Version ${v.versionName} is available`:'You have the latest version')}
   catch(e){if(manual)toast('Could not check for updates. Check your internet connection.')}
-  finally{UP.checking=false;render();if(manual&&!$('#sheet').hidden)settings()}}
+  finally{UP.checking=false;render();if(manual)refreshSettings()}}
 async function startUpdate(){const v=UP.next;if(!v||UP.state==='dl')return;
   writePhone();UP.state='dl';UP.pct=-1;render();
   const h=await UPD.addListener('progress',e=>{UP.pct=e.percent;const el=$('#updpct');if(el)el.textContent=e.percent>=0?e.percent+'%':''});
@@ -966,12 +1083,12 @@ function installNotice(){let hide=false;try{hide=localStorage.getItem('pitaka.in
 
 async function nativeShare(){const name=`pitaka-backup-${today()}.json`;
   try{await FS.writeFile({path:name,data:phoneData(),directory:'CACHE',encoding:'utf8'});const{uri}=await FS.getUri({path:name,directory:'CACHE'});
-    await SHARE.share({title:'Pitaka backup',files:[uri],dialogTitle:'Save backup to Drive'});markBackup();if(!$('#sheet').hidden)settings();toast('Backup shared')}
+    await SHARE.share({title:'Pitaka backup',files:[uri],dialogTitle:'Save backup to Drive'});markBackup();refreshSettings();toast('Backup shared')}
   catch(e){if(!/cancel/i.test(String(e&&e.message||e)))toast('Could not open the share menu.')}}
 
 function saveToDrive(){if(NATIVE)return nativeShare();const file=backupFile('txt');
   if(navigator.canShare&&navigator.canShare({files:[file]})){
-    navigator.share({files:[file],title:'Pitaka backup'}).then(()=>{markBackup();if(!$('#sheet').hidden)settings();toast('Backup shared')},
+    navigator.share({files:[file],title:'Pitaka backup'}).then(()=>{markBackup();refreshSettings();toast('Backup shared')},
       e=>{if(e&&e.name==='AbortError')return;if(saveFile(file))toast('Saved to Downloads. Upload it in the Drive app.')})}
   else if(saveFile(file))toast('Sharing is not available here. Saved to Downloads; upload it in the Drive app.')}
 
@@ -985,11 +1102,11 @@ function draftCard(i){const x=STATE.drafts[i];if(!x)return'';if(x.done)return`<d
   ${opts.length?`<div class="chips" role="group" aria-label="Category">${opts.map(c=>`<button class="chip${c===x.c?' on':''}" data-act="dcat" data-id="${i}" data-c="${c}" aria-pressed="${c===x.c}"><i class="dot" style="background:${catCol(c)}"></i>${catName(c)}</button>`).join('')}</div>`:''}
   <div class="btns"><button class="btn sm pri" data-act="dsave" data-id="${i}">Add it</button><button class="btn sm" data-act="dedit" data-id="${i}">Edit</button><button class="btn sm" data-act="dskip" data-id="${i}">Discard</button></div></div>`}
 function renderChips(){$('#aichips').innerHTML=['Summary','Where did my money go?','Who owes me?','Forecast','Tips','Can I afford 2000?','Compare vs last month','Biggest expenses'].map(q=>`<button class="chip" data-act="ask" data-q="${q}">${q}</button>`).join('')}
-function ask(text){text=text.trim();if(!text)return;STATE.chat.push({me:true,h:text});
+function ask(text){text=text.trim();if(!text)return;STATE.chat.push({me:true,h:text,fresh:1});
   const isQ=RX.q.test(text.toLowerCase())&&!/^(lunch|dinner|breakfast)/i.test(text);const cmd=isQ?null:parseCommand(text);
   if(cmd){STATE.drafts.push(cmd);const i=STATE.drafts.length-1;
-    STATE.chat.push({me:false,h:cmd.t!=='exp'?'Here is what I understood:':!cmd.conf?'I could not tell the category from that. Pick one below:':cmd.conf.p<.6?`My best guess is <b>${catName(cmd.c)}</b> (${esc(cmd.conf.why)}), but I am not sure. Pick another below if it is wrong.`:`Got it. I filed this under <b>${catName(cmd.c)}</b> (${esc(cmd.conf.why)}).`,draft:i})}
-  else STATE.chat.push({me:false,h:answer(text)});
+    STATE.chat.push({me:false,fresh:1,h:cmd.t!=='exp'?'Here is what I understood:':!cmd.conf?'I could not tell the category from that. Pick one below:':cmd.conf.p<.6?`My best guess is <b>${catName(cmd.c)}</b> (${esc(cmd.conf.why)}), but I am not sure. Pick another below if it is wrong.`:`Got it. I filed this under <b>${catName(cmd.c)}</b> (${esc(cmd.conf.why)}).`,draft:i})}
+  else STATE.chat.push({me:false,fresh:1,h:answer(text)});
   if(STATE.chat.length>60)STATE.chat.splice(1,STATE.chat.length-60);
   if(STATE.tab!=='ai'){STATE.tab='ai'}render()}
 function commitDraft(i){const x=STATE.drafts[i];if(!x||x.done)return;
@@ -1000,11 +1117,15 @@ function commitDraft(i){const x=STATE.drafts[i];if(!x||x.done)return;
 
 /* ================= events ================= */
 const ACT={
-  tab:d=>{closeSheet();STATE.tab=d.id;try{localStorage.setItem('pitaka.tab',d.id)}catch(e){}render();window.scrollTo(0,STATE.tab==='ai'?document.body.scrollHeight:0)},
-  month:d=>{STATE.m=addM(STATE.m,+d.k);STATE.filter.limit=40;render()},
-  setm:d=>{STATE.m=d.id;STATE.filter.limit=40;render();window.scrollTo(0,0)},
+  tab:d=>{closeSheet();if(d.id===STATE.tab){window.scrollTo({top:0,behavior:REDUCED?'auto':'smooth'});return}
+    STATE.scroll[STATE.tab]=window.scrollY;transition(()=>{STATE.tab=d.id;try{localStorage.setItem('pitaka.tab',d.id)}catch(e){}render();
+    window.scrollTo(0,STATE.tab==='ai'?document.body.scrollHeight:(STATE.scroll[STATE.tab]||0))})},
+  month:d=>transition(()=>{STATE.m=addM(STATE.m,+d.k);STATE.filter.limit=40;render()},+d.k>0?'next':'prev'),
+  setm:d=>transition(()=>{const dir=d.id>STATE.m?'next':'prev';STATE.m=d.id;STATE.filter.limit=40;render();window.scrollTo(0,0)},d.id>STATE.m?'next':'prev'),
   insall:()=>{STATE.insAll=!STATE.insAll;render()},
-  add:()=>addMenu(),close:()=>closeSheet(),settings:()=>settings(),
+  add:()=>addMenu(),close:()=>closeSheet(),settings:()=>{STATE.setPage='main';settings('main')},
+  setpage:d=>settings(d.id,d.dir||'fwd'),
+  cfgset:d=>{const k=d.k;let v=d.v;if(k==='dec')v=+v;S.cfg[k]=v;save();applyCfg();render();settings()},
   form:d=>openForm(d.t),
   edit:d=>{const t=S.tx.find(x=>x.id===d.id);if(t){if(t.t==='ccpay')delRecord('ccpay',t);else openForm(t.t,t)}},
   editcc:d=>{const c=S.cc.find(x=>x.id===d.id);if(c)openForm('cc',c)},
@@ -1023,7 +1144,7 @@ const ACT={
   sample:()=>askConfirm(S.demo?'Reload the sample data?':'Replace your records with sample data? You can undo this from Settings.',()=>{const had=!S.demo;snapshot('sample');S=demo();STATE.chat=[];save();render();if(had)toast('Sample data loaded','undo','Undo')},'Load sample'),
   undo:()=>undoLast(),
   theme:()=>applyTheme(isDark()?'light':'dark'),
-  themeset:d=>{applyTheme(d.id);if(!$('#sheet').hidden)settings()},
+  themeset:d=>{applyTheme(d.id);refreshSettings()},
   undoask:()=>{const p=prevSnap();if(p)askConfirm(`Bring back your records from just before ${REASON[p.reason]||'the last change'} (${dLabel(p.at.slice(0,10))}, ${new Date(p.at).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'})})? Changes made since then will be replaced.`,undoLast,'Bring back')},
   keepmine:()=>keepMine(),
   bklater:()=>{try{localStorage.setItem('pitaka.bksnooze',addDays(today(),3))}catch(e){}render()},
@@ -1040,9 +1161,9 @@ function fallbackCopy(txt){const ta=$('#pastebk');if(ta){ta.value=txt;ta.select(
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const f=ACT[b.dataset.act];if(f){e.preventDefault();f(b.dataset,b)}});
 let st_;document.addEventListener('input',e=>{if(e.target.id==='search'){clearTimeout(st_);st_=setTimeout(()=>{STATE.filter.q=e.target.value;STATE.filter.limit=40;const pos=e.target.selectionStart;render();const s=$('#search');s.focus();try{s.setSelectionRange(pos,pos)}catch(_){}},180)}});
 $('#aiform').onsubmit=e=>{e.preventDefault();const i=$('#aiinput');const v=i.value;i.value='';ask(v)};
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#sheet').hidden)closeSheet()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheetOpen())closeSheet()});
 
-load();applyTheme(themePref());render();
+load();applyCfg();if(S.cfg.start!=='last')STATE.tab=S.cfg.start;applyTheme(themePref());render();
 if(NATIVE)bootPhone();
 if(UPD)setTimeout(()=>checkUpdate(false),3000);
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});

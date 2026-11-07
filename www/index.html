@@ -365,6 +365,7 @@ const DEC=()=>S&&S.cfg?S.cfg.dec:2;
 const peso=n=>(n<-(DEC()?0.004:0.5)?'-':'')+CUR()+NF.format(Math.abs(n)||0);
 const pesoS=n=>(n<-0.5?'-':'')+CUR()+NF0.format(Math.abs(n)||0);
 const pct=(a,b)=>b?Math.round(a/b*100)+'%':'0%';
+const ord=n=>n+(n%100>=11&&n%100<=13?'th':['th','st','nd','rd'][n%10]||'th');
 const sum=(arr,f=x=>x.a)=>arr.reduce((s,x)=>s+f(x),0);
 const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
 
@@ -387,11 +388,14 @@ const catIc=id=>{const c=catOf(id);return c.ic||c.name.charAt(0)};
 const CFG0={cur:'₱',dec:2,date:'md',text:'md',start:'last',mstart:1,bkEvery:7,nudge:{on:false,time:'20:00'},shortcuts:[],lockAfter:0};
 function migrate(d){d.cfg={...CFG0,...(d.cfg||{})};d.cfg.nudge={...CFG0.nudge,...(d.cfg.nudge||{})};
   if(!Array.isArray(d.cats)||!d.cats.length)d.cats=CATS0.map(c=>({...c}));
-  d.cc=d.cc||[];d.cards=d.cards&&d.cards.length?d.cards:['Credit Card'];d.goal=d.goal||{amt:0,w:d.wallets[0].id};return d}
+  d.cc=d.cc||[];d.cards=d.cards&&d.cards.length?d.cards:['Credit Card'];d.cardCfg=d.cardCfg||{};
+  if(!Array.isArray(d.goals))d.goals=d.goal&&d.goal.amt>0?[{id:'g'+uid(),name:'Savings goal',amt:d.goal.amt,w:d.goal.w,due:''}]:[];delete d.goal;
+  if(!Array.isArray(d.incTypes)||!d.incTypes.length)d.incTypes=['Salary','Freelance','Bonus','Allowance','Gift','Refund','Other'];
+  return d}
 function blank(){return migrate({v:1,demo:false,
   wallets:[{id:'cash',name:'Cash',col:1,init:0},{id:'gcash',name:'GCash',col:2,init:0},{id:'cimb',name:'CIMB (GSave)',col:3,init:0},
     {id:'uno',name:'UNO Digital',col:4,init:0},{id:'mari',name:'Maribank',col:5,init:0},{id:'gotyme',name:'GoTyme',col:6,init:0}],
-  cards:['Credit Card','SPayLater'],tx:[],cc:[],goal:{amt:20000,w:'gotyme'}})}
+  cards:['Credit Card','SPayLater'],cardCfg:{'Credit Card':{close:25,due:15}},tx:[],cc:[],goals:[{id:'g1',name:'Emergency fund',amt:20000,w:'gotyme',due:''}]})}
 
 function demo(){
   const s=blank();s.demo=true;s.wallets[0].init=2000;s.wallets[1].init=3500;s.wallets[5].init=12000;
@@ -436,6 +440,13 @@ function load(){let r=null;try{r=localStorage.getItem(KEY)}catch(e){}
   S=demo();FRESH=true}
 function save(){MODEL=null;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Could not save on this device. Copy a backup from Settings.')}writePhone()}
 const W=id=>S.wallets.find(w=>w.id===id)||{id,name:id||'—',col:3};
+// A wallet id that is safe to use as a default: the preferred one if it exists and is not hidden, else the first visible one.
+const wid=pref=>S.wallets.some(w=>w.id===pref&&!w.hidden)?pref:(S.wallets.find(w=>!w.hidden)||S.wallets[0]).id;
+const wIc=w=>w.ic?esc(w.ic)+' ':'';
+/* Card due dates: a card's statement closes on its close day; payment is due on its due day after that. */
+function dueFor(card,d){const c=S.cardCfg[card];if(!c||!c.due||!d)return'';
+  let m=d.slice(0,7),stmt;if(c.close){stmt=m+'-'+pad(Math.min(c.close,dim(m)));if(d>stmt){m=addM(m,1);stmt=m+'-'+pad(Math.min(c.close,dim(m)))}}else stmt=d;
+  let dm=stmt.slice(0,7),due=dm+'-'+pad(Math.min(c.due,dim(dm)));if(due<=stmt){dm=addM(dm,1);due=dm+'-'+pad(Math.min(c.due,dim(dm)))}return due}
 /* Undo: before anything removes records, the current records are kept as one snapshot (and, on Android, a file in
    Documents/Pitaka/backups). Undo brings them back; it is offered in a toast right away and in Settings afterwards. */
 const PREV='pitaka.v1.prev';
@@ -623,18 +634,20 @@ function parseCommand(raw){
   const personFrom=s=>{const ws=clean(s).split(' ').filter(Boolean);
     for(let i=0;i<ws.length;i++){for(const k in people){const kw=k.split(' ');if(ws.slice(i,i+kw.length).join(' ')===k)return{p:people[k],rest:[...ws.slice(0,i),...ws.slice(i+kw.length)].join(' ')}}}
     return{p:cap(ws[0]||''),rest:ws.slice(1).join(' ')}};
-  if(RX.xfer.test(q)){const nc=(wh.find(h=>h.id!=='cash')||{}).id||'gcash';let from,to;
+  if(RX.xfer.test(q)){const nc=(wh.find(h=>h.id!=='cash')||{}).id||wid('gcash');let from,to;
     if(/cash ?out|withdr/.test(q)){from=nc;to='cash'}else if(/cash ?in/.test(q)){from='cash';to=nc}else if(wh.length>=2){from=wh[0].id;to=wh[1].id}
     if(from&&to&&from!==to)return{t:'xfer',a:amt,d:date,w:from,to,s:/cash ?out|withdr/.test(q)?'Cash out':/cash ?in/.test(q)?'Cash in':cap(clean(rest))}}
   if(RX.repay.test(q)){const{p}=personFrom(rest);const open=loans().filter(l=>l.owed>0&&l.p.toLowerCase()===p.toLowerCase());
-    return{t:'repay',a:amt,d:date,w:w0||(open[0]&&open[0].w)||'cash',p:open[0]?open[0].p:p,ref:open[0]&&open[0].id,warn:open.length?'':`No open loan found for ${p||'that person'}.`}}
-  if(RX.lend.test(q)){const{p,rest:r}=personFrom(rest);return{t:'lend',a:amt,d:date,w:w0||'gcash',p:p||'Someone',s:cap(r)}}
-  if(RX.inc.test(q)){const k=/freelance|sideline|commission/.test(q)?'Freelance':/bonus|13th/.test(q)?'Bonus':/allowance/.test(q)?'Allowance':/refund|cashback/.test(q)?'Refund':'Salary';
-    return{t:'inc',a:amt,d:date,w:w0||'gcash',k,s:cap(clean(rest))||k}}
+    return{t:'repay',a:amt,d:date,w:w0||(open[0]&&open[0].w)||wid('cash'),p:open[0]?open[0].p:p,ref:open[0]&&open[0].id,warn:open.length?'':`No open loan found for ${p||'that person'}.`}}
+  if(RX.lend.test(q)){const{p,rest:r}=personFrom(rest);return{t:'lend',a:amt,d:date,w:w0||wid('gcash'),p:p||'Someone',s:cap(r)}}
+  // The person's own income types count as income words, except ones that also describe spending ("gift", "other").
+  const myInc=S.incTypes.find(x=>x.length>=4&&!/^(gift|other|others)$/i.test(x)&&new RegExp('(^|[^a-z])'+x.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?![a-z])').test(q));
+  if(RX.inc.test(q)||myInc){let k=myInc||S.incTypes.find(x=>q.includes(x.toLowerCase()))||(/freelance|sideline|commission/.test(q)?'Freelance':/bonus|13th/.test(q)?'Bonus':/allowance/.test(q)?'Allowance':/refund|cashback/.test(q)?'Refund':'Salary');
+    if(!S.incTypes.includes(k))k=S.incTypes[0];return{t:'inc',a:amt,d:date,w:w0||wid('gcash'),k,s:cap(clean(rest))||k}}
   if(RX.cc.test(q)){const card=/spay|s pay/.test(q)?(S.cards.find(c=>/spay/i.test(c))||'SPayLater'):(S.cards[0]||'Credit Card');
-    return{t:'cc',a:amt,d:date,card,s:cap(clean(rest))||'Card purchase',who:'Me',due:''}}
+    return{t:'cc',a:amt,d:date,card,s:cap(clean(rest))||'Card purchase',who:'Me',due:dueFor(card,date)}}
   const s=cap(clean(rest))||'Expense';const pr=predict(s);
-  return{t:'exp',a:amt,d:date,w:w0||'cash',s,c:pr&&pr.p>.3?pr.c:fallbackCat(),conf:pr}}
+  return{t:'exp',a:amt,d:date,w:w0||wid('cash'),s,c:pr&&pr.p>.3?pr.c:fallbackCat(),conf:pr}}
 
 /* 3) Question answering over your own ledger. */
 const CATQ={food:/food|pagkain|kain|eat|meal|grocer/,transpo:/transpo|transport|fare|commute|pamasahe|grab|jeep|travel/,bills:/bill|utilit|kuryente|electric|water|rent/,
@@ -716,7 +729,7 @@ function tips(){const m=STATE.m,st=monthStats(m),f=forecast(m),out=[];const tot=
   if(trn>=6)out.push(`You logged ${trn} transport rides (${peso(tr)}). A fixed weekly fare budget of ${pesoS(tr/Math.max(1,f.days)*7)} keeps this predictable.`);
   if((st.cats.food||0)/tot>.3)out.push(`Food is ${pct(st.cats.food,tot)} of spending. Cooking or baon two extra days a week usually trims 10 to 15%.`);
   const cc=ccUnpaid(nextM(m)+'-01');if(cc>0)out.push(`${peso(cc)} is unpaid on cards. Pay the earliest due date first to avoid interest and late fees.`);
-  const gw=S.goal&&S.goal.w,gb=gw?balances()[gw]:0;if(S.goal&&S.goal.amt>gb)out.push(`You are ${pesoS(S.goal.amt-gb)} away from your ${pesoS(S.goal.amt)} savings goal. Moving ${pesoS((S.goal.amt-gb)/3)} on each payday closes it in about 3 months.`);
+  const g0=S.goals.find(g=>g.amt>(balances()[g.w]||0));if(g0){const gb=balances()[g0.w]||0;out.push(`You are ${pesoS(g0.amt-gb)} away from “${esc(g0.name)}” (${pesoS(g0.amt)}). Moving ${pesoS((g0.amt-gb)/3)} on each payday closes it in about 3 months.`)}
   if(st.net<0)out.push(`This month is in a deficit of ${peso(-st.net)}. Pause non-essential shopping until the next payday.`);
   if(!out.length)out.push('Your month looks balanced. Keep logging daily so the forecast stays accurate.');
   return'Based on your own numbers:'+li(out)}
@@ -794,6 +807,14 @@ function safetyNotices(){let h='';
     h+=`<div class="notice warn"><b>${lb?`Last backup ${ago} days ago`:'No backup yet'}</b><span>Your ${n} records are only on this phone. Save a copy to Google Drive or iCloud so a lost or reset phone does not take them with it.</span>
     <div class="acts"><button class="btn sm pri" data-act="drive">Back up now</button><button class="btn sm" data-act="bklater">Later</button></div></div>`;
   return h}
+/* One card per savings goal: progress is the goal wallet's balance; a target date gives the monthly amount needed. */
+function goalCard(g,gb){const gp=Math.max(0,Math.min(1,gb/(g.amt||1))),left=g.amt-gb,w=W(g.w);
+  const months=g.due?Math.max(1,(+g.due.slice(0,4)-+today().slice(0,4))*12+(+g.due.slice(5,7)-+today().slice(5,7))):0;
+  const pace=left<=0?'Goal reached 🎉':g.due?(g.due<today()?`Target date passed · ${peso(left)} to go`:`${peso(left/months)} a month to reach it by ${mLabel(g.due.slice(0,7))}`):`${peso(left)} to go`;
+  return`<section class="card"><div class="split"><p class="eyebrow">${esc(g.name)} · ${wIc(w)}${esc(w.name)}</p><button class="linkbtn" data-act="setpage" data-id="goaledit" data-arg="${g.id}">Edit</button></div>
+    <div class="split" style="align-items:baseline"><div class="big">${peso(gb)}</div><span class="sub mono">of ${peso(g.amt)}</span></div>
+    <div class="bar" style="margin-top:10px"><i style="width:${gp*100}%;background:${left<=0?'var(--pos)':'var(--accent)'}"></i></div>
+    <div class="split sub" style="margin-top:6px"><span>${Math.round(gp*100)}% reached</span><span>${pace}</span></div></section>`}
 function hero(){const m=STATE.m,st=monthStats(m),end=nextM(m)+'-01',bal=sumBal(balances(end)),cur=m===today().slice(0,7);
   return`<section class="card hero" aria-label="Month summary"><p class="eyebrow">All wallets · ${cur?'now':'end of '+mLabel(m)}</p><div class="big ${bal<0?'neg':''}">${peso(bal)}</div>
   <div class="hero-k"><button data-act="tab" data-id="spend"><span>Net ${cur?'this month':mLabel(m).slice(0,3)}</span><b class="${st.net<0?'neg':'pos'}">${st.net>0.004?'+':''}${peso(st.net)}</b></button>
@@ -802,10 +823,10 @@ function hero(){const m=STATE.m,st=monthStats(m),end=nextM(m)+'-01',bal=sumBal(b
 
 const VIEWS={
 home(){const m=STATE.m,st=monthStats(m),end=nextM(m)+'-01',ins=insights(m);
-  const gw=W(S.goal.w),gb=balances(end)[S.goal.w]||0,gp=Math.max(0,Math.min(1,gb/(S.goal.amt||1)));
+  const bal=balances(end);
   const outs=[['Money lent to others',st.lent,'var(--c3)'],['Day-to-day expenses',st.exp,'var(--c2)'],['Card & SPayLater paid',st.ccp,'var(--c4)']];
   const mx=Math.max(st.out,st.ccCharged,1);
-  return`<h1 class="ltitle">Overview</h1>`+safetyNotices()+updateNotice()+installNotice()+(S.demo&&!S.tx.some(t=>t.mine)&&!S.cc.some(c=>c.mine)?`<div class="notice info"><b>You are viewing sample data</b><span>Explore freely, then start with your own numbers. Sample entries are examples, not your records.</span><div class="acts"><button class="btn sm pri" data-act="fresh">Start fresh</button><button class="btn sm" data-act="setpage" data-id="money">Set wallet balances</button></div></div>`:'')+
+  return`<h1 class="ltitle">Overview</h1>`+safetyNotices()+updateNotice()+installNotice()+(S.demo&&!S.tx.some(t=>t.mine)&&!S.cc.some(c=>c.mine)?`<div class="notice info"><b>You are viewing sample data</b><span>Explore freely, then start with your own numbers. Sample entries are examples, not your records.</span><div class="acts"><button class="btn sm pri" data-act="fresh">Start fresh</button><button class="btn sm" data-act="setpage" data-id="wallets">Set wallet balances</button></div></div>`:'')+
   hero()+
   (ins.length?`<div class="notice ${ins[0].lv}"><b>${esc(ins[0].t)}</b><span>${esc(ins[0].x)}</span><div class="acts"><button class="btn sm" data-act="ask" data-q="Give me tips">Get tips</button><button class="btn sm" data-act="ask" data-q="forecast">Forecast</button>${ins.length>1?`<button class="btn sm" data-act="insall" aria-expanded="${!!STATE.insAll}">${STATE.insAll?'Hide':'See'} ${ins.length-1} more</button>`:''}</div></div>`:'')+
   (STATE.insAll?ins.slice(1).map(n=>`<div class="notice ${n.lv}"><b>${esc(n.t)}</b><span>${esc(n.x)}</span></div>`).join(''):'')+
@@ -813,9 +834,7 @@ home(){const m=STATE.m,st=monthStats(m),end=nextM(m)+'-01',ins=insights(m);
     <section class="card"><p class="eyebrow">Cash in</p><div class="big pos">${peso(st.in)}</div><div class="rows"><div><span>Income</span><b>${peso(st.inc)}</b></div><div><span>Paid back</span><b>${peso(st.rep)}</b></div></div></section>
     <section class="card"><p class="eyebrow">Cash out</p><div class="big">${peso(st.out)}</div><div class="rows"><div><span>Spending</span><b>${peso(st.exp)}</b></div><div><span>Lent out</span><b class="neg">${peso(st.lent)}</b></div><div><span>Cards</span><b>${peso(st.ccp)}</b></div></div></section>
   </div>
-  <section class="card"><div class="split"><p class="eyebrow">Savings goal · ${esc(gw.name)}</p><span class="sub mono">Goal ${peso(S.goal.amt)}</span></div>
-    <div class="big">${peso(gb)}</div><div class="bar" style="margin-top:10px"><i style="width:${gp*100}%;background:var(--accent)"></i></div>
-    <div class="split sub" style="margin-top:6px"><span>${Math.round(gp*100)}% reached</span><span class="mono">${gb>=S.goal.amt?'Goal reached':'Remaining '+peso(S.goal.amt-gb)}</span></div></section>
+  ${S.goals.map(g=>goalCard(g,bal[g.w]||0)).join('')}
   <section class="card"><h2>Where the cash went</h2><div class="brk">
     ${outs.map(([l,v,c])=>`<div><div class="lbl"><span>${l}</span><b>${peso(v)} · ${pct(v,st.out)}</b></div><div class="bar"><i style="width:${v/mx*100}%;background:${c}"></i></div></div>`).join('')}
     <div><div class="lbl"><span>Charged to cards <span class="sub">(debt, not cash)</span></span><b class="warn">${peso(st.ccCharged)}</b></div><div class="bar"><i style="width:${st.ccCharged/mx*100}%;background:var(--warn)"></i></div></div>
@@ -829,11 +848,12 @@ wallets(){const m=STATE.m,start=m+'-01',end=nextM(m)+'-01',open=balances(start);
   const close=balances(end),tot=sumBal(close);
   return`<h1 class="ltitle">Wallets</h1><section class="notice ${tot<0?'bad':'info'}"><span class="eyebrow">All wallets combined</span><span class="big ${tot<0?'neg':''}">${peso(tot)}</span><span class="sub">Opened at ${peso(sumBal(open))}, with ${peso(monthStats(m).in)} in and ${peso(monthStats(m).out)} out.</span></section>
   <div class="split"><h2 style="font:600 20px var(--font-display);letter-spacing:-.02em;margin:0">Wallets at month end</h2><button class="btn sm pri" data-act="form" data-t="xfer">Transfer</button></div>
-  <div class="wgrid">${S.wallets.map(w=>{const c=close[w.id]||0,f=flows[w.id];const st=c<-0.004?['neg','Overdrawn']:c>0.004?['pos','Positive']:['zero','Zero'];
-    return`<section class="card wcard"><div class="head"><span class="dot" style="background:var(--c${w.col})"></span>${esc(w.name)}<span class="pill ${st[0]}">${st[1]}</span></div>
+  <div class="wgrid">${S.wallets.filter(w=>!w.hidden).map(w=>{const c=close[w.id]||0,f=flows[w.id];const st=c<-0.004?['neg','Overdrawn']:c>0.004?['pos','Positive']:['zero','Zero'];
+    return`<section class="card wcard"><div class="head"><span class="dot" style="background:var(--c${w.col})"></span>${wIc(w)}${esc(w.name)}<span class="pill ${st[0]}">${st[1]}</span></div>
     <div class="big ${c<0?'neg':''}" style="margin-top:8px">${peso(c)}</div>
     ${!(open[w.id]||0)&&!f.in&&!f.out&&!f.xf?`<div class="sub" style="margin-top:6px">No activity this month.</div>`:
     `<div class="rows"><div><span>Opening</span><b>${peso(open[w.id]||0)}</b></div><div><span>Money in</span><b class="pos">+${peso(f.in)}</b></div><div><span>Money out</span><b class="neg">-${peso(f.out)}</b></div><div><span>Net transfers</span><b>${peso(f.xf)}</b></div></div>`}</section>`}).join('')}</div>
+  ${S.wallets.some(w=>w.hidden)?`<button class="linkbtn" data-act="setpage" data-id="wallets" style="align-self:flex-start">${S.wallets.filter(w=>w.hidden).length} hidden wallet${S.wallets.filter(w=>w.hidden).length>1?'s':''} · ${peso(sum(S.wallets.filter(w=>w.hidden),w=>close[w.id]||0))} · Manage</button>`:''}
   <section class="card"><h2>Transfers between wallets<span class="right">${xfers.length} this month</span></h2><div class="list">
     ${xfers.length?xfers.sort((a,b)=>b.d.localeCompare(a.d)).map(t=>txRow(t)).join(''):'<div class="empty">No transfers this month. Transfers move money between wallets without changing your totals.</div>'}</div></section>`},
 
@@ -910,7 +930,7 @@ const refreshSettings=()=>{if(sheetOpen()&&STATE.sheetKind==='settings')settings
 function toast(msg,act,label){const t=$('#toast');t.innerHTML=esc(msg)+(act?` <button class="tact" data-act="${act}">${esc(label)}</button>`:'');
   t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),act?6000:2400)}
 function askConfirm(msg,yes,label='Delete'){sheet(`<h3>${esc(msg)}</h3><div class="btns"><button class="btn pri" id="cyes" style="background:var(--neg);border-color:var(--neg)">${esc(label)}</button><button class="btn" data-act="close">Cancel</button></div>`);$('#cyes').onclick=()=>{closeSheet();yes()}}
-const wOpts=sel=>S.wallets.map(w=>`<option value="${w.id}"${w.id===sel?' selected':''}>${esc(w.name)}</option>`).join('');
+const wOpts=sel=>S.wallets.filter(w=>!w.hidden||w.id===sel).map(w=>`<option value="${w.id}"${w.id===sel?' selected':''}>${w.ic?esc(w.ic)+' ':''}${esc(w.name)}</option>`).join('');
 const defDate=()=>{const t=today();return t.slice(0,7)===STATE.m?t:(STATE.m<t.slice(0,7)?STATE.m+'-'+pad(dim(STATE.m)):STATE.m+'-01')};
 
 function addMenu(){sheet(`<h3>Add a record</h3><div class="actions-grid">
@@ -924,18 +944,18 @@ function openForm(type,x={}){const ed=!!x.id;const d=x.d||defDate();let body='',
   if(type==='exp'){title=ed?'Edit expense':'Add expense';const c=x.c||'';
     body=amt+`<label>What was it for?<input id="f_s" value="${esc(x.s||'')}" placeholder="e.g. Jollibee lunch, jeep to work" required autocomplete="off"></label><div class="hint" id="f_hint"></div>
     <div class="flabel" id="f_catl">Category</div><div class="chips" id="f_cats" role="group" aria-labelledby="f_catl" style="margin-top:-6px">${S.cats.map(k=>`<button type="button" class="chip${k.id===c?' on':''}" data-cat="${k.id}"><i class="dot" style="background:${catCol(k.id)}"></i>${esc(k.ic?k.ic+' ':'')}${esc(k.name)}</button>`).join('')}</div>
-    <input type="hidden" id="f_c" value="${c}"><div class="row2"><label>Paid from<select id="f_w">${wOpts(x.w||'cash')}</select></label>${date}</div>`+note}
+    <input type="hidden" id="f_c" value="${c}"><div class="row2"><label>Paid from<select id="f_w">${wOpts(x.w||wid('cash'))}</select></label>${date}</div>`+note}
   if(type==='inc'){title=ed?'Edit income':'Add income';body=amt+`<label>Source<input id="f_s" value="${esc(x.s||'')}" placeholder="e.g. Salary, freelance client" required></label>
-    <div class="row2"><label>Type<select id="f_k">${['Salary','Freelance','Bonus','Allowance','Gift','Refund','Other'].map(k=>`<option${k===(x.k||'Salary')?' selected':''}>${k}</option>`).join('')}</select></label><label>Deposited to<select id="f_w">${wOpts(x.w||'gcash')}</select></label></div>`+date+note}
-  if(type==='xfer'){title=ed?'Edit transfer':'Transfer between wallets';body=amt+`<div class="row2"><label>From<select id="f_w">${wOpts(x.w||'gcash')}</select></label><label>To<select id="f_to">${wOpts(x.to||'cash')}</select></label></div>`+date+note}
+    <div class="row2"><label>Type<select id="f_k">${[...new Set([...S.incTypes,...(x.k&&!S.incTypes.includes(x.k)?[x.k]:[])])].map(k=>`<option${k===(x.k||S.incTypes[0])?' selected':''}>${esc(k)}</option>`).join('')}</select></label><label>Deposited to<select id="f_w">${wOpts(x.w||wid('gcash'))}</select></label></div>`+date+note}
+  if(type==='xfer'){title=ed?'Edit transfer':'Transfer between wallets';body=amt+`<div class="row2"><label>From<select id="f_w">${wOpts(x.w||wid('gcash'))}</select></label><label>To<select id="f_to">${wOpts(x.to||wid('cash'))}</select></label></div>`+date+note}
   if(type==='lend'){title=ed?'Edit loan':'Lend cash';const ppl=[...new Set(S.tx.filter(t=>t.p).map(t=>t.p))];
     body=`<label>Who borrowed<input id="f_p" list="ppl" value="${esc(x.p||'')}" placeholder="e.g. Mama, Kuya" required><datalist id="ppl">${ppl.map(p=>`<option value="${esc(p)}">`).join('')}</datalist></label>`+amt+
-    `<label>Reason<input id="f_s" value="${esc(x.s||'')}" placeholder="Optional"></label><div class="row2"><label>Taken from<select id="f_w">${wOpts(x.w||'gcash')}</select></label>${date}</div><label>Due date<input type="date" id="f_due" value="${x.due||''}"></label>`+note}
+    `<label>Reason<input id="f_s" value="${esc(x.s||'')}" placeholder="Optional"></label><div class="row2"><label>Taken from<select id="f_w">${wOpts(x.w||wid('gcash'))}</select></label>${date}</div><label>Due date<input type="date" id="f_due" value="${x.due||''}"></label>`+note}
   if(type==='repay'){const l=S.tx.find(t=>t.id===x.ref);const left=l?loans().find(z=>z.id===l.id).owed+(ed?x.a:0):0;title=`Repayment from ${esc(x.p||(l&&l.p)||'')}`;
-    body=amt.replace(`value="${x.a!=null?x.a:''}"`,`value="${x.a!=null?x.a:left}"`)+`<div class="sub">Still owed before this: ${peso(left)}</div><div class="row2"><label>Received in<select id="f_w">${wOpts(x.w||(l&&l.w)||'cash')}</select></label>${date}</div>`}
+    body=amt.replace(`value="${x.a!=null?x.a:''}"`,`value="${x.a!=null?x.a:left}"`)+`<div class="sub">Still owed before this: ${peso(left)}</div><div class="row2"><label>Received in<select id="f_w">${wOpts(x.w||(l&&l.w)||wid('cash'))}</select></label>${date}</div>`}
   if(type==='cc'){title=ed?'Edit card charge':'Add card charge';body=amt+`<label>Merchant or item<input id="f_s" value="${esc(x.s||'')}" placeholder="e.g. Shopee rice cooker" required></label>
     <div class="row2"><label>Card<select id="f_card">${S.cards.map(c=>`<option${c===x.card?' selected':''}>${esc(c)}</option>`).join('')}</select></label><label>For who<input id="f_who" value="${esc(x.who||'Me')}"></label></div>
-    <div class="row2">${date}<label>Due date<input type="date" id="f_due" value="${x.due||''}"></label></div>`+note}
+    <div class="row2">${date}<label>Due date<input type="date" id="f_due" value="${x.due||(ed?'':dueFor(x.card||S.cards[0],d))}"></label></div><div class="sub" id="f_duehint"></div>`+note}
   sheet(`<h3>${title}</h3><form class="form" id="txform">${body}<div class="btns" style="margin-top:4px"><button class="btn pri" type="submit" style="flex:1">${ed?'Save changes':'Save'}</button>${ed?`<button class="btn danger" type="button" id="f_del">Delete</button>`:''}<button class="btn" type="button" data-act="close">Cancel</button></div></form>`);
   if(type==='exp'){let manual=!!x.c;const hint=$('#f_hint'),cin=$('#f_c');
     const pick=id=>{cin.value=id;document.querySelectorAll('#f_cats .chip').forEach(b=>b.classList.toggle('on',b.dataset.cat===id))};
@@ -945,6 +965,10 @@ function openForm(type,x={}){const ed=!!x.id;const d=x.d||defDate();let body='',
        hint.innerHTML=`✦ ${esc(catName(p.c))} · ${Math.round(p.p*100)}% sure · ${esc(p.why)}`+(alt.length?' · or '+alt.map(a=>`<button type="button" class="alt" data-cat="${a.c}">${esc(catName(a.c))}</button>`).join(', '):'');
       if(!manual)pick(p.c)},120)};
     hint.onclick=e=>{const b=e.target.closest('[data-cat]');if(b){manual=true;pick(b.dataset.cat);hint.textContent=''}}}
+  if(type==='cc'){let manual=!!x.due&&ed;const due=$('#f_due'),hint=$('#f_duehint');
+    const fill=()=>{if(manual)return;const v=dueFor($('#f_card').value,$('#f_d').value);due.value=v;const c=S.cardCfg[$('#f_card').value];
+      hint.textContent=v?`Due date from ${$('#f_card').value}: statement on the ${ord(c.close||0)}${c.close?'':' (not set)'}, due on the ${ord(c.due)}.`:'Set this card’s statement and due days in Settings › Cards to fill this in.'};
+    due.oninput=()=>{manual=true;hint.textContent=''};$('#f_card').onchange=fill;$('#f_d').onchange=fill;if(!ed)fill()}
   if(ed)$('#f_del').onclick=()=>delRecord(type,x);
   $('#txform').onsubmit=e=>{e.preventDefault();const a=num($('#f_a').value);if(!(a>0)){toast('Enter an amount above zero.');return}
     const g=id=>{const el=$('#'+id);return el?el.value.trim():undefined};
@@ -969,7 +993,7 @@ function delRecord(type,x){
     save();render();toast('Deleted',S.demo?'':'undo','Undo')})}
 
 function payCard(c){sheet(`<h3>Pay “${esc(c.s)}”</h3><form class="form" id="payform"><div class="kv"><span>Amount</span><b class="mono">${peso(c.a)}</b></div>
-  <div class="row2"><label>Paid from<select id="p_w">${wOpts('gcash')}</select></label><label>Date<input type="date" id="p_d" value="${defDate()}"></label></div>
+  <div class="row2"><label>Paid from<select id="p_w">${wOpts(wid('gcash'))}</select></label><label>Date<input type="date" id="p_d" value="${defDate()}"></label></div>
   <div class="btns"><button class="btn pri" type="submit" style="flex:1">Mark paid</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`);
   $('#payform').onsubmit=e=>{e.preventDefault();const t=own({id:uid(),t:'ccpay',a:c.a,d:$('#p_d').value,w:$('#p_w').value,ref:c.id,s:'Paid card: '+c.s});S.tx.push(t);c.paid=true;c.pay=t.id;save();closeSheet();render();toast('Marked paid')}}
 
@@ -984,7 +1008,10 @@ const SET={
   main:{title:'Settings',html:()=>{const c=S.cfg,tp=themePref();
     return`<div class="setgroup">${setRow('look','🎨','Appearance',{auto:'Match phone',light:'Light',dark:'Dark'}[tp]+' · '+{sm:'Small',md:'Default',lg:'Large',xl:'Extra large'}[c.text]+' text')}
       ${setRow('format','💱','Currency & format',`${esc(c.cur)} · ${c.dec?'2 decimals':'whole numbers'}`)}</div>
-    <div class="setgroup">${setRow('money','👛','Wallets, goal & cards',`${S.wallets.length} wallets`)}
+    <div class="setgroup">${setRow('wallets','👛','Wallets',`${S.wallets.filter(w=>!w.hidden).length} wallets`)}
+      ${setRow('goals','🎯','Savings goals',S.goals.length?S.goals.length+' goal'+(S.goals.length>1?'s':''):'None')}
+      ${setRow('cards','💳','Cards & pay later',S.cards.length+' card'+(S.cards.length>1?'s':''))}
+      ${setRow('inctypes','💰','Income types',S.incTypes.length+' types')}
       ${setRow('cats','🏷️','Categories & budgets',`${S.cats.length} categories${S.cats.some(c=>c.budget>0)?' · '+S.cats.filter(c=>c.budget>0).length+' budgets':''}`)}</div>
     <div class="setgroup">${setRow('backup','☁️','Backup & restore',lastBackup()?'Last '+dLabel(lastBackup()):'No backup yet')}
       ${UPD?setRow('version','⬇️','App version',UP.cur?esc(UP.cur.versionName)+(UP.next?' · update ready':''):''):''}
@@ -1001,20 +1028,75 @@ const SET={
     <div class="field"><span class="flabel">Dates</span>${choice('date',[['md','Nov 7'],['dm','7 Nov']],c.date)}</div>
     <span class="sub">Only how amounts look changes. Your records keep their exact values.</span></div>`},
     bind:()=>{const i=$('#cf_cur');i.onchange=()=>{const v=i.value.trim();if(v){S.cfg.cur=v;save();applyCfg();render();settings()}}}},
-  money:{title:'Wallets, goal & cards',parent:'main',html:()=>`<form class="form" id="setform">
-    <p class="eyebrow" style="margin:0">Wallets and starting balances</p>
-    ${S.wallets.map(w=>`<div class="row2"><label>Name<input data-wn="${w.id}" value="${esc(w.name)}" data-nofocus></label><label>Starting balance<input data-wi="${w.id}" inputmode="decimal" value="${w.init||0}"></label></div>`).join('')}
-    <button class="btn" type="button" id="addw">+ Add wallet</button>
-    <p class="eyebrow" style="margin:6px 0 0">Savings goal</p>
-    <div class="row2"><label>Goal amount<input id="g_a" inputmode="decimal" value="${S.goal.amt}"></label><label>Savings wallet<select id="g_w">${wOpts(S.goal.w)}</select></label></div>
-    <label>Cards and pay-later accounts (comma separated)<input id="s_cards" value="${esc(S.cards.join(', '))}"></label>
+  wallets:{title:'Wallets',parent:'main',html:()=>{const bal=balances();return`<div class="form">
+    <span class="sub">Tap a wallet to rename it, set its starting balance, emoji or color, or hide it. Use the arrows to reorder.</span>
+    <div class="setgroup">${S.wallets.map((w,i)=>`<div class="catrow"><button class="catmain" data-act="setpage" data-id="walletedit" data-arg="${w.id}">
+      <span class="ic" style="--ic:var(--c${w.col})" aria-hidden="true">${esc(w.ic||w.name.charAt(0))}</span><span class="sl">${esc(w.name)}${w.hidden?' <span class="muted">· hidden</span>':''}</span>
+      <span class="sv">${peso(bal[w.id]||0)}</span></button>
+      <button class="icon-btn sm" data-act="listmove" data-l="wallets" data-id="${w.id}" data-k="-1" aria-label="Move ${esc(w.name)} up"${i?'':' disabled'}><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>
+      <button class="icon-btn sm" data-act="listmove" data-l="wallets" data-id="${w.id}" data-k="1" aria-label="Move ${esc(w.name)} down"${i<S.wallets.length-1?'':' disabled'}><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>`).join('')}</div>
+    <button class="btn" data-act="setpage" data-id="walletedit" data-arg="new">+ Add wallet</button></div>`}},
+  walletedit:{title:'Wallet',parent:'wallets',html:()=>{const id=STATE.setArg,w=id==='new'?{name:'',ic:'',col:(S.wallets.length%8)+1,init:0,hidden:false}:W(id);
+    const n=id==='new'?0:S.tx.filter(t=>t.w===id||t.to===id).length,goal=S.goals.some(g=>g.w===id);
+    return`<form class="form" id="weform">
+    <label>Name<input id="we_n" value="${esc(w.name)}" placeholder="e.g. Maya, BPI Savings, Coin purse" required maxlength="40"></label>
+    <label>Starting balance (${esc(CUR())})<input id="we_b" inputmode="decimal" value="${w.init||0}"></label><span class="sub" style="margin-top:-8px">What was in this wallet before your first record in Pitaka.</span>
+    <div class="field"><span class="flabel">Emoji</span><div class="chips" id="we_ics">${['💵','🪙','📱','🏦','💳','🐷','👛','💼','🏠','✈️'].map(e=>`<button type="button" class="chip emo${e===w.ic?' on':''}" data-ic="${e}">${e}</button>`).join('')}</div>
+      <label>Or type one<input id="we_i" value="${esc(w.ic||'')}" maxlength="8" placeholder="Leave empty to use the first letter"></label></div>
+    <div class="field"><span class="flabel">Color</span><div class="swatches" id="we_cols">${[1,2,3,4,5,6,7,8].map(k=>`<button type="button" class="sw${k===w.col?' on':''}" data-col="${k}" style="--sw:var(--c${k})" aria-label="Color ${k}" aria-pressed="${k===w.col}"></button>`).join('')}</div></div>
+    <div class="field"><span class="flabel">Show in lists</span><div class="chips" id="we_hid"><button type="button" class="chip${w.hidden?'':' on'}" data-h="0">Show</button><button type="button" class="chip${w.hidden?' on':''}" data-h="1">Hide</button></div>
+      <span class="sub">Hidden wallets keep their history and still count in your totals; they just stop appearing in forms and on the Wallets tab.</span></div>
+    <button class="btn pri" type="submit">${id==='new'?'Add wallet':'Save'}</button></form>
+    ${id!=='new'?`<div class="form" style="margin-top:22px"><span class="flabel">Delete this wallet</span>${n||goal||S.wallets.length<2?`<span class="sub">${S.wallets.length<2?'You need at least one wallet.':n?`${n} record${n>1?'s use':' uses'} this wallet, so it can’t be deleted. Hide it instead.`:'A savings goal uses this wallet. Change the goal first.'}</span>`:`<button class="btn danger" type="button" id="we_del">Delete ${esc(w.name)}</button>`}</div>`:''}`},
+    bind:()=>{const id=STATE.setArg,w=id==='new'?null:W(id);let col=w?w.col:(S.wallets.length%8)+1,hid=w?!!w.hidden:false;
+      $('#we_ics').onclick=e=>{const b=e.target.closest('[data-ic]');if(!b)return;$('#we_i').value=b.dataset.ic;document.querySelectorAll('#we_ics .chip').forEach(x=>x.classList.toggle('on',x===b))};
+      $('#we_cols').onclick=e=>{const b=e.target.closest('[data-col]');if(!b)return;col=+b.dataset.col;document.querySelectorAll('#we_cols .sw').forEach(x=>x.classList.toggle('on',x===b))};
+      $('#we_hid').onclick=e=>{const b=e.target.closest('[data-h]');if(!b)return;hid=b.dataset.h==='1';document.querySelectorAll('#we_hid .chip').forEach(x=>x.classList.toggle('on',x===b))};
+      $('#weform').onsubmit=e=>{e.preventDefault();const name=$('#we_n').value.trim();if(!name)return;const v=num($('#we_b').value);
+        if(hid&&S.wallets.filter(x=>!x.hidden&&x.id!==id).length===0){toast('Keep at least one wallet visible.');return}
+        const x=w||{id:'w'+uid()};Object.assign(x,{name,init:isNaN(v)?0:v,ic:$('#we_i').value.trim(),col,hidden:hid});if(!w)S.wallets.push(x);
+        save();render();toast(w?'Saved':'Wallet added');settings('wallets','back')};
+      const del=$('#we_del');if(del)del.onclick=()=>{snapshot('delete');S.wallets=S.wallets.filter(x=>x.id!==id);save();render();toast(`Deleted ${w.name}`,'undo','Undo');settings('wallets','back')}}},
+  goals:{title:'Savings goals',parent:'main',html:()=>{const bal=balances();return`<div class="form">
+    <span class="sub">Each goal tracks the balance of one wallet. Give it a target date to see how much to save each month.</span>
+    ${S.goals.length?`<div class="setgroup">${S.goals.map(g=>`<button class="setrow" data-act="setpage" data-id="goaledit" data-arg="${g.id}"><span class="sic" aria-hidden="true">🎯</span><span class="sl">${esc(g.name)}</span><span class="sv">${pct(Math.max(0,bal[g.w]||0),g.amt)} of ${pesoS(g.amt)}</span>${CHEV}</button>`).join('')}</div>`:'<span class="sub">No goals yet.</span>'}
+    <button class="btn" data-act="setpage" data-id="goaledit" data-arg="new">+ Add goal</button></div>`}},
+  goaledit:{title:'Savings goal',parent:'goals',html:()=>{const id=STATE.setArg,g=id==='new'?{name:'',amt:'',w:wid('gotyme'),due:''}:S.goals.find(x=>x.id===id)||{name:'',amt:'',w:wid(''),due:''};
+    return`<form class="form" id="geform">
+    <label>Name<input id="ge_n" value="${esc(g.name)}" placeholder="e.g. Emergency fund, New phone, Christmas" required maxlength="40"></label>
+    <div class="row2"><label>Target (${esc(CUR())})<input id="ge_a" inputmode="decimal" value="${g.amt||''}" required></label><label>Saved in<select id="ge_w">${wOpts(g.w)}</select></label></div>
+    <label>Target date (optional)<input type="date" id="ge_d" value="${g.due||''}"></label>
+    <button class="btn pri" type="submit">${id==='new'?'Add goal':'Save'}</button>${id!=='new'?`<button class="btn danger" type="button" id="ge_del">Delete goal</button>`:''}</form>`},
+    bind:()=>{const id=STATE.setArg;
+      $('#geform').onsubmit=e=>{e.preventDefault();const amt=num($('#ge_a').value);if(!(amt>0)){toast('Enter a target above zero.');return}
+        const g=id==='new'?{id:'g'+uid()}:S.goals.find(x=>x.id===id);Object.assign(g,{name:$('#ge_n').value.trim()||'Savings goal',amt,w:$('#ge_w').value,due:$('#ge_d').value});
+        if(id==='new')S.goals.push(g);save();render();toast(id==='new'?'Goal added':'Saved');settings('goals','back')};
+      const del=$('#ge_del');if(del)del.onclick=()=>{snapshot('delete');S.goals=S.goals.filter(x=>x.id!==id);save();render();toast('Goal deleted','undo','Undo');settings('goals','back')}}},
+  cards:{title:'Cards & pay later',parent:'main',html:()=>`<div class="form">
+    <span class="sub">Set each card’s statement day and due day, and new charges get their due date filled in for you.</span>
+    <div class="setgroup">${S.cards.map((c,i)=>{const k=S.cardCfg[c]||{};return`<button class="setrow" data-act="setpage" data-id="cardedit" data-arg="${i}"><span class="sic" aria-hidden="true">💳</span><span class="sl">${esc(c)}</span><span class="sv">${k.due?`${k.close?'Closes '+ord(k.close)+' · ':''}due ${ord(k.due)}`:'Days not set'}</span>${CHEV}</button>`}).join('')}</div>
+    <button class="btn" data-act="setpage" data-id="cardedit" data-arg="new">+ Add card</button></div>`},
+  cardedit:{title:'Card',parent:'cards',html:()=>{const i=STATE.setArg,name=i==='new'?'':S.cards[+i],k=S.cardCfg[name]||{},n=S.cc.filter(c=>c.card===name).length;
+    const days=(sel,none)=>`<option value="">${none}</option>`+Array.from({length:31},(_,j)=>`<option value="${j+1}"${+sel===j+1?' selected':''}>${ord(j+1)}</option>`).join('');
+    return`<form class="form" id="kdform">
+    <label>Name<input id="kd_n" value="${esc(name)}" placeholder="e.g. BPI Mastercard, SPayLater, GGives" required maxlength="40"></label>
+    <div class="row2"><label>Statement day<select id="kd_c">${days(k.close,'Not set')}</select></label><label>Due day<select id="kd_d">${days(k.due,'Not set')}</select></label></div>
+    <span class="sub">Example: statement on the 25th and due on the 15th means a charge on May 20 is due June 15, and a charge on May 27 is due July 15.</span>
+    <button class="btn pri" type="submit">${i==='new'?'Add card':'Save'}</button>
+    ${i!=='new'&&S.cards.length>1?`<button class="btn danger" type="button" id="kd_del">Remove from list</button>${n?`<span class="sub">Its ${n} charge${n>1?'s stay':' stays'} in Debts.</span>`:''}`:''}</form>`},
+    bind:()=>{const i=STATE.setArg,old=i==='new'?null:S.cards[+i];
+      $('#kdform').onsubmit=e=>{e.preventDefault();const name=$('#kd_n').value.trim();if(!name)return;
+        if(name!==old&&S.cards.includes(name)){toast('You already have a card with that name.');return}
+        const cfg={close:+$('#kd_c').value||0,due:+$('#kd_d').value||0};
+        if(old===null)S.cards.push(name);else if(name!==old){S.cards[+i]=name;S.cc.forEach(c=>{if(c.card===old)c.card=name});delete S.cardCfg[old]}
+        S.cardCfg[name]=cfg;save();render();toast(old===null?'Card added':'Saved');settings('cards','back')};
+      const del=$('#kd_del');if(del)del.onclick=()=>{S.cards.splice(+i,1);delete S.cardCfg[old];save();render();toast('Removed');settings('cards','back')}}},
+  inctypes:{title:'Income types',parent:'main',html:()=>`<form class="form" id="itform">
+    <label>One type per line<textarea id="it_l" rows="8" data-nofocus>${esc(S.incTypes.join('\n'))}</textarea></label>
+    <span class="sub">These appear in the income form and the assistant understands them (“remittance 5000 gcash”). Renaming a type keeps old records as they are.</span>
     <button class="btn pri" type="submit">Save</button></form>`,
-    bind:()=>{$('#addw').onclick=()=>{const n=S.wallets.length;S.wallets.push({id:'w'+uid(),name:'New wallet',col:(n%8)+1,init:0});save();settings()};
-      $('#setform').onsubmit=e=>{e.preventDefault();
-        document.querySelectorAll('[data-wn]').forEach(i=>{const w=W(i.dataset.wn);w.name=i.value.trim()||w.name});
-        document.querySelectorAll('[data-wi]').forEach(i=>{const w=W(i.dataset.wi);const v=num(i.value);w.init=isNaN(v)?0:v});
-        S.goal={amt:num($('#g_a').value)||0,w:$('#g_w').value};S.cards=$('#s_cards').value.split(',').map(s=>s.trim()).filter(Boolean);if(!S.cards.length)S.cards=['Credit Card'];
-        save();render();toast('Saved');settings('main','back')}}},
+    bind:()=>{$('#itform').onsubmit=e=>{e.preventDefault();const l=[...new Set($('#it_l').value.split('\n').map(x=>x.trim()).filter(Boolean))];
+      if(!l.length){toast('Keep at least one income type.');return}S.incTypes=l;save();render();toast('Saved');settings('main','back')}}},
   cats:{title:'Categories & budgets',parent:'main',html:()=>`<div class="form">
     <span class="sub">Tap a category to rename it, change its emoji or color, or set a monthly budget. Use the arrows to reorder.</span>
     <div class="setgroup">${S.cats.map((c,i)=>`<div class="catrow"><button class="catmain" data-act="setpage" data-id="catedit" data-arg="${c.id}">
@@ -1190,6 +1272,7 @@ const ACT={
   insall:()=>{STATE.insAll=!STATE.insAll;render()},
   add:()=>addMenu(),close:()=>closeSheet(),settings:()=>{STATE.setPage='main';settings('main')},
   setpage:d=>{if(d.arg)STATE.setArg=d.arg;settings(d.id,d.dir||'fwd')},
+  listmove:d=>{const L=S[d.l],i=L.findIndex(x=>x.id===d.id),j=i+(+d.k);if(i<0||j<0||j>=L.length)return;[L[i],L[j]]=[L[j],L[i]];save();render();settings()},
   catmove:d=>{const i=S.cats.findIndex(c=>c.id===d.id),j=i+(+d.k);if(i<0||j<0||j>=S.cats.length)return;[S.cats[i],S.cats[j]]=[S.cats[j],S.cats[i]];save();render();settings()},
   cfgset:d=>{const k=d.k;let v=d.v;if(k==='dec')v=+v;S.cfg[k]=v;save();applyCfg();render();settings()},
   form:d=>openForm(d.t),

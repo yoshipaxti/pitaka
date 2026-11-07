@@ -3,6 +3,6 @@
   "appName": "Pitaka",
   "webDir": "www",
   "android": {
-    "backgroundColor": "#edf1ef"
+    "backgroundColor": "#f2f2f7"
   }
 }

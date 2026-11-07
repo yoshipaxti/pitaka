@@ -39,7 +39,17 @@ gh release download --repo yoshipaxti/pitaka --pattern pitaka.apk
 
 Each build is also kept for 90 days under **Actions › Build APK › Artifacts › pitaka-apk**.
 
-Every APK is signed with the same key, which is stored as the repository secret `DEBUG_KEYSTORE_B64`. That's why each new APK installs over the old one and keeps your data. Don't delete that secret. A copy of the key is also in `android-app\signing\` on this PC, which is never uploaded.
+Every APK is signed with the same key, which is stored as the repository secret `DEBUG_KEYSTORE_B64` (a keystore with alias `androiddebugkey` and password `android`). That's why each new APK installs over the old one and keeps your data. Don't delete that secret. A copy of the key is also in `android-app\signing\` on this PC, which is never uploaded. The build prints the key's SHA-256 fingerprint and refuses to publish an APK signed with any other key. (Builds up to 1.0.14 were accidentally signed with a new random key each time, so those versions can't update each other; see below.)
+
+### If Android says "App not installed as package conflicts with an existing package"
+
+The installed Pitaka was signed with a different key, so Android won't replace it. Your records are only inside that app, so save them first:
+1. In the installed Pitaka, open Settings and tap **Save to Drive** (or **Copy backup**). Check that the file is in Google Drive.
+2. Uninstall Pitaka.
+3. Install the newest `pitaka.apk` from the Releases page.
+4. Open Pitaka, go to **Settings › Backup & restore › Restore from Drive**, and pick the backup.
+
+From then on, updates install over each other normally.
 
 To rebuild after changing the app: edit `pitaka.html`, run `build-android.ps1`, then commit and push the `android-app` folder.
 

@@ -36,24 +36,59 @@ jobs:
       - name: Copy the app into the Android project
         run: npx cap sync android
 
-      # Every APK must be signed with the same key, or Android refuses to install updates over the old app.
-      # The key lives in the DEBUG_KEYSTORE_B64 secret. It is never written to the repo or uploaded.
+      # Every APK must be signed with the same key, or Android refuses to install updates over the old app
+      # ("package conflicts with an existing package"). The key lives in the DEBUG_KEYSTORE_B64 secret and is handed to
+      # Gradle by path (android/app/build.gradle), never written to the repo or uploaded. Its certificate fingerprint is
+      # pinned in .github/signing-cert.sha256, so a missing, unreadable or different key stops the build instead of
+      # publishing an update that phones would refuse.
       # Pull requests from forks get no secrets, so they build with a throwaway key that is discarded with the runner.
       - name: Signing key
         env:
           KEY: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+          STORE_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.KEY_PASSWORD }}
           EVENT: ${{ github.event_name }}
         run: |
-          mkdir -p ~/.android
+          KS="$RUNNER_TEMP/pitaka.keystore"
+          STORE_PASS="${STORE_PASS:-android}"
+          # Hide custom passwords in the log (the standard "android" is not a secret, and masking it would blank out paths).
+          for P in "$STORE_PASS" "$KEY_PASS"; do if [ -n "$P" ] && [ "$P" != android ]; then echo "::add-mask::$P"; fi; done
           if [ -n "$KEY" ]; then
-            printf '%s' "$KEY" | tr -cd 'A-Za-z0-9+/=' | base64 -d > ~/.android/debug.keystore
+            printf '%s' "$KEY" | tr -cd 'A-Za-z0-9+/=' | base64 -d > "$KS"
+            THROWAWAY=0
           elif [ "$EVENT" = "pull_request" ]; then
-            keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey \
+            keytool -genkeypair -keystore "$KS" -storepass android -alias androiddebugkey \
               -keypass android -keyalg RSA -keysize 2048 -validity 1 -dname "CN=Throwaway"
+            THROWAWAY=1
           else
             echo "::error::The DEBUG_KEYSTORE_B64 secret is missing. Without it the APK would not install over the app on your phone."
             exit 1
           fi
+          if ! LIST="$(keytool -list -v -keystore "$KS" -storepass "$STORE_PASS" 2>&1)"; then
+            echo "::error::The DEBUG_KEYSTORE_B64 secret could not be opened as a keystore (wrong file, or the password is not 'android' and the KEYSTORE_PASSWORD secret is not set)."
+            exit 1
+          fi
+          ALIAS="$(printf '%s\n' "$LIST" | sed -n 's/^Alias name: //p' | head -n 1)"
+          CERT="$(printf '%s\n' "$LIST" | sed -n 's/^[[:space:]]*SHA256: //p' | head -n 1 | tr -d ': ' | tr 'A-F' 'a-f')"
+          if [ -z "$ALIAS" ] || [ -z "$CERT" ]; then echo "::error::No key found in the keystore."; exit 1; fi
+          echo "Signing with key '$ALIAS', certificate SHA-256 $CERT"
+          PIN="$(tr -cd '0-9a-f' < .github/signing-cert.sha256 2>/dev/null || true)"
+          if [ "$THROWAWAY" = 0 ]; then
+            if [ -n "$PIN" ] && [ "$PIN" != "$CERT" ]; then
+              echo "::error::This key ($CERT) is not the one Pitaka releases are signed with ($PIN). Phones would refuse the update. Put the original key back in DEBUG_KEYSTORE_B64."
+              exit 1
+            elif [ -z "$PIN" ] && [ "$EVENT" != "pull_request" ]; then
+              echo "::error::.github/signing-cert.sha256 is missing, so the key cannot be checked. Add the fingerprint printed above."
+              exit 1
+            fi
+          fi
+          {
+            echo "PITAKA_KEYSTORE=$KS"
+            echo "PITAKA_KEY_ALIAS=$ALIAS"
+            echo "PITAKA_STORE_PASS=$STORE_PASS"
+            echo "PITAKA_KEY_PASS=${KEY_PASS:-$STORE_PASS}"
+            echo "PITAKA_CERT=$CERT"
+          } >> "$GITHUB_ENV"
 
       # versionCode = this run's number, so every build is newer than the last (see android/app/build.gradle).
       - name: Build APK
@@ -61,6 +96,20 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
+
+      # Read the certificate back out of the finished APK: it must be the key checked above, or nothing is published.
+      - name: Check the APK's signature
+        run: |
+          APKSIGNER="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -n 1)apksigner"
+          OUT="$("$APKSIGNER" verify --print-certs android/app/build/outputs/apk/debug/app-debug.apk 2>&1)" || { echo "$OUT"; echo "::error::apksigner could not verify the APK."; exit 1; }
+          # The label varies by apksigner version ("Signer #1 certificate SHA-256 digest:" or "Signer (minSdkVersion=…) certificate SHA-256 digest:").
+          GOT="$(printf '%s\n' "$OUT" | grep -i 'certificate SHA-256 digest:' | head -n 1 | sed 's/.*digest:[[:space:]]*//' | tr -d ': ' | tr 'A-F' 'a-f')"
+          echo "APK certificate SHA-256: $GOT"
+          if [ "$GOT" != "$PITAKA_CERT" ]; then
+            echo "$OUT"
+            echo "::error::The APK was signed with '$GOT' instead of $PITAKA_CERT. It would not install over the app on phones."
+            exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
@@ -78,9 +127,10 @@ jobs:
           TAG="v1.0.$RUN"
           cp android/app/build/outputs/apk/debug/app-debug.apk pitaka.apk
           NOTES="$(printf '%s\n' "$MSG" | head -n 1)"
-          jq -n --argjson code "$RUN" --arg name "1.0.$RUN" --arg notes "$NOTES" \
+          # cert lets the app check, before downloading, that this update can install over the copy on the phone.
+          jq -n --argjson code "$RUN" --arg name "1.0.$RUN" --arg notes "$NOTES" --arg cert "$PITAKA_CERT" \
             --arg apk "https://github.com/$REPO/releases/download/$TAG/pitaka.apk" \
-            '{versionCode:$code, versionName:$name, notes:$notes, apk:$apk}' > version.json
+            '{versionCode:$code, versionName:$name, notes:$notes, apk:$apk, cert:$cert}' > version.json
           cat version.json
           gh release create "$TAG" pitaka.apk version.json --repo "$REPO" --target "$GITHUB_SHA" \
             --title "Pitaka 1.0.$RUN" --notes "$NOTES" --latest

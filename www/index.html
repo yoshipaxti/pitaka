@@ -282,6 +282,36 @@ main#view{view-transition-name:view}
 .field{display:flex;flex-direction:column;gap:8px}
 .daychips .chip{min-width:44px;justify-content:center}
 .tagtxt{color:var(--accent)}
+/* Amount field calculator */
+.amtf{display:flex;flex-direction:column;gap:6px}
+.amtrow{display:flex;gap:8px;align-items:stretch}
+.amtrow .amtin{flex:1}
+.calcbtn{flex:none;width:54px;border:0;border-radius:10px;background:var(--surface-2);color:var(--accent);display:grid;place-items:center;transition:background-color .2s ease,color .2s ease,transform .14s ease}
+.calcbtn:active{transform:scale(.95)}
+.calcbtn.on{background:var(--accent-fill);color:var(--accent-fg)}
+.calcbtn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.calcbtn svg .k{stroke-width:2.6}
+.calcout{font:600 15px var(--font-data);font-variant-numeric:tabular-nums;color:var(--accent)}
+.calcout:empty{display:none}
+.calcpad{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.calcpad button{border:0;border-radius:12px;background:var(--surface-2);color:var(--fg);min-height:48px;font:500 21px var(--font-data);font-variant-numeric:tabular-nums;touch-action:manipulation;transition:transform .12s ease,background-color .2s ease}
+.calcpad button:active{transform:scale(.94)}
+.calcpad .op{background:color-mix(in srgb,var(--accent) 14%,var(--surface-2));color:var(--accent)}
+.calcpad .fn{color:var(--muted);font-size:18px}
+.calcpad .eq{background:var(--accent-fill);color:var(--accent-fg)}
+/* Installments and borrowed cards */
+.planprev{font-size:14px;color:var(--fg);line-height:1.45}
+.planprev:empty{display:none}
+.planprev b{font-family:var(--font-data);font-variant-numeric:tabular-nums}
+.plansum{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0 10px}
+.plansum div{background:var(--surface-2);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.plansum span{font-size:12px;color:var(--muted)}
+.plansum b{font:600 16px var(--font-data);font-variant-numeric:tabular-nums}
+.owedtxt{color:var(--owed)}
+.item .r.stack{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.paysplit{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:12px;padding-top:10px;border-top:.5px solid var(--line)}
+.paysplit span{display:inline-flex;align-items:center;gap:6px}
+.paysplit b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
 /* ---- lock screen ---- */
 .lock{position:fixed;inset:0;z-index:50;background:var(--bg);display:grid;place-items:center;padding:calc(24px + env(safe-area-inset-top,0px)) 24px calc(24px + env(safe-area-inset-bottom,0px));animation:fade .2s ease-out}
 :root.locked #view,:root.locked .tabs,:root.locked .fab,:root.locked .composer,:root.locked .top{visibility:hidden}
@@ -410,6 +440,18 @@ const tagStr=t=>(t&&t.length?t.map(x=>'#'+x).join(' '):'');
 const ord=n=>n+(n%100>=11&&n%100<=13?'th':['th','st','nd','rd'][n%10]||'th');
 const sum=(arr,f=x=>x.a)=>arr.reduce((s,x)=>s+f(x),0);
 const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
+/* Same day of the month, k months later (the 31st becomes the last day of a shorter month). */
+const addMonths=(d,k)=>{const m=addM(d.slice(0,7),k);return m+'-'+pad(Math.min(+d.slice(8,10),dim(m)))};
+/* Calculator: an amount can be a sum like 120+45×2 or 1500-10%. calc() reads it with a small parser that only does
+   arithmetic (it never runs code). "a+b%" and "a-b%" add or take off b percent of a, like a pocket calculator. */
+const CALC_OPS=/[+×÷*/%]|\d\s*[-−]/;
+function calc(v){const s=String(v??'').replace(/[×xX]/g,'*').replace(/÷/g,'/').replace(/[−–]/g,'-').replace(/[^\d.+\-*/()%]/g,'');let i=0;
+  const number=()=>{const j=i;while(i<s.length&&/[\d.]/.test(s[i]))i++;const n=i>j?Number(s.slice(j,i)):NaN;if(!isFinite(n))throw 0;let x=n;while(s[i]==='%'){i++;x/=100}return x};
+  const factor=()=>{if(s[i]==='-'){i++;return-factor()}if(s[i]==='+'){i++;return factor()}
+    if(s[i]==='('){i++;const x=expr();if(s[i]===')')i++;return x}return number()};
+  const term=()=>{let x=factor();while(s[i]==='*'||s[i]==='/'){const o=s[i++],y=factor();x=o==='*'?x*y:x/y}return x};
+  const expr=()=>{let x=term();while(s[i]==='+'||s[i]==='-'){const o=s[i++],j=i;let y=term();if(/^[\d.]+%$/.test(s.slice(j,i)))y*=x;x=o==='+'?x+y:x-y}return x};
+  try{if(!s)return NaN;const x=expr();return i<s.length||!isFinite(x)?NaN:Math.round(x*100)/100}catch(e){return NaN}}
 
 /* ================= data ================= */
 const KEY='pitaka.v1';
@@ -466,10 +508,11 @@ function demo(){
   L(3,'Papa','Kuryente share',1000,'gcash');
   s.tx.push({id:uid(),t:'repay',d:D(m,24),a:200,ref:ate,p:'Ate',w:'cash'});
   const nm=nextM(m);
-  s.cc.push({id:uid(),d:D(m,1),s:'Dunkin',a:449,card:'Credit Card',who:'Me',due:nm+'-02',paid:false},
-            {id:uid(),d:D(m,6),s:'Savemore groceries',a:5396.70,card:'Credit Card',who:'Family',due:nm+'-02',paid:false},
-            {id:uid(),d:D(m,10),s:'Shopee rice cooker',a:1899,card:'SPayLater',who:'Me',due:nm+'-05',paid:false});
-  const pc={id:uid(),d:D(pm,21),s:'DALI groceries',a:3000,card:'Credit Card',who:'Me',due:D(m,10),paid:true};
+  s.cc.push({id:uid(),d:D(m,1),s:'Dunkin',a:449,c:'food',card:'Credit Card',who:'Me',due:nm+'-02',paid:false},
+            {id:uid(),d:D(m,6),s:'Savemore groceries',a:5396.70,c:'food',card:'Credit Card',who:'Family',due:nm+'-02',paid:false},
+            {id:uid(),d:D(m,14),s:'Lazada headset',a:1299,c:'shop',card:'Credit Card',lo:'Kuya',due:nm+'-02',paid:false});
+  const plan='p'+uid();[633,633,633].forEach((a,k)=>s.cc.push({id:uid(),plan,pk:k+1,pn:3,pa:1899,pr:0,pd:D(m,10),d:addMonths(D(m,10),k),s:'Shopee rice cooker',a,c:'shop',card:'SPayLater',due:addMonths(nm+'-05',k),paid:false}));
+  const pc={id:uid(),d:D(pm,21),s:'DALI groceries',a:3000,c:'food',card:'Credit Card',who:'Me',due:D(m,10),paid:true};
   const pt={id:uid(),t:'ccpay',d:D(m,10),a:3000,w:'gcash',ref:pc.id,s:'Paid card: DALI groceries'};pc.pay=pt.id;
   s.cc.push(pc);s.tx.push(pt);
   return s;
@@ -514,12 +557,22 @@ function monthStats(m){
   for(const t of S.tx){if(!inP(t.d,m))continue;
     if(t.t==='inc')r.inc+=t.a;else if(t.t==='repay')r.rep+=t.a;else if(t.t==='lend')r.lent+=t.a;else if(t.t==='ccpay')r.ccp+=t.a;
     else if(t.t==='exp'){r.exp+=t.a;r.cats[t.c]=(r.cats[t.c]||0)+t.a;r.n++}}
+  /* Card and SPayLater charges are spending too: each counts in its category in the month it is charged (an installment in
+     its own month). Charges someone else made on my card are theirs, so they are left out. Cash flow (in, out, net) stays cash only. */
+  r.card=0;r.nc=0;for(const c of S.cc){if(c.lo||!inP(c.d,m))continue;const k=catOf(c.c).id;r.card+=c.a;r.cats[k]=(r.cats[k]||0)+c.a;r.nc++}
+  r.spend=r.exp+r.card;
   r.in=r.inc+r.rep;r.out=r.exp+r.lent+r.ccp;r.net=r.in-r.out;r.ccCharged=sum(S.cc.filter(c=>inP(c.d,m)));return r}
 function loans(before){
   return S.tx.filter(t=>t.t==='lend'&&(!before||t.d<before)).map(l=>{
     const rp=S.tx.filter(t=>t.t==='repay'&&t.ref===l.id&&(!before||t.d<before));const paid=sum(rp);
     return{...l,paid,owed:Math.max(0,l.a-paid)}}).sort((a,b)=>(b.owed>0)-(a.owed>0)||b.d.localeCompare(a.d))}
-const owedTotal=before=>sum(loans(before),l=>l.owed);
+/* Someone who borrowed my card (c.lo) owes me that charge until they pay me back (repayments point at the charge),
+   or until they pay the bank themselves (c.direct). */
+const ccIn=(c,before)=>!before||(c.pd||c.d)<before;
+function cardOwed(c,before){if(!c.lo)return 0;if(c.direct&&(!before||(c.paidOn||c.d)<before))return 0;
+  return Math.max(0,c.a-sum(S.tx.filter(t=>t.t==='repay'&&t.ref===c.id&&(!before||t.d<before))))}
+const cardLoans=before=>S.cc.filter(c=>c.lo&&ccIn(c,before)).map(c=>({c,owed:cardOwed(c,before)}));
+const owedTotal=before=>sum(loans(before),l=>l.owed)+sum(cardLoans(before),l=>l.owed);
 /* Recurring entries: a rule keeps a template record and the next date. On open (and when the app comes back to the
    front) every rule whose date has come adds its record, then moves to the next week or month. */
 const EVERY={week:'Every week',month:'Every month'};
@@ -529,15 +582,31 @@ function runRecurring(){if(!S||S.demo)return 0;const t=today();let n=0;
     while(r.next&&r.next<=t&&guard++<60){const x={...r.tpl,id:uid(),d:r.next,rec:r.id};
       if(r.kind==='cc'){x.paid=false;x.due=dueFor(x.card,x.d);S.cc.push(x)}else{x.t=r.kind;S.tx.push(x)}n++;r.next=nextDate(r,r.next)}}
   if(n){save();render();toast(`Added ${n} repeating entr${n>1?'ies':'y'}`,'recurview','See')}return n}
-function addRule(kind,rec,every){const tpl={...rec};['id','d','t','rec','mine','paid','pay','due'].forEach(k=>delete tpl[k]);
+function addRule(kind,rec,every){const tpl={...rec};['id','d','t','rec','mine','paid','pay','due','plan','pk','pn','pa','pr','pd','direct','paidOn'].forEach(k=>delete tpl[k]);
   const r={id:'r'+uid(),kind,every,day:+rec.d.slice(8),tpl,on:true};r.next=nextDate(r,rec.d);rec.rec=r.id;S.recur.push(r);return r}
 const ruleName=r=>r.tpl.s||(r.kind==='inc'?r.tpl.k:r.kind==='xfer'?W(r.tpl.w).name+' → '+W(r.tpl.to).name:'Repeating entry');
 /* Monthly budgets: one limit per category, compared with that month's day-to-day spending in it. */
 function budgets(m){const st=monthStats(m);return S.cats.filter(c=>c.budget>0).map(c=>{const spent=st.cats[c.id]||0;return{c,spent,limit:c.budget,p:spent/c.budget}})}
 const budgetLv=p=>p>=1?'neg':p>=.8?'warn':'pos';
-function ccPaidDate(c){if(!c.paid)return null;const t=S.tx.find(x=>x.id===c.pay);return t?t.d:c.d}
-function ccOpen(before){return S.cc.filter(c=>(!before||c.d<before)&&(!c.paid||(before&&ccPaidDate(c)>=before)))}
-const ccUnpaid=before=>sum(ccOpen(before));
+function ccPaidDate(c){if(!c.paid)return null;const t=S.tx.find(x=>x.id===c.pay);return t?t.d:c.paidOn||c.d}
+/* Unpaid card items as of a date. An installment is owed from the day of the purchase (c.pd), not only from its own month.
+   By default only my own charges count (my card debt); all=true adds charges made by people who borrowed my card. */
+function ccOpen(before,all){return S.cc.filter(c=>(all||!c.lo)&&ccIn(c,before)&&(!c.paid||(before&&ccPaidDate(c)>=before)))}
+const ccUnpaid=(before,all)=>sum(ccOpen(before,all));
+/* Installments (SPayLater, card installment plans): one purchase split into n monthly charges. Each month is its own card
+   item, so paying, due dates and totals work as for any charge; they share c.plan and know their place (pk of pn), the
+   price (pa), the add-on interest per month (pr, % of the price) and the purchase date (pd). */
+function planAmounts(price,n,rate){const total=Math.round(price*(1+(rate||0)/100*n)*100)/100,each=Math.round(total/n*100)/100;
+  return{total,each,last:Math.round((total-each*(n-1))*100)/100}}
+function addCardCharge(base,n,rate){n=Math.max(1,Math.min(60,Math.round(n)||1));
+  if(n===1){const c=own({...base,id:uid(),paid:false});S.cc.push(c);return[c]}
+  const{each,last}=planAmounts(base.a,n,rate),plan='p'+uid(),out=[];
+  for(let k=0;k<n;k++){const d=addMonths(base.d,k);
+    out.push(own({...base,id:uid(),plan,pk:k+1,pn:n,pa:base.a,pr:rate||0,pd:base.d,d,a:k===n-1?last:each,due:base.due?addMonths(base.due,k):dueFor(base.card,d),paid:false}))}
+  S.cc.push(...out);return out}
+const planItems=id=>S.cc.filter(c=>c.plan===id).sort((a,b)=>a.pk-b.pk);
+/* Card charges saved by older versions have no category: guess one from the description, the same way expenses are guessed. */
+function fillCcCats(){for(const c of S.cc)if(!c.c||!S.cats.some(k=>k.id===c.c)){const p=predict(c.s||'');c.c=p&&p.p>.3?p.c:fallbackCat()}}
 function forecast(m){
   const st=monthStats(m),t=today(),days=pDays(m);
   if(m!==curP())return{live:false,exp:st.exp,days,avg:st.exp/days,proj:st.exp};
@@ -621,7 +690,7 @@ function model(){if(MODEL)return MODEL;
   for(const c in SEED)if(S.cats.some(k=>k.id===c))add(c,SEED[c].split(/\s+/).filter(Boolean).map(seedTok),1);
   for(const k of S.cats)add(k.id,tok(k.name),2); // a category's own name counts as a word for it
   // Your own entries count 4x a seed word, so the app learns your habits (and your corrections) quickly.
-  for(const t of S.tx)if(t.t==='exp'&&t.s&&S.cats.some(k=>k.id===t.c)){add(t.c,tok(t.s),4);M.udocs[t.c]=(M.udocs[t.c]||0)+1;M.uN++;M.exact[words(t.s).join(' ')]=t.c}
+  for(const t of [...S.tx.filter(t=>t.t==='exp'),...S.cc])if(t.s&&S.cats.some(k=>k.id===t.c)){add(t.c,tok(t.s),4);M.udocs[t.c]=(M.udocs[t.c]||0)+1;M.uN++;M.exact[words(t.s).join(' ')]=t.c}
   M.list=[...M.V].filter(v=>!v.includes('_'));
   return MODEL=M}
 function fuzzy(M,w){if(w in M.fz)return M.fz[w];let best=null,bd=9;
@@ -682,7 +751,9 @@ function parseCommand(raw){
   const ev=q.match(/\b(every ?month|monthly|buwan-buwan|kada buwan|every ?week|weekly|linggo-linggo|kada linggo)\b/);
   const every=ev?(/week|linggo/.test(ev[1])?'week':'month'):'';if(ev)q=q.replace(ev[0],' ');
   const tags=parseTags((q.match(/#[\p{L}\p{N}_-]+/gu)||[]).join(' '));q=q.replace(/#[\p{L}\p{N}_-]+/gu,' ');
-  const out=parseCommand1(q);if(out){if(every&&['exp','inc','xfer','cc'].includes(out.t))out.every=every;if(tags.length&&out.t!=='repay')out.tags=tags;out.raw=raw.trim()}return out}
+  // "3 months", "6 mos", "12x", "6 buwan": an installment plan, when the rest turns out to be a card charge.
+  const pm=q.match(/\b(?:in |for |sa )?(\d{1,2}) ?(?:months?|mos?|buwan|installments?|hulog|x)(?![a-z])/);if(pm)q=q.replace(pm[0],' ');
+  const out=parseCommand1(q);if(out){if(pm&&out.t==='cc'&&+pm[1]>1)out.pn=Math.min(60,+pm[1]);if(every&&!out.pn&&['exp','inc','xfer','cc'].includes(out.t))out.every=every;if(tags.length&&out.t!=='repay')out.tags=tags;out.raw=raw.trim()}return out}
 function parseCommand1(q){
   const{d,rm}=parseDate(q);rm.forEach(x=>q=q.replace(x,' '));
   const amts=parseAmounts(q);if(!amts.length)return null;
@@ -698,6 +769,8 @@ function parseCommand1(q){
     if(/cash ?out|withdr/.test(q)){from=nc;to='cash'}else if(/cash ?in/.test(q)){from='cash';to=nc}else if(wh.length>=2){from=wh[0].id;to=wh[1].id}
     if(from&&to&&from!==to)return{t:'xfer',a:amt,d:date,w:from,to,s:/cash ?out|withdr/.test(q)?'Cash out':/cash ?in/.test(q)?'Cash in':cap(clean(rest))}}
   if(RX.repay.test(q)){const{p}=personFrom(rest);const open=loans().filter(l=>l.owed>0&&l.p.toLowerCase()===p.toLowerCase());
+    if(!open.length){const cl=cardLoans().filter(l=>l.owed>0&&l.c.lo.toLowerCase()===p.toLowerCase()).sort((a,b)=>(a.c.due||a.c.d).localeCompare(b.c.due||b.c.d))[0];
+      if(cl)return{t:'repay',a:amt,d:date,w:w0||wid('cash'),p:cl.c.lo,ref:cl.c.id,s:cl.c.s}}
     return{t:'repay',a:amt,d:date,w:w0||(open[0]&&open[0].w)||wid('cash'),p:open[0]?open[0].p:p,ref:open[0]&&open[0].id,warn:open.length?'':`No open loan found for ${p||'that person'}.`}}
   if(RX.lend.test(q)){const{p,rest:r}=personFrom(rest);return{t:'lend',a:amt,d:date,w:w0||wid('gcash'),p:p||'Someone',s:cap(r)}}
   // The person's own income types count as income words, except ones that also describe spending ("gift", "other").
@@ -705,7 +778,7 @@ function parseCommand1(q){
   if(RX.inc.test(q)||myInc){let k=myInc||S.incTypes.find(x=>q.includes(x.toLowerCase()))||(/freelance|sideline|commission/.test(q)?'Freelance':/bonus|13th/.test(q)?'Bonus':/allowance/.test(q)?'Allowance':/refund|cashback/.test(q)?'Refund':'Salary');
     if(!S.incTypes.includes(k))k=S.incTypes[0];return{t:'inc',a:amt,d:date,w:w0||wid('gcash'),k,s:cap(clean(rest))||k}}
   if(RX.cc.test(q)){const card=/spay|s pay/.test(q)?(S.cards.find(c=>/spay/i.test(c))||'SPayLater'):(S.cards[0]||'Credit Card');
-    return{t:'cc',a:amt,d:date,card,s:cap(clean(rest))||'Card purchase',who:'Me',due:dueFor(card,date)}}
+    const s=cap(clean(rest))||'Card purchase',pr=predict(s);return{t:'cc',a:amt,d:date,card,s,c:pr&&pr.p>.3?pr.c:fallbackCat(),conf:pr,who:'Me',due:dueFor(card,date)}}
   const s=cap(clean(rest))||'Expense';const pr=predict(s);
   return{t:'exp',a:amt,d:date,w:w0||wid('cash'),s,c:pr&&pr.p>.3?pr.c:fallbackCat(),conf:pr}}
 
@@ -724,7 +797,8 @@ const li=a=>'<ul>'+a.map(x=>'<li>'+x+'</li>').join('')+'</ul>';
 function answer(raw){
   const q=raw.toLowerCase().trim();
   const r=rangeOf(q);const cat=(S.cats.find(c=>q.includes(c.name.toLowerCase()))||{}).id||Object.keys(CATQ).find(k=>CATQ[k].test(q)&&S.cats.some(c=>c.id===k));
-  const exps=S.tx.filter(t=>t.t==='exp'&&inR(t,r));
+  // Spending answers include my own card and SPayLater charges (they carry a category too).
+  const exps=[...S.tx.filter(t=>t.t==='exp'&&inR(t,r)),...S.cc.filter(c=>!c.lo&&inR(c,r)).map(c=>({...c,t:'exp',c:catOf(c.c).id}))];
   if(/^(hi|hello|hey|help)\b|what can you do|paano/.test(q))return help();
   const tq=(q.match(/#([\p{L}\p{N}_-]+)/u)||[])[1];
   if(tq){const tg=tq.toLowerCase(),rr=/this month|last month|today|week|year/.test(q)?r:{f:'0000',to:'9999',l:'all time'};
@@ -733,13 +807,15 @@ function answer(raw){
     return`#${esc(tg)} for ${rr.l}:`+li([`Spent: <b class="mono">${peso(sum(out))}</b> across ${out.length} entr${out.length===1?'y':'ies'}`,...(cc.length?[`Charged to cards: <span class="mono warn">${peso(sum(cc))}</span>`]:[]),...(inn.length?[`Money in: <span class="mono pos">${peso(sum(inn))}</span>`]:[]),
       ...out.sort((a,b)=>b.a-a.a).slice(0,3).map(t=>`${esc(t.s||t.p||'Entry')} <span class="muted">(${dLabel(t.d)})</span>: <span class="mono">${peso(t.a)}</span>`)])}
   if(/who owes|owes me|owe me|receivable|utang (nila|sa akin)|may utang|pinahiram/.test(q)){
-    const by={};loans().forEach(l=>{if(l.owed>0)by[l.p]=(by[l.p]||0)+l.owed});const k=Object.keys(by).sort((a,b)=>by[b]-by[a]);
+    const by={};loans().forEach(l=>{if(l.owed>0)by[l.p]=(by[l.p]||0)+l.owed});cardLoans().forEach(l=>{if(l.owed>0)by[l.c.lo]=(by[l.c.lo]||0)+l.owed});const k=Object.keys(by).sort((a,b)=>by[b]-by[a]);
     if(!k.length)return'Nobody owes you money right now.';
     return`<b>${peso(sumBal(by))}</b> is still owed to you by ${k.length} ${k.length>1?'people':'person'}:`+li(k.map(p=>`${esc(p)}: <span class="mono">${peso(by[p])}</span>`))}
   if(/how much do i owe|my debt|credit card|\bcc\b|spaylater|liabilit|bayarin|\bdue\b|utang ko/.test(q)){
-    const open=ccOpen();if(!open.length)return'All card and SPayLater items are paid. Nice.';
+    const open=ccOpen(),others=sum(ccOpen(null,true).filter(c=>c.lo)),oth=others?` Others used your cards for <span class="mono">${peso(others)}</span> more, which they owe you.`:'';
+    if(!open.length)return'All your card and SPayLater items are paid. Nice.'+oth;
     const by={};open.forEach(c=>by[c.card]=(by[c.card]||0)+c.a);const nx=open.filter(c=>c.due).sort((a,b)=>a.due.localeCompare(b.due))[0];
-    return`You owe <b>${peso(sum(open))}</b> on cards:`+li(Object.keys(by).map(k=>`${esc(k)}: <span class="mono">${peso(by[k])}</span>`))+(nx?`Next due: ${esc(nx.s)} on ${dLabel(nx.due)}.`:'')}
+    const plans=[...new Set(open.filter(c=>c.plan).map(c=>c.plan))].length;
+    return`You owe <b>${peso(sum(open))}</b> on cards:`+li(Object.keys(by).map(k=>`${esc(k)}: <span class="mono">${peso(by[k])}</span>`))+(nx?`Next due: ${esc(nx.s)}${nx.plan?` (${nx.pk} of ${nx.pn})`:''}, <span class="mono">${peso(nx.a)}</span> on ${dLabel(nx.due)}.`:'')+(plans?` ${plans} installment plan${plans>1?'s':''} still running.`:'')+oth}
   const afford=q.match(/afford|kaya ko|can i (buy|spend|get)/)&&parseAmounts(q)[0];
   if(afford){const x=afford.v,f=forecast(STATE.m),now=sumBal(balances());
     const remaining=f.live?f.avg*f.left:0,due=sum(ccOpen().filter(c=>!c.due||c.due<=addDays(today(),31)));const left=now-remaining-due-x;
@@ -755,7 +831,7 @@ function answer(raw){
       `To break even, keep daily spending under <span class="mono">${peso(Math.max(0,(st.in-st.lent-st.ccp-f.exp)/Math.max(1,f.left)))}</span> for the last ${f.left} days`])}
   if(/compare|\bvs\b|versus|than last/.test(q)){const a=monthStats(STATE.m),b=monthStats(addM(STATE.m,-1));
     const rows=S.cats.map(c=>[c,(a.cats[c.id]||0)-(b.cats[c.id]||0)]).filter(x=>Math.abs(x[1])>0.5).sort((x,y)=>Math.abs(y[1])-Math.abs(x[1])).slice(0,5);
-    return`${pLabel(STATE.m)} vs ${pLabel(addM(STATE.m,-1))}: day-to-day spending <b class="mono">${peso(a.exp)}</b> vs <span class="mono">${peso(b.exp)}</span> (${a.exp>=b.exp?'up':'down'} ${peso(Math.abs(a.exp-b.exp))}).`+
+    return`${pLabel(STATE.m)} vs ${pLabel(addM(STATE.m,-1))}: spending <b class="mono">${peso(a.spend)}</b> vs <span class="mono">${peso(b.spend)}</span> (${a.spend>=b.spend?'up':'down'} ${peso(Math.abs(a.spend-b.spend))}).`+
       (rows.length?li(rows.map(([c,d])=>`${esc(c.name)}: <span class="mono ${d>0?'neg':'pos'}">${d>0?'+':'-'}${peso(Math.abs(d))}</span>`)):'')}
   if(/biggest|largest|highest|most expensive|\btop\b|pinakamalaki|pinakamahal/.test(q)){const top=exps.filter(t=>!cat||t.c===cat).sort((a,b)=>b.a-a.a).slice(0,5);
     if(!top.length)return`No expenses found for ${r.l}.`;return`Biggest ${cat?esc(catName(cat).toLowerCase())+' ':''}expenses for ${r.l}:`+li(top.map(t=>`${esc(t.s)} <span class="muted">(${dLabel(t.d)})</span>: <span class="mono">${peso(t.a)}</span>`))}
@@ -776,13 +852,13 @@ function answer(raw){
         else{const pr=predict(term);if(pr&&pr.p>.5){list=exps.filter(t=>t.c===pr.c);label=' on '+esc(catName(pr.c))}}}}
     if(!label&&/where|saan|napunta|breakdown/.test(q)||(!label&&!cat)){const by={};exps.forEach(t=>by[t.c]=(by[t.c]||0)+t.a);const k=Object.keys(by).sort((a,b)=>by[b]-by[a]);
       if(!k.length)return`No expenses recorded for ${r.l}.`;
-      return`You spent <b>${peso(sum(exps))}</b> on day-to-day items in ${r.l}:`+li(k.map(c=>`${esc(catName(c))}: <span class="mono">${peso(by[c])}</span> (${pct(by[c],sum(exps))})`))}
+      return`You spent <b>${peso(sum(exps))}</b> in ${r.l}, cards included:`+li(k.map(c=>`${esc(catName(c))}: <span class="mono">${peso(by[c])}</span> (${pct(by[c],sum(exps))})`))}
     if(!list.length)return`Nothing spent${label} in ${r.l}.`;
     const big=list.slice().sort((a,b)=>b.a-a.a)[0];
     return`You spent <b>${peso(sum(list))}</b>${label} in ${r.l}, across ${list.length} entr${list.length>1?'ies':'y'} (${pct(sum(list),sum(exps))} of all spending). Biggest: ${esc(big.s)}, <span class="mono">${peso(big.a)}</span> on ${dLabel(big.d)}.`}
   return'I did not catch that. '+help()}
 function help(){return`I run fully on your phone, so nothing leaves it. Try:`+li([
-  '<b>Add things:</b> “lunch 120 gcash”, “jeep 13 yesterday”, “salary 16000 gotyme”, “lent mama 500 for tuition”, “ate paid back 200”, “transfer 1000 gcash to cash”, “shopee 899 spaylater”',
+  '<b>Add things:</b> “lunch 120 gcash”, “jeep 13 yesterday”, “salary 16000 gotyme”, “lent mama 500 for tuition”, “ate paid back 200”, “transfer 1000 gcash to cash”, “shopee 899 spaylater”, “phone 12000 credit card 6 months”',
   '<b>Tag things:</b> add #words, like “dinner 850 gcash #family”, then ask “how much on #family?”',
   '<b>Ask:</b> “how much on food?”, “who owes me?”, “forecast”, “can I afford 2500?”, “compare vs last month”, “biggest expenses”, “tips”'])}
 function summary(){const m=STATE.m,st=monthStats(m),end=pE(m);const top=Object.keys(st.cats).sort((a,b)=>st.cats[b]-st.cats[a])[0];
@@ -790,7 +866,7 @@ function summary(){const m=STATE.m,st=monthStats(m),end=pE(m);const top=Object.k
     `Net: <b class="mono ${st.net<0?'neg':'pos'}">${peso(st.net)}</b>`,top?`Top category: ${esc(catName(top))} at <span class="mono">${peso(st.cats[top])}</span>`:'No day-to-day spending yet',
     `Lent out this month: <span class="mono">${peso(st.lent)}</span>; still owed to you: <span class="mono">${peso(owedTotal(end))}</span>`,
     `Unpaid cards: <span class="mono warn">${peso(ccUnpaid(end))}</span>`,`All wallets at month end: <span class="mono">${peso(sumBal(balances(end)))}</span>`])}
-function tips(){const m=STATE.m,st=monthStats(m),f=forecast(m),out=[];const tot=st.exp||1;
+function tips(){const m=STATE.m,st=monthStats(m),f=forecast(m),out=[];const tot=st.spend||1;
   if(st.out&&st.lent/st.out>.25)out.push(`Lending took ${pct(st.lent,st.out)} of your cash out. Set a monthly lending cap (for example ${pesoS(st.in*.1)}, 10% of income) and log due dates so repayments get chased.`);
   const tr=st.cats.transpo||0,trn=S.tx.filter(t=>t.t==='exp'&&t.c==='transpo'&&inP(t.d,m)).length;
   if(trn>=6)out.push(`You logged ${trn} transport rides (${peso(tr)}). A fixed weekly fare budget of ${pesoS(tr/Math.max(1,f.days)*7)} keeps this predictable.`);
@@ -805,7 +881,8 @@ function insights(m){const st=monthStats(m),end=pE(m),b=balances(end),out=[];
       out.push({lv:'bad',t:`Deficit of ${peso(-st.net)}`,x:`${peso(st.in)} came in and ${peso(st.out)} went out. The biggest outflow is ${dr[0]} at ${peso(dr[1])} (${pct(dr[1],st.out)} of cash out).`})}
     else out.push({lv:'good',t:`Surplus of ${peso(st.net)}`,x:`You kept ${pct(st.net,st.in)} of the money that came in.`})}
   const od=S.wallets.filter(w=>b[w.id]<-0.004);if(od.length)out.push({lv:'warn',t:`${od.length} wallet${od.length>1?'s are':' is'} below zero`,x:od.map(w=>`${w.name} ${peso(b[w.id])}`).join(', ')+'. Usually an income or transfer was not logged.'});
-  const soon=ccOpen().filter(c=>c.due&&c.due<=addDays(today(),7));if(soon.length)out.push({lv:'warn',t:`${peso(sum(soon))} in card bills due within 7 days`,x:soon.map(c=>`${c.s} (${dLabel(c.due)})`).join(', ')});
+  const soon=ccOpen(null,true).filter(c=>c.due&&c.due<=addDays(today(),7));if(soon.length)out.push({lv:'warn',t:`${peso(sum(soon))} in card bills due within 7 days`,x:soon.map(c=>`${c.s}${c.plan?` ${c.pk}/${c.pn}`:''}${c.lo?` (${c.lo})`:''} (${dLabel(c.due)})`).join(', ')});
+  const lateCards=cardLoans().filter(l=>l.owed>0&&l.c.due&&l.c.due<today());if(lateCards.length)out.push({lv:'info',t:`${lateCards.length} borrowed card charge${lateCards.length>1?'s':''} not paid back yet`,x:lateCards.map(l=>`${l.c.lo} owes ${peso(l.owed)} for ${l.c.s}`).join(', ')});
   const late=loans().filter(l=>l.owed>0&&l.due&&l.due<today());if(late.length)out.push({lv:'info',t:`${late.length} loan${late.length>1?'s':''} past the due date`,x:late.map(l=>`${l.p} owes ${peso(l.owed)}`).join(', ')});
   const over=budgets(m).filter(b=>b.p>=.9).sort((a,b)=>b.p-a.p);
   if(over.length){const b=over[0];out.push({lv:b.p>=1?'bad':'warn',t:b.p>=1?`${b.c.name} is over budget by ${peso(b.spent-b.limit)}`:`${b.c.name} is at ${Math.round(b.p*100)}% of its budget`,
@@ -850,7 +927,7 @@ const TABS=[['home','Home','<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1
   ['debts','Debts','<path d="M7 7h12l-3-3M17 17H5l3 3"/>'],
   ['ai','Assistant','<path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8zM19 15l.8 2.2 2.2.8-2.2.8L19 21l-.8-2.2-2.2-.8 2.2-.8z"/>']];
 
-function render(){
+function render(){fillCcCats();
   $('#mlabel').textContent=MS()===1?mLabel(STATE.m):dLabel(pS(STATE.m))+'–'+dLabel(addDays(pE(STATE.m),-1));document.documentElement.classList.toggle('mstart',MS()!==1);
   $('#tabs').innerHTML=TABS.map(([id,l,ic])=>`<button class="tab${STATE.tab===id?' on':''}" data-act="tab" data-id="${id}" aria-current="${STATE.tab===id}"><svg viewBox="0 0 24 24">${ic}</svg>${l}</button>`).join('');
   const v=VIEWS[STATE.tab]||VIEWS.home;$('#view').innerHTML=v();
@@ -859,7 +936,7 @@ function render(){
 
 function keepMine(){const tx=S.tx.filter(t=>t.mine),cc=S.cc.filter(c=>c.mine),ids=new Set(tx.map(t=>t.id)),cids=new Set(cc.map(c=>c.id));
   // drop repayments and card payments that pointed at sample records
-  S.tx=tx.filter(t=>!(t.t==='repay'&&!ids.has(t.ref))&&!(t.t==='ccpay'&&!cids.has(t.ref)));S.cc=cc;
+  S.tx=tx.filter(t=>!(t.t==='repay'&&!ids.has(t.ref)&&!cids.has(t.ref))&&!(t.t==='ccpay'&&!cids.has(t.ref)));S.cc=cc;
   S.cc.forEach(c=>{if(c.pay&&!S.tx.some(t=>t.id===c.pay)){c.paid=false;delete c.pay}});
   S.tx.forEach(t=>delete t.mine);S.cc.forEach(c=>delete c.mine);S.wallets.forEach(w=>w.init=0);S.demo=false;STATE.chat=[];STATE.drafts=[];
   save();render();const n=S.tx.length+S.cc.length;toast(`Kept your ${n} record${n===1?'':'s'}. Set your wallet balances in Settings.`)}
@@ -901,7 +978,7 @@ function goalCard(g,gb){const gp=Math.max(0,Math.min(1,gb/(g.amt||1))),left=g.am
 function hero(){const m=STATE.m,st=monthStats(m),end=pE(m),bal=sumBal(balances(end)),cur=m===curP();
   return`<section class="card hero" aria-label="Month summary"><p class="eyebrow">All wallets · ${cur?'now':'end of '+pLabel(m)}</p><div class="big ${bal<0?'neg':''}">${peso(bal)}</div>
   <div class="hero-k"><button data-act="tab" data-id="spend"><span>Net ${cur?'this month':pShort(m).replace(/ 20\d\d$/,'')}</span><b class="${st.net<0?'neg':'pos'}">${st.net>0.004?'+':''}${peso(st.net)}</b></button>
-  <button data-act="tab" data-id="debts"><span>Cards unpaid</span><b class="warn">${peso(ccUnpaid(end))}</b></button>
+  <button data-act="tab" data-id="debts"><span>My card debt</span><b class="warn">${peso(ccUnpaid(end))}</b></button>
   <button data-act="tab" data-id="debts"><span>Owed to me</span><b class="owed">${peso(owedTotal(end))}</b></button></div></section>`}
 
 const VIEWS={
@@ -941,51 +1018,76 @@ wallets(){const m=STATE.m,start=pS(m),end=pE(m),open=balances(start);const flows
     ${xfers.length?xfers.sort((a,b)=>b.d.localeCompare(a.d)).map(t=>txRow(t)).join(''):'<div class="empty">No transfers this month. Transfers move money between wallets without changing your totals.</div>'}</div></section>`},
 
 spend(){const m=STATE.m,st=monthStats(m),F=STATE.filter;const cats=S.cats.filter(c=>st.cats[c.id]).sort((a,b)=>st.cats[b.id]-st.cats[a.id]);
-  let acc=0;const arcs=cats.map(c=>{const p=st.cats[c.id]/(st.exp||1)*100;const s=`<circle r="15.915" cx="21" cy="21" fill="none" stroke="${catCol(c.id)}" stroke-width="6" stroke-dasharray="${Math.max(0,p-.4)} ${100-Math.max(0,p-.4)}" stroke-dashoffset="${25-acc}" data-act="cat" data-id="${c.id}" opacity="${F.cat&&F.cat!==c.id?.3:1}"><title>${esc(c.name)}</title></circle>`;acc+=p;return s}).join('');
-  let list=S.tx.filter(t=>inP(t.d,m));
+  let acc=0;const arcs=cats.map(c=>{const p=st.cats[c.id]/(st.spend||1)*100;const s=`<circle r="15.915" cx="21" cy="21" fill="none" stroke="${catCol(c.id)}" stroke-width="6" stroke-dasharray="${Math.max(0,p-.4)} ${100-Math.max(0,p-.4)}" stroke-dashoffset="${25-acc}" data-act="cat" data-id="${c.id}" opacity="${F.cat&&F.cat!==c.id?.3:1}"><title>${esc(c.name)}</title></circle>`;acc+=p;return s}).join('');
+  // My own card charges are listed with the rest (as type 'card'), so a category shows everything spent on it.
+  let list=S.tx.filter(t=>inP(t.d,m)).concat(S.cc.filter(c=>!c.lo&&inP(c.d,m)).map(c=>({...c,t:'card',c:catOf(c.c).id})));
   if(F.type!=='all')list=list.filter(t=>F.type==='loan'?(t.t==='lend'||t.t==='repay'):t.t===F.type);
-  if(F.cat)list=list.filter(t=>t.t==='exp'&&t.c===F.cat);
-  const tagsHere=[...new Set(S.tx.filter(t=>inP(t.d,m)).flatMap(t=>t.tags||[]))].sort();
+  if(F.cat)list=list.filter(t=>(t.t==='exp'||t.t==='card')&&t.c===F.cat);
+  const tagsHere=[...new Set(list.flatMap(t=>t.tags||[]))].sort();
   if(F.tag)list=list.filter(t=>(t.tags||[]).includes(F.tag));
-  if(F.q){const q=F.q.toLowerCase();list=list.filter(t=>((t.s||'')+' '+(t.n||'')+' '+(t.p||'')+' '+W(t.w).name+' '+tagStr(t.tags)).toLowerCase().includes(q))}
+  if(F.q){const q=F.q.toLowerCase();list=list.filter(t=>((t.s||'')+' '+(t.n||'')+' '+(t.p||'')+' '+(t.t==='card'?t.card:W(t.w).name)+' '+tagStr(t.tags)).toLowerCase().includes(q))}
   list.sort((a,b)=>b.d.localeCompare(a.d));const shown=list.slice(0,F.limit);
   const bs=budgets(m);
   return`<h1 class="ltitle">Spending</h1>${bs.length?`<section class="card"><h2>Budgets<span class="right"><button class="linkbtn" data-act="setpage" data-id="cats">Edit</button></span></h2><div class="brk">
     ${bs.map(b=>`<button class="budrow" data-act="cat" data-id="${b.c.id}"><div class="lbl"><span>${esc(b.c.ic?b.c.ic+' ':'')}${esc(b.c.name)}</span><b class="${b.p>=1?'neg':''}">${peso(b.spent)} <span class="muted">of ${peso(b.limit)}</span></b></div>
       <div class="bar"><i style="width:${Math.min(100,b.p*100)}%;background:var(--${budgetLv(b.p)})"></i></div>
       <div class="sub ${b.p>=1?'neg':b.p>=.8?'warn':''}" style="margin-top:4px">${b.p>=1?`${peso(b.spent-b.limit)} over`:`${peso(b.limit-b.spent)} left`} · ${Math.round(b.p*100)}%</div></button>`).join('')}</div></section>`:''}
-  <section class="card"><h2>Spending by category<span class="right">${st.n} entries</span></h2>
-    ${st.exp?`<div class="donut"><svg viewBox="0 0 42 42" role="img" aria-label="Category donut chart"><circle r="15.915" cx="21" cy="21" fill="none" stroke="var(--surface-2)" stroke-width="6"/>${arcs}
-      <text x="21" y="20" text-anchor="middle" font-size="3" fill="var(--muted)" font-family="var(--font-body)">Total</text><text x="21" y="24.5" text-anchor="middle" font-size="4.2" font-weight="700" fill="var(--fg)" font-family="var(--font-display)">${pesoS(st.exp)}</text></svg>
-      <div class="legend">${cats.map(c=>`<button data-act="cat" data-id="${c.id}" class="${F.cat&&F.cat!==c.id?'dim':''}"><i class="dot" style="background:${catCol(c.id)}"></i><span>${esc(c.ic?c.ic+' ':'')}${esc(c.name)}</span><b>${pesoS(st.cats[c.id])} · ${pct(st.cats[c.id],st.exp)}</b></button>`).join('')}</div></div>`
+  <section class="card"><h2>Spending by category<span class="right">${st.n+st.nc} entr${st.n+st.nc===1?'y':'ies'}</span></h2>
+    ${st.spend?`<div class="donut"><svg viewBox="0 0 42 42" role="img" aria-label="Category donut chart"><circle r="15.915" cx="21" cy="21" fill="none" stroke="var(--surface-2)" stroke-width="6"/>${arcs}
+      <text x="21" y="20" text-anchor="middle" font-size="3" fill="var(--muted)" font-family="var(--font-body)">Total</text><text x="21" y="24.5" text-anchor="middle" font-size="4.2" font-weight="700" fill="var(--fg)" font-family="var(--font-display)">${pesoS(st.spend)}</text></svg>
+      <div class="legend">${cats.map(c=>`<button data-act="cat" data-id="${c.id}" class="${F.cat&&F.cat!==c.id?'dim':''}"><i class="dot" style="background:${catCol(c.id)}"></i><span>${esc(c.ic?c.ic+' ':'')}${esc(c.name)}</span><b>${pesoS(st.cats[c.id])} · ${pct(st.cats[c.id],st.spend)}</b></button>`).join('')}</div></div>
+      ${st.card?`<div class="paysplit"><span><i class="dot" style="background:var(--accent)"></i>Cash & e-wallets <b>${peso(st.exp)}</b></span><span><i class="dot" style="background:var(--warn)"></i>Cards & SPayLater <b>${peso(st.card)}</b></span></div>`:''}`
       :'<div class="empty">No expenses this month yet. Tap + to add one, or tell the assistant “lunch 120 gcash”.</div>'}</section>
   <section class="card"><h2>Transactions${F.cat?`<span class="pill zero">${esc(catName(F.cat))}</span>`:''}<span class="right">${list.length} shown</span></h2>
     <div style="display:flex;flex-direction:column;gap:10px"><input class="search" id="search" type="search" placeholder="Search description, person, wallet" value="${esc(F.q)}" aria-label="Search transactions">
-    <div class="chips">${[['all','All'],['exp','Expenses'],['inc','Income'],['xfer','Transfers'],['loan','Loans'],['ccpay','Card payments']].map(([k,l])=>`<button class="chip${F.type===k?' on':''}" data-act="type" data-id="${k}">${l}</button>`).join('')}${F.cat?`<button class="chip" data-act="cat" data-id="${F.cat}">Clear category ✕</button>`:''}</div>
+    <div class="chips">${[['all','All'],['exp','Expenses'],['card','Card charges'],['inc','Income'],['xfer','Transfers'],['loan','Loans'],['ccpay','Card payments']].map(([k,l])=>`<button class="chip${F.type===k?' on':''}" data-act="type" data-id="${k}">${l}</button>`).join('')}${F.cat?`<button class="chip" data-act="cat" data-id="${F.cat}">Clear category ✕</button>`:''}</div>
     ${tagsHere.length?`<div class="chips tagchips" role="group" aria-label="Tags">${tagsHere.map(g=>`<button class="chip tag${F.tag===g?' on':''}" data-act="tagf" data-id="${esc(g)}" aria-pressed="${F.tag===g}">#${esc(g)}</button>`).join('')}</div>`:''}</div>
     <div class="list" style="margin-top:6px">${shown.length?dayGroups(shown,list):'<div class="empty">Nothing matches.</div>'}</div>
     ${list.length>shown.length?`<button class="btn" style="width:100%;margin-top:8px" data-act="more">Show ${Math.min(40,list.length-shown.length)} more</button>`:''}</section>`},
 
-debts(){const end=pE(STATE.m),L=loans(),open=ccOpen();const owed=sum(L,l=>l.owed),people=new Set(L.filter(l=>l.owed>0).map(l=>l.p)).size;
+debts(){const L=loans(),CL=cardLoans(),open=ccOpen(),others=ccOpen(null,true).filter(c=>c.lo);
+  const owed=sum(L,l=>l.owed)+sum(CL,l=>l.owed),people=new Set([...L.filter(l=>l.owed>0).map(l=>l.p),...CL.filter(l=>l.owed>0).map(l=>l.c.lo)]).size;
   const byCard={};open.forEach(c=>byCard[c.card]=(byCard[c.card]||0)+c.a);
-  const ccList=S.cc.slice().sort((a,b)=>(a.paid-b.paid)||(a.due||'9').localeCompare(b.due||'9'));
+  // One row per charge. An installment plan is one row that shows its next unpaid month; tap it to see every month.
+  const rows=[],plans={};
+  for(const c of S.cc){if(!c.plan){rows.push({items:[c]});continue}if(!plans[c.plan])rows.push(plans[c.plan]={items:[]});plans[c.plan].items.push(c)}
+  rows.forEach(r=>{r.items.sort((a,b)=>(a.pk||0)-(b.pk||0));r.open=r.items.filter(c=>!c.paid);r.next=r.open[0];r.owed=sum(r.items,c=>cardOwed(c));r.done=!r.open.length&&!r.owed});
+  rows.sort((a,b)=>(a.done-b.done)||((a.next&&a.next.due)||'9').localeCompare((b.next&&b.next.due)||'9'));
   return`<h1 class="ltitle">Debts</h1><div class="grid2">
-    <section class="card"><p class="eyebrow">Owed to me</p><div class="big owed">${peso(owed)}</div><div class="sub">${people} ${people===1?'person':'people'} · lent this month ${peso(monthStats(STATE.m).lent)}</div></section>
-    <section class="card"><p class="eyebrow">What I owe</p><div class="big neg">${peso(sum(open))}</div><div class="sub">${Object.keys(byCard).map(k=>esc(k)+' '+pesoS(byCard[k])).join(' · ')||'All paid'}</div></section></div>
+    <section class="card"><p class="eyebrow">Owed to me</p><div class="big owed">${peso(owed)}</div><div class="sub">${people} ${people===1?'person':'people'} · lent this month ${peso(monthStats(STATE.m).lent)}${CL.some(l=>l.owed>0)?` · ${pesoS(sum(CL,l=>l.owed))} of it on my cards`:''}</div></section>
+    <section class="card"><p class="eyebrow">What I owe</p><div class="big neg">${peso(sum(open))}</div><div class="sub">${Object.keys(byCard).map(k=>esc(k)+' '+pesoS(byCard[k])).join(' · ')||'All paid'}${others.length?`<br>Not counted: ${pesoS(sum(others))} others charged to my cards`:''}</div></section></div>
   <section class="card"><div class="split" style="margin-bottom:6px"><h2 style="margin:0">Money I lent</h2><button class="btn sm pri" data-act="form" data-t="lend">Lend cash</button></div>
     <div class="list">${L.length?L.map(l=>`<div class="item"><div class="ic" style="--ic:var(--owed)" aria-hidden="true">${esc((l.p||'?').charAt(0).toUpperCase())}</div>
       <button class="mid" style="border:0;background:none;padding:0;text-align:left" data-act="edit" data-id="${l.id}"><div class="t">${esc(l.p)}${l.s?` <span class="muted" style="font-weight:400">· ${esc(l.s)}</span>`:''}</div>
       <div class="m">${dLabel(l.d)} · ${esc(W(l.w).name)} · lent ${peso(l.a)}${l.paid?` · repaid ${peso(l.paid)}`:''}</div>${l.due&&l.owed>0?dueTag(l.due):''}</button>
       <div class="r">${l.owed>0?`<b class="neg">${peso(l.owed)}</b><button class="btn sm" data-act="repay" data-id="${l.id}" style="margin-top:4px">Repaid</button>`:`<span class="pill pos">Settled</span>`}</div></div>`).join(''):'<div class="empty">No loans yet. When family or friends borrow, log it here so you remember.</div>'}</div></section>
   <section class="card"><div class="split" style="margin-bottom:6px"><h2 style="margin:0">Card & SPayLater items</h2><button class="btn sm pri" data-act="form" data-t="cc">Add charge</button></div>
-    <div class="list">${ccList.length?ccList.map(c=>`<div class="item"><div class="ic" style="--ic:var(--warn)" aria-hidden="true">${c.card.charAt(0)}</div>
-      <button class="mid" style="border:0;background:none;padding:0;text-align:left" data-act="editcc" data-id="${c.id}"><div class="t">${esc(c.s)}</div><div class="m">${esc(c.card)} · ${dLabel(c.d)} · for ${esc(c.who||'Me')}${c.tags?' · <span class="tagtxt">'+esc(tagStr(c.tags))+'</span>':''}</div>${c.due&&!c.paid?dueTag(c.due):''}</button>
-      <div class="r"><b>${peso(c.a)}</b>${c.paid?`<button class="btn sm" data-act="unpay" data-id="${c.id}" style="margin-top:4px">Paid ✓</button>`:`<button class="btn sm" data-act="paycc" data-id="${c.id}" style="margin-top:4px">Mark paid</button>`}</div></div>`).join(''):'<div class="empty">No card charges logged.</div>'}</div></section>`},
+    <div class="list">${rows.length?rows.map(ccRow).join(''):'<div class="empty">No card charges logged.</div>'}</div></section>`},
 
 ai(){if(!STATE.chat.length)STATE.chat.push({me:false,h:`<b>Hi! I am your on-device assistant.</b> `+summaryLine()+`<br><br>`+help()});
   return`<h1 class="ltitle">Assistant</h1><section class="ai-head"><div class="orb" aria-hidden="true">✦</div><div><div class="sub">Runs offline on your phone. No internet, no GPU, no data leaves the device.</div></div></section>
   <div class="chat" id="chat">${STATE.chat.map((c,i)=>`<div class="msg ${c.me?'me':'bot'}${c.fresh?' new':''}">${c.me?esc(c.h):c.h}${c.draft!=null?draftCard(c.draft):''}</div>`).join('')}</div><div style="height:96px"></div>`}};
 
+/* A row in Debts › Card & SPayLater items: one charge, or one installment plan (r.items are its months). */
+function ccRow(r){const f=r.items[0],plan=!!f.plan,c=r.next||r.items[r.items.length-1],back=r.items.find(x=>cardOwed(x)>0);
+  const ic=f.lo?`<div class="ic" style="--ic:var(--owed)" aria-hidden="true">${esc(f.lo.charAt(0).toUpperCase())}</div>`:`<div class="ic" style="--ic:${catCol(f.c)}" aria-hidden="true">${esc(catIc(f.c))}</div>`;
+  const meta=plan?`${esc(f.card)} · ${f.pn-r.open.length} of ${f.pn} paid`:`${esc(f.card)} · ${dLabel(f.d)} · ${esc(catName(f.c))}${f.who&&f.who!=='Me'&&!f.lo?' · for '+esc(f.who):''}`;
+  const lo=f.lo?`<div class="m owedtxt">${r.owed>0?`${esc(f.lo)} owes you ${pesoS(r.owed)}`:`Used by ${esc(f.lo)} · settled`}</div>`:'';
+  const bank=r.next?`<button class="btn sm" data-act="paycc" data-id="${r.next.id}">${plan?`Pay ${pesoS(r.next.a)}`:'Mark paid'}</button>`
+    :plan?`<span class="pill pos">Paid off</span>`:`<button class="btn sm" data-act="unpay" data-id="${f.id}">Paid ✓</button>`;
+  return`<div class="item">${ic}<button class="mid" style="border:0;background:none;padding:0;text-align:left" data-act="${plan?'plan':'editcc'}" data-id="${plan?f.plan:f.id}">
+    <div class="t">${esc(f.s)}</div><div class="m">${meta}${f.tags?' · <span class="tagtxt">'+esc(tagStr(f.tags))+'</span>':''}</div>${lo}${r.next&&r.next.due?dueTag(r.next.due):''}</button>
+    <div class="r stack"><b>${peso(plan?sum(r.open):f.a)}</b>${plan&&r.open.length?'<small>left</small>':''}${back?`<button class="btn sm" data-act="ccback" data-id="${back.id}">Paid back</button>`:''}${bank}</div></div>`}
+function planSheet(id){const it=planItems(id);if(!it.length){closeSheet();return}const f=it[0],{total}=planAmounts(f.pa,f.pn,f.pr),open=it.filter(c=>!c.paid),owed=sum(it,c=>cardOwed(c));
+  sheet(`<h3>${esc(f.s)}</h3><div class="sub">${esc(f.card)} · ${esc(catName(f.c))} · bought ${dLabel(f.pd||f.d)}, ${(f.pd||f.d).slice(0,4)}${f.lo?` · <span class="owedtxt">used by ${esc(f.lo)}</span>`:''}</div>
+  <div class="plansum"><div><span>Price</span><b>${peso(f.pa)}</b></div><div><span>${f.pr?`Interest (${f.pr}% a month)`:'Interest'}</span><b>${peso(total-f.pa)}</b></div>
+    <div><span>Paid (${f.pn-open.length} of ${f.pn})</span><b class="pos">${peso(sum(it.filter(c=>c.paid)))}</b></div><div><span>Left to pay</span><b class="warn">${peso(sum(open))}</b></div></div>
+  ${f.lo&&owed>0?`<p class="sub owedtxt" style="margin:0 0 8px">${esc(f.lo)} still owes you ${peso(owed)} for this.</p>`:''}
+  <div class="list">${it.map(c=>`<div class="item"><div class="ic" style="--ic:${c.paid?'var(--pos)':'var(--warn)'}" aria-hidden="true">${c.paid?'✓':c.pk}</div>
+    <button class="mid" style="border:0;background:none;padding:0;text-align:left" data-act="editcc" data-id="${c.id}"><div class="t">${c.pk} of ${c.pn}</div>
+    <div class="m">${c.paid?`Paid ${dLabel(ccPaidDate(c))}${c.direct?' by '+esc(c.lo):''}`:c.due?`Charged ${dLabel(c.d)}`:`Charged ${dLabel(c.d)} · no due date`}</div>${c.due&&!c.paid?dueTag(c.due):''}</button>
+    <div class="r stack"><b>${peso(c.a)}</b>${cardOwed(c)>0?`<button class="btn sm" data-act="ccback" data-id="${c.id}">Paid back</button>`:''}${c.paid?`<button class="btn sm" data-act="unpay" data-id="${c.id}" data-from="plan">Paid ✓</button>`:`<button class="btn sm" data-act="paycc" data-id="${c.id}" data-from="plan">Mark paid</button>`}</div></div>`).join('')}</div>
+  <div class="btns" style="margin-top:12px"><button class="btn" data-act="editcc" data-id="${(open[0]||f).id}">Edit</button><button class="btn danger" data-act="plandel" data-id="${id}">Delete plan</button><button class="btn" data-act="close">Close</button></div>`)}
 function summaryLine(){const st=monthStats(STATE.m);return`For ${pLabel(STATE.m)} you are at <b class="${st.net<0?'neg':'pos'}">${peso(st.net)}</b> net.`}
 function trendRows(){const cur=curP(),end=STATE.m>cur?STATE.m:cur;
   const ms=S.tx.map(t=>periodOf(t.d)).concat(S.cc.map(c=>periodOf(c.d))).sort();
@@ -994,13 +1096,14 @@ function trendRows(){const cur=curP(),end=STATE.m>cur?STATE.m:cur;
   for(let m=end;m>=start;m=addM(m,-1)){const st=monthStats(m),e=pE(m),wt=sumBal(balances(e)),cl=ccUnpaid(e);
     h+=`<tr class="${m===STATE.m?'on':''}" data-act="setm" data-id="${m}"><td>${pShort(m)}</td><td class="pos">${pesoS(st.in)}</td><td>${pesoS(st.exp)}</td><td>${pesoS(st.lent)}</td><td>${pesoS(st.out)}</td><td class="${st.net<0?'neg':st.net>0?'pos':''}">${pesoS(st.net)}</td><td class="warn">${pesoS(cl)}</td><td class="${wt<0?'neg':''}">${pesoS(wt)}</td></tr>`}
   return h}
-function dayGroups(shown,all){const spent={};all.forEach(t=>{if(t.t==='exp')spent[t.d]=(spent[t.d]||0)+t.a});let h='',last='';
+function dayGroups(shown,all){const spent={};all.forEach(t=>{if(t.t==='exp'||t.t==='card')spent[t.d]=(spent[t.d]||0)+t.a});let h='',last='';
   for(const t of shown){if(t.d!==last){last=t.d;h+=`<div class="dayhead"><span>${dayName(t.d)}</span>${spent[t.d]?`<span class="mono">${peso(spent[t.d])} spent</span>`:''}</div>`}h+=txRow(t,true)}return h}
 function txRow(t,noDate){const T={exp:[catCol(t.c),catIc(t.c),t.s,catName(t.c),'-'],inc:['var(--pos)','+',t.s,t.k||'Income','+'],
   xfer:['var(--muted)','⇄',t.s||`${W(t.w).name} → ${W(t.to).name}`,`${W(t.w).name} → ${W(t.to).name}`,''],lend:['var(--owed)','↗',`Lent to ${t.p}`,t.s||'Loan','-'],
-  repay:['var(--pos)','↙',`${t.p} paid back`,'Repayment','+'],ccpay:['var(--warn)','▭',t.s||'Card payment','Card payment','-']}[t.t];
+  repay:['var(--pos)','↙',`${t.p} paid back`,'Repayment','+'],ccpay:['var(--warn)','▭',t.s||'Card payment','Card payment','-'],
+  card:[catCol(t.c),catIc(t.c),t.s,`${catName(t.c)}${t.plan?` · ${t.pk} of ${t.pn}`:''} · ${t.card}`,'']}[t.t];
   const cls=T[4]==='+'?'pos':T[4]==='-'&&t.t!=='exp'?'neg':'';
-  return`<button class="item" data-act="edit" data-id="${t.id}"><div class="ic" style="--ic:${T[0]}" aria-hidden="true">${esc(T[1])}</div><div class="mid"><div class="t">${esc(T[2])}</div><div class="m">${noDate?'':dLabel(t.d)+' · '}${esc(T[3])}${t.t!=='xfer'?' · '+esc(W(t.w).name):''}${t.n?' · '+esc(t.n):''}${t.tags?' · <span class="tagtxt">'+esc(tagStr(t.tags))+'</span>':''}</div></div><div class="r"><b class="${cls}">${T[4]}${peso(t.a)}</b></div></button>`}
+  return`<button class="item" data-act="${t.t==='card'?'editcc':'edit'}" data-id="${t.id}"><div class="ic" style="--ic:${T[0]}" aria-hidden="true">${esc(T[1])}</div><div class="mid"><div class="t">${esc(T[2])}</div><div class="m">${noDate?'':dLabel(t.d)+' · '}${esc(T[3])}${t.t!=='xfer'&&t.t!=='card'?' · '+esc(W(t.w).name):''}${t.n?' · '+esc(t.n):''}${t.tags?' · <span class="tagtxt">'+esc(tagStr(t.tags))+'</span>':''}</div></div><div class="r"><b class="${cls}">${T[4]}${peso(t.a)}</b></div></button>`}
 
 /* ================= sheets & forms ================= */
 // Sheets slide up and slide away. kind says what is showing ('settings' lets Settings refresh itself in place);
@@ -1024,29 +1127,55 @@ function addMenu(){sheet(`<h3>Add a record</h3><div class="actions-grid">
    .map(([t,l,i,c])=>`<button class="act" data-act="${t==='ai'?'tab':'form'}" data-t="${t}" data-id="ai"><i style="background:${c}">${i}</i>${l}</button>`).join('')}</div>
   ${S.cfg.shortcuts.length?`<p class="eyebrow" style="margin:16px 0 8px">Quick add</p><div class="chips">${S.cfg.shortcuts.map(q=>`<button class="chip sc" data-act="ask" data-q="${esc(q)}">⚡ ${esc(q)}</button>`).join('')}</div>`:''}`)}
 
+/* Amount field with a calculator: type a sum (120+45) or open the keypad. The result shows under the field and is what gets saved. */
+const CALC_IC='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.5" width="14" height="19" rx="3"/><path d="M8.5 6.5h7v3h-7z"/><path class="k" d="M8.8 13.2h.01M12 13.2h.01M15.2 13.2h.01M8.8 17h.01M12 17h.01M15.2 17h.01"/></svg>';
+const KEYS=[['C','fn'],['del','fn','⌫'],['%','op'],['÷','op'],['7'],['8'],['9'],['×','op'],['4'],['5'],['6'],['−','op'],['1'],['2'],['3'],['+','op'],['00'],['0'],['.'],['=','eq']];
+const amtField=(v,label)=>`<div class="field amtf"><label class="flabel" for="f_a">${label||'Amount'} (${esc(CUR())})</label>
+  <div class="amtrow"><input class="amtin" id="f_a" inputmode="decimal" placeholder="${DEC()?'0.00':'0'}" value="${v}" required autocomplete="off" aria-describedby="f_calc">
+  <button type="button" class="calcbtn" data-act="calc" aria-label="Calculator" aria-expanded="false" aria-controls="f_keys">${CALC_IC}</button></div>
+  <div class="calcout" id="f_calc" aria-live="polite"></div>
+  <div class="calcpad" id="f_keys" hidden>${KEYS.map(([k,c,l])=>`<button type="button" class="${c||''}" data-act="ckey" data-k="${k}" aria-label="${{del:'Delete','−':'Minus','×':'Times','÷':'Divide by','%':'Percent',C:'Clear'}[k]||k}">${l||k}</button>`).join('')}</div></div>`;
+const amtVal=v=>CALC_OPS.test(String(v))?calc(v):num(v);
+function calcShow(inp){const f=inp.closest('.amtf'),out=f&&$('.calcout',f);if(!out)return;const r=CALC_OPS.test(inp.value)?calc(inp.value):NaN;out.textContent=isFinite(r)?'= '+peso(r):''}
+/* Category chips with the on-device guess, shared by expenses and card charges. */
+const catPick=c=>`<div class="hint" id="f_hint"></div>
+    <div class="flabel" id="f_catl">Category</div><div class="chips" id="f_cats" role="group" aria-labelledby="f_catl" style="margin-top:-6px">${S.cats.map(k=>`<button type="button" class="chip${k.id===c?' on':''}" data-cat="${k.id}"><i class="dot" style="background:${catCol(k.id)}"></i>${esc(k.ic?k.ic+' ':'')}${esc(k.name)}</button>`).join('')}</div>
+    <input type="hidden" id="f_c" value="${c}">`;
+const LOHINT='Not counted as your card debt. It shows under Owed to me until they pay you back.';
+const PNS=[[1,'Full'],[3,'3 months'],[6,'6 months'],[12,'12 months'],[0,'Other']];
+const people=()=>[...new Set([...S.tx.filter(t=>t.p).map(t=>t.p),...S.cc.filter(c=>c.lo).map(c=>c.lo)])];
+
 function openForm(type,x={}){const ed=!!x.id;const d=x.d||defDate();let body='',title='';
-  const amt=`<label>Amount (${esc(CUR())})<input class="amtin" id="f_a" inputmode="decimal" placeholder="${DEC()?'0.00':'0'}" value="${x.a!=null?x.a:''}" required></label>`;
+  const amt=amtField(x.a!=null?x.a:'');
   const date=`<label>Date<input type="date" id="f_d" value="${d}" required></label>`;
   const note=`<label>Note<input id="f_n" value="${esc(x.n||'')}" placeholder="Optional"></label>`;
   if(type==='exp'){title=ed?'Edit expense':'Add expense';const c=x.c||'';
-    body=amt+`<label>What was it for?<input id="f_s" value="${esc(x.s||'')}" placeholder="e.g. Jollibee lunch, jeep to work" required autocomplete="off"></label><div class="hint" id="f_hint"></div>
-    <div class="flabel" id="f_catl">Category</div><div class="chips" id="f_cats" role="group" aria-labelledby="f_catl" style="margin-top:-6px">${S.cats.map(k=>`<button type="button" class="chip${k.id===c?' on':''}" data-cat="${k.id}"><i class="dot" style="background:${catCol(k.id)}"></i>${esc(k.ic?k.ic+' ':'')}${esc(k.name)}</button>`).join('')}</div>
-    <input type="hidden" id="f_c" value="${c}"><div class="row2"><label>Paid from<select id="f_w">${wOpts(x.w||wid('cash'))}</select></label>${date}</div>`+note}
+    body=amt+`<label>What was it for?<input id="f_s" value="${esc(x.s||'')}" placeholder="e.g. Jollibee lunch, jeep to work" required autocomplete="off"></label>`+catPick(c)+`<div class="row2"><label>Paid from<select id="f_w">${wOpts(x.w||wid('cash'))}</select></label>${date}</div>`+note}
   if(type==='inc'){title=ed?'Edit income':'Add income';body=amt+`<label>Source<input id="f_s" value="${esc(x.s||'')}" placeholder="e.g. Salary, freelance client" required></label>
     <div class="row2"><label>Type<select id="f_k">${[...new Set([...S.incTypes,...(x.k&&!S.incTypes.includes(x.k)?[x.k]:[])])].map(k=>`<option${k===(x.k||S.incTypes[0])?' selected':''}>${esc(k)}</option>`).join('')}</select></label><label>Deposited to<select id="f_w">${wOpts(x.w||wid('gcash'))}</select></label></div>`+date+note}
   if(type==='xfer'){title=ed?'Edit transfer':'Transfer between wallets';body=amt+`<div class="row2"><label>From<select id="f_w">${wOpts(x.w||wid('gcash'))}</select></label><label>To<select id="f_to">${wOpts(x.to||wid('cash'))}</select></label></div>`+date+note}
-  if(type==='lend'){title=ed?'Edit loan':'Lend cash';const ppl=[...new Set(S.tx.filter(t=>t.p).map(t=>t.p))];
+  if(type==='lend'){title=ed?'Edit loan':'Lend cash';const ppl=people();
     body=`<label>Who borrowed<input id="f_p" list="ppl" value="${esc(x.p||'')}" placeholder="e.g. Mama, Kuya" required><datalist id="ppl">${ppl.map(p=>`<option value="${esc(p)}">`).join('')}</datalist></label>`+amt+
     `<label>Reason<input id="f_s" value="${esc(x.s||'')}" placeholder="Optional"></label><div class="row2"><label>Taken from<select id="f_w">${wOpts(x.w||wid('gcash'))}</select></label>${date}</div><label>Due date<input type="date" id="f_due" value="${x.due||''}"></label>`+note}
-  if(type==='repay'){const l=S.tx.find(t=>t.id===x.ref);const left=l?loans().find(z=>z.id===l.id).owed+(ed?x.a:0):0;title=`Repayment from ${esc(x.p||(l&&l.p)||'')}`;
-    body=amt.replace(`value="${x.a!=null?x.a:''}"`,`value="${x.a!=null?x.a:left}"`)+`<div class="sub">Still owed before this: ${peso(left)}</div><div class="row2"><label>Received in<select id="f_w">${wOpts(x.w||(l&&l.w)||wid('cash'))}</select></label>${date}</div>`}
-  if(type==='cc'){title=ed?'Edit card charge':'Add card charge';body=amt+`<label>Merchant or item<input id="f_s" value="${esc(x.s||'')}" placeholder="e.g. Shopee rice cooker" required></label>
-    <div class="row2"><label>Card<select id="f_card">${S.cards.map(c=>`<option${c===x.card?' selected':''}>${esc(c)}</option>`).join('')}</select></label><label>For who<input id="f_who" value="${esc(x.who||'Me')}"></label></div>
-    <div class="row2">${date}<label>Due date<input type="date" id="f_due" value="${x.due||(ed?'':dueFor(x.card||S.cards[0],d))}"></label></div><div class="sub" id="f_duehint"></div>`+note}
+  if(type==='repay'){const l=S.tx.find(t=>t.id===x.ref),cc=!l&&S.cc.find(c=>c.id===x.ref);
+    const left=l?loans().find(z=>z.id===l.id).owed+(ed?x.a:0):cc?cardOwed(cc)+(ed?x.a:0):0;title=`Repayment from ${esc(x.p||(l&&l.p)||(cc&&cc.lo)||'')}`;
+    body=amtField(x.a!=null?x.a:left)+`<div class="sub">${cc?`For “${esc(cc.s)}”${cc.plan?` (${cc.pk} of ${cc.pn})`:''} on your ${esc(cc.card)}. `:''}Still owed before this: ${peso(left)}</div><div class="row2"><label>Received in<select id="f_w">${wOpts(x.w||(l&&l.w)||wid('cash'))}</select></label>${date}</div>`}
+  if(type==='cc'){const pl=ed&&x.plan,pn=!ed&&x.pn>1?x.pn:1;title=pl?`Edit month ${x.pk} of ${x.pn}`:ed?'Edit card charge':'Add card charge';
+    body=amt+`<label>Merchant or item<input id="f_s" value="${esc(x.s||'')}" placeholder="e.g. Shopee rice cooker" required autocomplete="off"></label>`+catPick(x.c||'')+
+    `<div class="row2"><label>Card<select id="f_card">${S.cards.map(c=>`<option${c===x.card?' selected':''}>${esc(c)}</option>`).join('')}</select></label>${pl?date.replace('>Date<','>Charged on<'):date}</div>
+    <div class="field"><span class="flabel" id="f_byl">Who used the card?</span><div class="chips" id="f_by" role="group" aria-labelledby="f_byl">
+      <button type="button" class="chip${x.lo?'':' on'}" data-by="me" aria-pressed="${!x.lo}">Me</button><button type="button" class="chip${x.lo?' on':''}" data-by="lo" aria-pressed="${!!x.lo}">Someone borrowed it</button></div>
+      <label id="f_low"${x.lo?'':' hidden'}>Their name<input id="f_lo" list="ppl" value="${esc(x.lo||'')}" placeholder="e.g. Kuya, Ate Joy" autocomplete="off"><datalist id="ppl">${people().map(p=>`<option value="${esc(p)}">`).join('')}</datalist></label>
+      <span class="sub" id="f_lohint">${x.lo?LOHINT:''}</span></div>`+
+    (pl?`<div class="sub">Part of ${peso(x.pa)} in ${x.pn} monthly payments${x.pr?` at ${x.pr}% a month`:''}, bought ${dLabel(x.pd||x.d)}. The name, card, category and who used it change for every month; the amount and dates change for this month only.</div>`
+    :ed?'':`<div class="field"><span class="flabel" id="f_pnl">Pay in</span><div class="chips" id="f_pns" role="group" aria-labelledby="f_pnl">${PNS.map(([v,l])=>{const on=v===pn||(v===0&&![1,3,6,12].includes(pn));return`<button type="button" class="chip${on?' on':''}" data-pn="${v}" aria-pressed="${on}">${l}</button>`}).join('')}</div>
+      <div class="row2" id="f_planrow"${pn>1?'':' hidden'}><label>Months<input id="f_pn" inputmode="numeric" value="${pn>1?pn:''}" placeholder="e.g. 9" autocomplete="off"></label><label>Interest a month (%)<input id="f_pr" inputmode="decimal" placeholder="0" autocomplete="off"></label></div>
+      <div class="planprev" id="f_plan" aria-live="polite"></div></div>`)+
+    `<label><span id="f_duel">${pn>1?'First due date':'Due date'}</span><input type="date" id="f_due" value="${x.due||(ed?'':dueFor(x.card||S.cards[0],d))}"></label><div class="sub" id="f_duehint"></div>`+note}
   if(type!=='repay')body+=`<label>Tags<input id="f_tags" value="${esc(tagStr(x.tags))}" placeholder="#family #trip" autocomplete="off" autocapitalize="off"></label>`;
-  if(!ed&&['exp','inc','xfer','cc'].includes(type))body+=`<label>Repeat<select id="f_rep"><option value="">Doesn’t repeat</option><option value="week"${x.every==='week'?' selected':''}>Every week</option><option value="month"${x.every==='month'?' selected':''}>Every month</option></select></label>`;
+  if(!ed&&['exp','inc','xfer','cc'].includes(type))body+=`<label id="f_repl"${type==='cc'&&x.pn>1?' hidden':''}>Repeat<select id="f_rep"><option value="">Doesn’t repeat</option><option value="week"${x.every==='week'?' selected':''}>Every week</option><option value="month"${x.every==='month'?' selected':''}>Every month</option></select></label>`;
   sheet(`<h3>${title}</h3><form class="form" id="txform">${body}<div class="btns" style="margin-top:4px"><button class="btn pri" type="submit" style="flex:1">${ed?'Save changes':'Save'}</button>${ed?`<button class="btn danger" type="button" id="f_del">Delete</button>`:''}<button class="btn" type="button" data-act="close">Cancel</button></div></form>`);
-  if(type==='exp'){let manual=!!x.c;const hint=$('#f_hint'),cin=$('#f_c');
+  if(type==='exp'||type==='cc'){let manual=!!x.c;const hint=$('#f_hint'),cin=$('#f_c');
     const pick=id=>{cin.value=id;document.querySelectorAll('#f_cats .chip').forEach(b=>b.classList.toggle('on',b.dataset.cat===id))};
     $('#f_cats').onclick=e=>{const b=e.target.closest('[data-cat]');if(b){manual=true;pick(b.dataset.cat);hint.textContent=''}};
     let tm;$('#f_s').oninput=e=>{clearTimeout(tm);tm=setTimeout(()=>{const p=predict(e.target.value);if(!p){hint.textContent='';return}
@@ -1057,12 +1186,31 @@ function openForm(type,x={}){const ed=!!x.id;const d=x.d||defDate();let body='',
   if(type==='cc'){let manual=!!x.due&&ed;const due=$('#f_due'),hint=$('#f_duehint');
     const fill=()=>{if(manual)return;const v=dueFor($('#f_card').value,$('#f_d').value);due.value=v;const c=S.cardCfg[$('#f_card').value];
       hint.textContent=v?`Due date from ${$('#f_card').value}: statement on the ${ord(c.close||0)}${c.close?'':' (not set)'}, due on the ${ord(c.due)}.`:'Set this card’s statement and due days in Settings › Cards to fill this in.'};
-    due.oninput=()=>{manual=true;hint.textContent=''};$('#f_card').onchange=fill;$('#f_d').onchange=fill;if(!ed)fill()}
+    due.oninput=()=>{manual=true;hint.textContent=''};$('#f_card').onchange=fill;$('#f_d').onchange=fill;if(!ed)fill();
+    const seg=(box,b)=>box.querySelectorAll('.chip').forEach(z=>{z.classList.toggle('on',z===b);z.setAttribute('aria-pressed',z===b)});
+    $('#f_by').onclick=e=>{const b=e.target.closest('[data-by]');if(!b)return;seg($('#f_by'),b);const lo=b.dataset.by==='lo';
+      $('#f_low').hidden=!lo;$('#f_lohint').textContent=lo?LOHINT:'';if(lo)$('#f_lo').focus()};
+    const pnIn=$('#f_pn');if(pnIn){const prIn=$('#f_pr'),prev=$('#f_plan'),row=$('#f_planrow');
+      const upd=()=>{const n=Math.round(num(pnIn.value))||1,on=!row.hidden&&n>1,a=amtVal($('#f_a').value),r=Math.max(0,num(prIn.value)||0);
+        $('#f_duel').textContent=on?'First due date':'Due date';$('#f_repl').hidden=on;
+        if(!on||!(a>0)){prev.innerHTML=on?'Enter the price above to see the monthly amount.':'';return}
+        const p=planAmounts(a,n,r),dv=$('#f_due').value;
+        prev.innerHTML=`<b>${peso(p.each)}</b> a month × ${n}${p.last!==p.each?` (last month ${peso(p.last)})`:''} = <b>${peso(p.total)}</b>${r?` · ${peso(p.total-a)} interest`:''}${dv?`<br>Due ${dLabel(dv)}, ${dv.slice(0,4)} to ${dLabel(addMonths(dv,n-1))}, ${addMonths(dv,n-1).slice(0,4)}`:''}`};
+      $('#f_pns').onclick=e=>{const b=e.target.closest('[data-pn]');if(!b)return;seg($('#f_pns'),b);const v=+b.dataset.pn;row.hidden=v===1;pnIn.value=v>1?v:'';if(v===0)pnIn.focus();upd()};
+      pnIn.oninput=()=>{const n=Math.round(num(pnIn.value));const b=$(`#f_pns [data-pn="${[3,6,12].includes(n)?n:0}"]`);seg($('#f_pns'),b);upd()};
+      prIn.oninput=upd;$('#f_a').addEventListener('input',upd);due.addEventListener('input',upd);due.addEventListener('change',upd);$('#f_card').addEventListener('change',upd);$('#f_d').addEventListener('change',upd);upd()}}
   if(ed)$('#f_del').onclick=()=>delRecord(type,x);
-  $('#txform').onsubmit=e=>{e.preventDefault();const a=num($('#f_a').value);if(!(a>0)){toast('Enter an amount above zero.');return}
+  $('#txform').onsubmit=e=>{e.preventDefault();const a=amtVal($('#f_a').value);if(!(a>0)){toast(CALC_OPS.test($('#f_a').value)?'That sum does not add up to an amount. Check the numbers.':'Enter an amount above zero.');return}
     const g=id=>{const el=$('#'+id);return el?el.value.trim():undefined};
     const rep_=g('f_rep'),tags=parseTags(g('f_tags'));let newRec=null;const setTags=o=>{if(tags.length)o.tags=tags;else delete o.tags};
-    if(type==='cc'){const c=ed?S.cc.find(z=>z.id===x.id):own({id:uid(),paid:false});Object.assign(c,{a,s:g('f_s'),card:g('f_card'),who:g('f_who'),d:g('f_d'),due:g('f_due'),n:g('f_n')});setTags(c);if(!ed){S.cc.push(c);newRec=c}}
+    if(type==='cc'){const byLo=$('#f_by .chip.on').dataset.by==='lo',lo=byLo?g('f_lo'):'';if(byLo&&!lo){toast('Enter the name of who used your card.');$('#f_lo').focus();return}
+      if(!g('f_c')){const p=predict(g('f_s'));$('#f_c').value=p&&p.p>.3?p.c:fallbackCat()}
+      const setLo=o=>{if(lo)o.lo=lo;else delete o.lo};const f={a,s:g('f_s'),c:g('f_c'),card:g('f_card'),d:g('f_d'),due:g('f_due'),n:g('f_n')};
+      if(ed){const c=S.cc.find(z=>z.id===x.id);Object.assign(c,f);setLo(c);setTags(c);
+        if(c.plan)planItems(c.plan).forEach(o=>{if(o!==c){Object.assign(o,{s:c.s,c:c.c,card:c.card,n:c.n});setLo(o);setTags(o)}})}
+      else{const pnIn=$('#f_pn'),n=pnIn&&!$('#f_planrow').hidden?Math.round(num(pnIn.value)):1;if(pnIn&&!$('#f_planrow').hidden&&!(n>1)){toast('Enter how many months, 2 or more.');pnIn.focus();return}
+        const base={...f};if(lo)base.lo=lo;if(tags.length)base.tags=tags;const made=addCardCharge(base,n,Math.max(0,num(g('f_pr'))||0));
+        if(n>1){save();closeSheet();render();toast(`Added ${made.length} monthly payments of ${peso(made[0].a)}`);return}newRec=made[0]}}
     else{if(type==='xfer'&&g('f_w')===g('f_to')){toast('Pick two different wallets.');return}
       if(type==='exp'&&!g('f_c')){const p=predict(g('f_s'));$('#f_c').value=p?p.c:fallbackCat()}
       const t=ed?S.tx.find(z=>z.id===x.id):own({id:uid(),t:type});
@@ -1072,21 +1220,40 @@ function openForm(type,x={}){const ed=!!x.id;const d=x.d||defDate();let body='',
       if(!ed){S.tx.push(t);newRec=t}}
     if(rep_&&newRec&&!S.demo)addRule(type,newRec,rep_);
     save();closeSheet();render();if(rep_&&!S.demo&&runRecurring())return;
-    const bc=type==='exp'?catOf(g('f_c')):null,bb=bc&&bc.budget>0?budgets(STATE.m).find(x=>x.c.id===bc.id):null;
+    const bc=type==='exp'||(type==='cc'&&!(newRec||x).lo)?catOf(g('f_c')):null,bb=bc&&bc.budget>0?budgets(STATE.m).find(x=>x.c.id===bc.id):null;
     toast((ed?'Saved':'Added')+(bb?` · ${bc.name}: ${peso(bb.spent)} of ${peso(bb.limit)}`:''))}}
 
+/* Removing card items also removes their payment records and the paybacks from whoever borrowed the card. */
+function dropCc(ids){const set=new Set(ids),pays=new Set(S.cc.filter(c=>set.has(c.id)&&c.pay).map(c=>c.pay));
+  snapshot('delete');S.tx=S.tx.filter(t=>!pays.has(t.id)&&!((t.t==='ccpay'||t.t==='repay')&&set.has(t.ref)));S.cc=S.cc.filter(c=>!set.has(c.id));save();render();toast('Deleted',S.demo?'':'undo','Undo')}
+function delPlan(id){const it=planItems(id);if(!it.length)return;
+  askConfirm(`Delete all ${it.length} months of “${it[0].s}”? Payments logged for them are removed too.`,()=>dropCc(it.map(c=>c.id)),'Delete plan')}
 function delRecord(type,x){
-  if(type==='cc')return askConfirm(`Delete “${x.s}”?`,()=>{snapshot('delete');if(x.pay)S.tx=S.tx.filter(t=>t.id!==x.pay);S.cc=S.cc.filter(c=>c.id!==x.id);save();render();toast('Deleted',S.demo?'':'undo','Undo')});
+  if(type==='cc'&&x.plan){sheet(`<h3>Delete “${esc(x.s)}”?</h3><p class="sub" style="margin:0 0 14px">This is month ${x.pk} of ${x.pn} of an installment plan.</p><div class="btns" style="flex-direction:column;align-items:stretch">
+    <button class="btn pri" id="cplan" style="background:var(--neg);border-color:var(--neg)">Delete the whole plan</button><button class="btn" id="cone">Only this month</button><button class="btn" data-act="close">Cancel</button></div>`);
+    $('#cplan').onclick=()=>{closeSheet();dropCc(planItems(x.plan).map(c=>c.id))};$('#cone').onclick=()=>{closeSheet();dropCc([x.id])};return}
+  if(type==='cc')return askConfirm(`Delete “${x.s}”?`,()=>dropCc([x.id]));
   const extra=type==='lend'?S.tx.filter(t=>t.ref===x.id).length:0;
   askConfirm(type==='lend'&&extra?`Delete this loan and its ${extra} repayment${extra>1?'s':''}?`:'Delete this record?',()=>{
     snapshot('delete');S.tx=S.tx.filter(t=>t.id!==x.id&&!(type==='lend'&&t.ref===x.id));
     if(type==='ccpay'){const c=S.cc.find(c=>c.pay===x.id);if(c){c.paid=false;delete c.pay}}
     save();render();toast('Deleted',S.demo?'':'undo','Undo')})}
 
-function payCard(c){sheet(`<h3>Pay “${esc(c.s)}”</h3><form class="form" id="payform"><div class="kv"><span>Amount</span><b class="mono">${peso(c.a)}</b></div>
-  <div class="row2"><label>Paid from<select id="p_w">${wOpts(wid('gcash'))}</select></label><label>Date<input type="date" id="p_d" value="${defDate()}"></label></div>
+/* Paying the bank for a card item. When someone borrowed the card, they may have paid the bank themselves: then nothing
+   leaves my wallets and they owe me nothing for it. back: reopen the installment plan afterwards. */
+function payCard(c,back){const lo=c.lo,owe=cardOwed(c);
+  sheet(`<h3>Pay “${esc(c.s)}”${c.plan?` · ${c.pk} of ${c.pn}`:''}</h3><form class="form" id="payform"><div class="kv"><span>Amount</span><b class="mono">${peso(c.a)}</b></div>
+  ${lo?`<div class="field"><span class="flabel" id="p_byl">Who paid the bank?</span><div class="chips" id="p_by" role="group" aria-labelledby="p_byl"><button type="button" class="chip on" data-by="me" aria-pressed="true">I did</button><button type="button" class="chip" data-by="lo" aria-pressed="false">${esc(lo)} did</button></div></div>`:''}
+  <div class="row2"><label id="p_wl">Paid from<select id="p_w">${wOpts(wid('gcash'))}</select></label><label>Date<input type="date" id="p_d" value="${defDate()}"></label></div>
+  ${lo?`<div class="sub" id="p_hint">${owe>0?`${esc(lo)} still owes you ${peso(owe)} for this. Tap Paid back when they pay you.`:''}</div>`:''}
   <div class="btns"><button class="btn pri" type="submit" style="flex:1">Mark paid</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`);
-  $('#payform').onsubmit=e=>{e.preventDefault();const t=own({id:uid(),t:'ccpay',a:c.a,d:$('#p_d').value,w:$('#p_w').value,ref:c.id,s:'Paid card: '+c.s});S.tx.push(t);c.paid=true;c.pay=t.id;save();closeSheet();render();toast('Marked paid')}}
+  let by='me';if(lo)$('#p_by').onclick=e=>{const b=e.target.closest('[data-by]');if(!b)return;by=b.dataset.by;
+    $('#p_by').querySelectorAll('.chip').forEach(z=>{z.classList.toggle('on',z===b);z.setAttribute('aria-pressed',z===b)});$('#p_wl').hidden=by==='lo';
+    $('#p_hint').textContent=by==='lo'?`${lo} paid it straight to the bank, so nothing leaves your wallets and they owe you nothing for it.`:owe>0?`${lo} still owes you ${peso(owe)} for this. Tap Paid back when they pay you.`:''};
+  $('#payform').onsubmit=e=>{e.preventDefault();const d=$('#p_d').value||today();
+    if(by==='lo'){c.paid=true;c.direct=1;c.paidOn=d;delete c.pay}
+    else{const t=own({id:uid(),t:'ccpay',a:c.a,d,w:$('#p_w').value,ref:c.id,s:'Paid card: '+c.s+(c.plan?` (${c.pk} of ${c.pn})`:'')});S.tx.push(t);c.paid=true;c.pay=t.id;delete c.direct;delete c.paidOn}
+    save();render();if(back)planSheet(c.plan);else closeSheet();toast(c.plan&&!planItems(c.plan).some(x=>!x.paid)?'Paid off. That was the last month.':'Marked paid')}}
 
 /* ================= settings ================= */
 // Settings is a menu of pages, like a phone's Settings app. settings() re-renders the page that is open;
@@ -1247,7 +1414,7 @@ load 99 gcash" data-nofocus>${esc(S.cfg.shortcuts.join('\n'))}</textarea></label
       <button class="icon-btn sm" data-act="catmove" data-id="${c.id}" data-k="1" aria-label="Move ${esc(c.name)} down"${i<S.cats.length-1?'':' disabled'}><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>`).join('')}</div>
     <button class="btn" data-act="setpage" data-id="catedit" data-arg="new">+ Add category</button></div>`},
   catedit:{title:'Category',parent:'cats',html:()=>{const id=STATE.setArg,c=id==='new'?{name:'',ic:'',col:(S.cats.length%8)+1,budget:0}:catOf(id);
-    const n=id==='new'?0:S.tx.filter(t=>t.t==='exp'&&t.c===id).length,others=S.cats.filter(k=>k.id!==id);
+    const n=id==='new'?0:S.tx.filter(t=>t.t==='exp'&&t.c===id).length+S.cc.filter(c=>c.c===id).length,others=S.cats.filter(k=>k.id!==id);
     return`<form class="form" id="ceform">
     <label>Name<input id="ce_n" value="${esc(c.name)}" placeholder="e.g. Pets, Coffee, Baby" required maxlength="40"></label>
     <div class="field"><span class="flabel">Emoji</span><div class="chips" id="ce_ics">${['🍚','☕','🚌','⛽','💡','📶','🛍️','💊','📚','🏠','👶','🐶','🎮','🎁','✈️','💼','💄','🧾','📦'].map(e=>`<button type="button" class="chip emo${e===c.ic?' on':''}" data-ic="${e}">${e}</button>`).join('')}</div>
@@ -1256,7 +1423,7 @@ load 99 gcash" data-nofocus>${esc(S.cfg.shortcuts.join('\n'))}</textarea></label
     <label>Monthly budget (${esc(CUR())})<input id="ce_b" inputmode="decimal" value="${c.budget>0?c.budget:''}" placeholder="No budget"></label>
     <button class="btn pri" type="submit">${id==='new'?'Add category':'Save'}</button></form>
     ${id!=='new'&&others.length?`<div class="form" style="margin-top:22px"><span class="flabel">Delete this category</span>
-      ${n?`<label>Move its ${n} expense${n>1?'s':''} to<select id="ce_to">${others.map(k=>`<option value="${k.id}">${esc(k.name)}</option>`).join('')}</select></label>`:''}
+      ${n?`<label>Move its ${n} record${n>1?'s':''} to<select id="ce_to">${others.map(k=>`<option value="${k.id}">${esc(k.name)}</option>`).join('')}</select></label>`:''}
       <button class="btn danger" type="button" id="ce_del">Delete ${esc(c.name)}</button><span class="sub">You can undo this from Settings › Data.</span></div>`:''}`},
     bind:()=>{const id=STATE.setArg;let col=id==='new'?(S.cats.length%8)+1:catOf(id).col;
       $('#ce_ics').onclick=e=>{const b=e.target.closest('[data-ic]');if(!b)return;$('#ce_i').value=b.dataset.ic;document.querySelectorAll('#ce_ics .chip').forEach(x=>x.classList.toggle('on',x===b))};
@@ -1265,7 +1432,7 @@ load 99 gcash" data-nofocus>${esc(S.cfg.shortcuts.join('\n'))}</textarea></label
         const c=id==='new'?{id:'c'+uid()}:catOf(id);Object.assign(c,{name,ic:$('#ce_i').value.trim(),col,budget:bud>0?bud:0});
         if(id==='new')S.cats.push(c);save();render();toast(id==='new'?'Category added':'Saved');settings('cats','back')};
       const del=$('#ce_del');if(del)del.onclick=()=>{const to=$('#ce_to')?$('#ce_to').value:null,c=catOf(id);snapshot('delete');
-        if(to)S.tx.forEach(t=>{if(t.t==='exp'&&t.c===id)t.c=to});S.cats=S.cats.filter(k=>k.id!==id);
+        if(to){S.tx.forEach(t=>{if(t.t==='exp'&&t.c===id)t.c=to});S.cc.forEach(x=>{if(x.c===id)x.c=to})}S.cats=S.cats.filter(k=>k.id!==id);
         if(STATE.filter.cat===id)STATE.filter.cat=null;save();render();toast(`Deleted ${c.name}`,'undo','Undo');settings('cats','back')}}},
   backup:{title:'Backup & restore',parent:'main',html:()=>`<div class="form">
     ${NATIVE?`<div class="field"><span class="flabel">Saved on this phone</span>
@@ -1432,8 +1599,8 @@ const awayOnPurpose=()=>{LK.skip=true;setTimeout(()=>LK.skip=false,120000)};
 function draftCard(i){const x=STATE.drafts[i];if(!x)return'';if(x.done)return`<div class="draft"><span class="sub">${x.done}</span></div>`;
   const L={exp:'Expense',inc:'Income',xfer:'Transfer',lend:'Loan',repay:'Repayment',cc:'Card charge'}[x.t];
   const rp=x.every?` · repeats ${x.every==='week'?'weekly':'monthly'}`:'';
-  const det=x.t==='exp'?`${catName(x.c)} · ${W(x.w).name}`:x.t==='xfer'?`${W(x.w).name} → ${W(x.to).name}`:x.t==='lend'?`to ${x.p} · from ${W(x.w).name}`:x.t==='repay'?`from ${x.p} · into ${W(x.w).name}`:x.t==='cc'?x.card:W(x.w).name;
-  const opts=x.t==='exp'?[...new Set([x.c,...(x.conf?x.conf.alts.filter(a=>a.p>=.08).map(a=>a.c):[]),...S.cats.map(c=>c.id)])].filter(id=>S.cats.some(c=>c.id===id)).slice(0,4):[];
+  const det=x.t==='exp'?`${catName(x.c)} · ${W(x.w).name}`:x.t==='xfer'?`${W(x.w).name} → ${W(x.to).name}`:x.t==='lend'?`to ${x.p} · from ${W(x.w).name}`:x.t==='repay'?`from ${x.p}${x.s?' for '+x.s:''} · into ${W(x.w).name}`:x.t==='cc'?`${catName(x.c)} · ${x.card}${x.pn?` · ${x.pn} months of ${peso(planAmounts(x.a,x.pn,0).each)}`:''}`:W(x.w).name;
+  const opts=x.t==='exp'||x.t==='cc'?[...new Set([x.c,...(x.conf?x.conf.alts.filter(a=>a.p>=.08).map(a=>a.c):[]),...S.cats.map(c=>c.id)])].filter(id=>S.cats.some(c=>c.id===id)).slice(0,4):[];
   const sure=x.conf&&!x.picked?` · ✦ ${Math.round(x.conf.p*100)}% sure of category`:'';
   return`<div class="draft"><div class="split"><b>${L}${x.s&&x.t!=='repay'?': '+esc(x.s):''}</b><b class="mono">${peso(x.a)}</b></div><span class="sub">${esc(det)} · ${dLabel(x.d)}${rp}${x.tags?' · '+esc(tagStr(x.tags)):''}${sure}</span>${x.warn?`<span class="sub warn">${esc(x.warn)}</span>`:''}
   ${opts.length?`<div class="chips" role="group" aria-label="Category">${opts.map(c=>`<button class="chip${c===x.c?' on':''}" data-act="dcat" data-id="${i}" data-c="${c}" aria-pressed="${c===x.c}"><i class="dot" style="background:${catCol(c)}"></i>${esc(catName(c))}</button>`).join('')}</div>`:''}
@@ -1447,11 +1614,11 @@ function ask(text){text=text.trim();if(!text)return;STATE.chat.push({me:true,h:t
   if(STATE.chat.length>60)STATE.chat.splice(1,STATE.chat.length-60);
   if(STATE.tab!=='ai'){STATE.tab='ai'}render()}
 function commitDraft(i){const x=STATE.drafts[i];if(!x||x.done)return;
-  if(x.t==='cc')S.cc.push(own({id:uid(),d:x.d,s:x.s,a:x.a,card:x.card,who:x.who||'Me',due:x.due||dueFor(x.card,x.d),paid:false,...(x.tags?{tags:x.tags}:{})}));
+  let made=null;if(x.t==='cc')made=addCardCharge({d:x.d,s:x.s,a:x.a,c:x.c,card:x.card,who:x.who||'Me',due:x.due||dueFor(x.card,x.d),...(x.tags?{tags:x.tags}:{})},x.pn||1,0);
   else{if(x.t==='repay'&&!x.ref){toast('Open the loan in Debts to log this repayment.');return}
     const t=own({id:uid(),t:x.t,a:x.a,d:x.d,w:x.w});['s','c','k','to','p','ref','tags'].forEach(k=>{if(x[k]!=null&&x[k]!=='')t[k]=x[k]});S.tx.push(t);if(x.every&&!S.demo)addRule(x.t,t,x.every)}
-  if(x.t==='cc'&&x.every&&!S.demo)addRule('cc',S.cc[S.cc.length-1],x.every);
-  x.done='Added '+peso(x.a)+(x.every&&!S.demo?`, repeating ${x.every==='week'?'weekly':'monthly'}`:'')+'. ✓';save();render();if(x.every)runRecurring()}
+  if(made&&x.every&&!x.pn&&!S.demo)addRule('cc',made[0],x.every);
+  x.done='Added '+peso(x.a)+(x.pn?` in ${x.pn} monthly installments`:'')+(x.every&&!S.demo?`, repeating ${x.every==='week'?'weekly':'monthly'}`:'')+'. ✓';save();render();if(x.every)runRecurring()}
 
 /* ================= events ================= */
 const ACT={
@@ -1471,10 +1638,23 @@ const ACT={
   edit:d=>{const t=S.tx.find(x=>x.id===d.id);if(t){if(t.t==='ccpay')delRecord('ccpay',t);else openForm(t.t,t)}},
   editcc:d=>{const c=S.cc.find(x=>x.id===d.id);if(c)openForm('cc',c)},
   repay:d=>{const l=S.tx.find(x=>x.id===d.id);if(l)openForm('repay',{ref:l.id,p:l.p,w:l.w})},
-  paycc:d=>{const c=S.cc.find(x=>x.id===d.id);if(c)payCard(c)},
-  unpay:d=>{const c=S.cc.find(x=>x.id===d.id);if(!c)return;askConfirm('Mark as unpaid? The payment record will be removed.',()=>{S.tx=S.tx.filter(t=>t.id!==c.pay);c.paid=false;delete c.pay;save();render()},'Mark unpaid')},
+  paycc:d=>{const c=S.cc.find(x=>x.id===d.id);if(c)payCard(c,d.from==='plan')},
+  unpay:d=>{const c=S.cc.find(x=>x.id===d.id);if(!c)return;askConfirm(c.direct?`Mark as unpaid? It was marked as paid by ${c.lo}.`:'Mark as unpaid? The payment record will be removed.',()=>{S.tx=S.tx.filter(t=>t.id!==c.pay);c.paid=false;delete c.pay;delete c.direct;delete c.paidOn;save();render();if(d.from==='plan')planSheet(c.plan)},'Mark unpaid')},
+  plan:d=>planSheet(d.id),
+  plandel:d=>delPlan(d.id),
+  ccback:d=>{const c=S.cc.find(x=>x.id===d.id);if(c)openForm('repay',{ref:c.id,p:c.lo})},
+  calc:(d,b)=>{const f=b.closest('.amtf'),k=$('.calcpad',f),inp=$('.amtin',f),open=k.hidden;k.hidden=!open;b.setAttribute('aria-expanded',open);b.classList.toggle('on',open);
+    inp.setAttribute('inputmode',open?'none':'decimal');if(open)inp.blur();else inp.focus()},
+  ckey:(d,b)=>{const inp=$('.amtin',b.closest('.amtf'));let v=inp.value.replace(/\s+/g,'');const k=d.k;
+    if(k==='C')v='';else if(k==='del')v=v.slice(0,-1);
+    else if(k==='='){const r=calc(v);if(isFinite(r))v=String(r)}
+    else if('+−×÷'.includes(k)){if(!v)return;v=v.replace(/[+\-−×÷*/]$/,'')+k}
+    else if(k==='%'){if(!/[\d)]$/.test(v))return;v+=k}
+    else if(k==='.'){if(/[\d]*\.[\d]*$/.test(v.split(/[+\-−×÷*/]/).pop()))return;v+=(/\d$/.test(v)?'':'0')+k}
+    else v+=k;
+    inp.value=v;inp.dispatchEvent(new Event('input',{bubbles:true}))},
   cat:d=>{STATE.filter.cat=STATE.filter.cat===d.id?null:d.id;if(STATE.filter.cat)STATE.filter.type='all';render()},
-  type:d=>{STATE.filter.type=d.id;if(d.id!=='all'&&d.id!=='exp')STATE.filter.cat=null;render()},
+  type:d=>{STATE.filter.type=d.id;if(d.id!=='all'&&d.id!=='exp'&&d.id!=='card')STATE.filter.cat=null;render()},
   more:()=>{STATE.filter.limit+=40;render()},
   tagf:d=>{STATE.filter.tag=STATE.filter.tag===d.id?null:d.id;render()},
   ask:d=>ask(d.q),
@@ -1516,7 +1696,7 @@ const ACT={
   pastebk:()=>restore($('#pastebk').value)};
 function fallbackCopy(txt){const ta=$('#pastebk');if(ta){ta.value=txt;ta.select();toast('Selected. Copy it from the box.')}}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const f=ACT[b.dataset.act];if(f){e.preventDefault();f(b.dataset,b)}});
-let st_;document.addEventListener('input',e=>{if(e.target.id==='search'){clearTimeout(st_);st_=setTimeout(()=>{STATE.filter.q=e.target.value;STATE.filter.limit=40;const pos=e.target.selectionStart;render();const s=$('#search');s.focus();try{s.setSelectionRange(pos,pos)}catch(_){}},180)}});
+let st_;document.addEventListener('input',e=>{if(e.target.classList.contains('amtin'))calcShow(e.target);if(e.target.id==='search'){clearTimeout(st_);st_=setTimeout(()=>{STATE.filter.q=e.target.value;STATE.filter.limit=40;const pos=e.target.selectionStart;render();const s=$('#search');s.focus();try{s.setSelectionRange(pos,pos)}catch(_){}},180)}});
 $('#aiform').onsubmit=e=>{e.preventDefault();const i=$('#aiinput');const v=i.value;i.value='';ask(v)};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheetOpen())closeSheet()});
 

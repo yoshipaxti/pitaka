@@ -282,6 +282,9 @@ main#view{view-transition-name:view}
 .field{display:flex;flex-direction:column;gap:8px}
 .daychips .chip{min-width:44px;justify-content:center}
 .tagtxt{color:var(--accent)}
+.notice .steps{margin:2px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.notice .steps b{font:inherit;font-weight:600}
+a.btn{text-decoration:none}
 /* Amount field calculator */
 .amtf{display:flex;flex-direction:column;gap:6px}
 .amtrow{display:flex;gap:8px;align-items:stretch}
@@ -1449,7 +1452,8 @@ load 99 gcash" data-nofocus>${esc(S.cfg.shortcuts.join('\n'))}</textarea></label
       <label>Or paste a backup here<textarea id="pastebk" rows="3" placeholder='{"v":1,...}' data-nofocus></textarea></label><button class="btn" data-act="pastebk">Restore pasted backup</button></div></div>`,
     bind:()=>{$('#imp').onclick=awayOnPurpose;$('#imp').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>restore(r.result);r.onerror=()=>toast('That file could not be opened. Try downloading it from Drive first.');r.readAsText(f)}}},
   version:{title:'App version',parent:'main',html:()=>`<div class="form"><span class="sub">${UP.cur?'Version '+esc(UP.cur.versionName):'Version unknown'}${UP.next?` · <b class="pos">${esc(UP.next.versionName)} available</b>`:''}</span>
-    <div class="btns">${UP.next?`<button class="btn pri" data-act="${UP.state==='ready'?'updinstall':'update'}"${UP.state==='dl'?' disabled':''}>${UP.state==='dl'?'Downloading…':UP.state==='ready'?'Install':'Update now'}</button>`:''}<button class="btn" data-act="updcheck"${UP.checking?' disabled':''}>Check for updates</button></div></div>`},
+    ${UP.key?`<div class="notice warn">${keySteps(UP.next)}</div>`:''}
+    <div class="btns">${UP.next&&!UP.key?`<button class="btn pri" data-act="${UP.state==='ready'?'updinstall':'update'}"${UP.state==='dl'?' disabled':''}>${UP.state==='dl'?'Downloading…':UP.state==='ready'?'Install':'Update now'}</button>`:''}<button class="btn" data-act="updcheck"${UP.checking?' disabled':''}>Check for updates</button></div></div>`},
   data:{title:'Data',parent:'main',html:()=>`<div class="form">
     ${prevSnap()?(p=>`<div class="field"><span class="flabel">Undo</span><span class="sub">Your records from just before ${REASON[p.reason]||'the last change'} (${dLabel(p.at.slice(0,10))}) are kept on this phone.</span><div class="btns"><button class="btn" data-act="undoask">Bring them back</button></div></div>`)(prevSnap()):''}
     <div class="field"><span class="flabel">Start over</span><div class="btns"><button class="btn danger" data-act="fresh">Erase everything</button><button class="btn" data-act="sample">Load sample data</button></div>
@@ -1502,13 +1506,16 @@ async function bootPhone(){
 // and records stay in place because the app keeps its storage across updates.
 const UPD=NATIVE&&Capacitor.Plugins.AppUpdate?Capacitor.Plugins.AppUpdate:null;
 const UPDATE_URL='https://github.com/yoshipaxti/pitaka/releases/latest/download/version.json';
-const UP={cur:null,next:null,state:'',pct:-1,later:false,checking:false};
+const UP={cur:null,next:null,state:'',pct:-1,later:false,checking:false,key:false};
 async function checkUpdate(manual){if(!UPD||UP.checking)return;UP.checking=true;
   try{if(!UP.cur)UP.cur=await UPD.info();
     const v=JSON.parse((await UPD.fetchText({url:UPDATE_URL})).text);
     if(!(v&&+v.versionCode>0&&typeof v.apk==='string'))throw new Error('Bad version file');
     UP.next=+v.versionCode>+UP.cur.versionCode?v:null;
-    if(manual)toast(UP.next?`Version ${v.versionName} is available`:'You have the latest version')}
+    // Android installs an update only when it is signed with the same key as this copy. When the keys differ, say how
+    // to switch over once (back up, reinstall, restore) instead of letting the installer fail with "package conflicts".
+    UP.key=!!(UP.next&&v.cert&&UP.cur.cert&&v.cert!==UP.cur.cert);
+    if(manual)toast(UP.key?`Version ${v.versionName} needs a one-time reinstall. See the steps on Overview.`:UP.next?`Version ${v.versionName} is available`:'You have the latest version')}
   catch(e){if(manual)toast('Could not check for updates. Check your internet connection.')}
   finally{UP.checking=false;render();if(manual)refreshSettings()}}
 async function startUpdate(){const v=UP.next;if(!v||UP.state==='dl')return;
@@ -1518,8 +1525,15 @@ async function startUpdate(){const v=UP.next;if(!v||UP.state==='dl')return;
   catch(e){UP.state='';render();toast('Download failed. Try again on Wi-Fi.')}
   finally{h.remove()}}
 async function installUpdate(){awayOnPurpose();try{await UPD.install()}
-  catch(e){toast(e&&e.code==='PERMISSION'?'Turn on “Allow from this source”, then come back and tap Install.':'Could not open the installer.')}}
+  catch(e){if(e&&e.code==='KEY'){UP.key=true;UP.state='';UP.later=false;render();refreshSettings();toast('This update needs a one-time reinstall. See the steps on Overview.');return}
+    toast(e&&e.code==='PERMISSION'?'Turn on “Allow from this source”, then come back and tap Install.':'Could not open the installer.')}}
+const APK_LATEST='https://github.com/yoshipaxti/pitaka/releases/latest/download/pitaka.apk';
+function keySteps(v){return`<span>This copy of Pitaka was signed with an older key, so Android won’t install the update over it. Do this once; after that, updates install normally.</span>
+  <ol class="steps"><li>Tap <b>Back up now</b> and save the file to Drive or Files.</li><li>Uninstall Pitaka (press and hold its icon, then Uninstall).</li>
+  <li>Download version ${esc(v.versionName)} with the button below, open <b>pitaka.apk</b> and install it.</li><li>Open Pitaka, go to <b>Settings › Backup &amp; restore › Restore</b> and pick your backup.</li></ol>
+  <div class="acts"><button class="btn sm pri" data-act="drive">Back up now</button><a class="btn sm" href="${APK_LATEST}">Download ${esc(v.versionName)}</a></div>`}
 function updateNotice(){const v=UP.next;if(!v||UP.later)return'';
+  if(UP.key)return`<div class="notice warn"><b>Version ${esc(v.versionName)} needs a one-time reinstall</b>${keySteps(v)}</div>`;
   const btn=UP.state==='dl'?`<button class="btn sm pri" disabled>Downloading <span id="updpct">${UP.pct>=0?UP.pct+'%':''}</span></button>`
     :UP.state==='ready'?`<button class="btn sm pri" data-act="updinstall">Install</button>`:`<button class="btn sm pri" data-act="update">Update now</button>`;
   return`<div class="notice info"><b>Update available · version ${esc(v.versionName)}</b>${v.notes?`<span>${esc(v.notes)}</span>`:''}<span class="sub">Your records stay on this phone.</span>

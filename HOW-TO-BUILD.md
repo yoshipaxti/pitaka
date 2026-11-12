@@ -39,7 +39,14 @@ gh release download --repo yoshipaxti/pitaka --pattern pitaka.apk
 
 Each build is also kept for 90 days under **Actions › Build APK › Artifacts › pitaka-apk**.
 
-Every APK is signed with the same key, which is stored as the repository secret `DEBUG_KEYSTORE_B64`. That's why each new APK installs over the old one and keeps your data. Don't delete that secret. A copy of the key is also in `android-app\signing\` on this PC, which is never uploaded.
+Every APK is signed with the same key, which is stored as the repository secret `DEBUG_KEYSTORE_B64`. That's why each new APK installs over the old one and keeps your data. Don't delete or replace that secret. A copy of the key is also in `android-app\signing\` on this PC, which is never uploaded.
+
+The build checks the key on every run, so a release can't go out signed with the wrong one:
+- The key's certificate fingerprint is pinned in `.github/signing-cert.sha256`. If the secret is missing, can't be opened, or holds a different key, the build stops before publishing anything.
+- After building, it reads the certificate back out of the APK and stops if it isn't that key.
+- `version.json` in each release carries the fingerprint, so the app checks the key before downloading an update. If the keys ever differ, Overview shows the one-time steps (back up, uninstall, install, restore) instead of Android's "package conflicts with an existing package" error.
+
+If the keystore's password isn't `android`, add it as the secret `KEYSTORE_PASSWORD` (and `KEY_PASSWORD` if the key's own password differs).
 
 To rebuild after changing the app: edit `pitaka.html`, run `build-android.ps1`, then commit and push the `android-app` folder.
 

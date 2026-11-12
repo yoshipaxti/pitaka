@@ -101,10 +101,13 @@ jobs:
       - name: Check the APK's signature
         run: |
           APKSIGNER="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -n 1)apksigner"
-          GOT="$("$APKSIGNER" verify --print-certs android/app/build/outputs/apk/debug/app-debug.apk | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1)"
+          OUT="$("$APKSIGNER" verify --print-certs android/app/build/outputs/apk/debug/app-debug.apk 2>&1)" || { echo "$OUT"; echo "::error::apksigner could not verify the APK."; exit 1; }
+          # The label varies by apksigner version ("Signer #1 certificate SHA-256 digest:" or "Signer (minSdkVersion=…) certificate SHA-256 digest:").
+          GOT="$(printf '%s\n' "$OUT" | grep -i 'certificate SHA-256 digest:' | head -n 1 | sed 's/.*digest:[[:space:]]*//' | tr -d ': ' | tr 'A-F' 'a-f')"
           echo "APK certificate SHA-256: $GOT"
           if [ "$GOT" != "$PITAKA_CERT" ]; then
-            echo "::error::The APK was signed with $GOT instead of $PITAKA_CERT. It would not install over the app on phones."
+            echo "$OUT"
+            echo "::error::The APK was signed with '$GOT' instead of $PITAKA_CERT. It would not install over the app on phones."
             exit 1
           fi
 

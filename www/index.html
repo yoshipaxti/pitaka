@@ -134,6 +134,9 @@ tbody tr{cursor:pointer}
 .wgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
 .wcard .head{display:flex;align-items:center;gap:8px;font-weight:600}
 .wcard .head .pill{margin-left:auto}
+.wcard.tap{cursor:pointer;transition:transform .14s ease}
+.wcard.tap:active{transform:scale(.985)}
+.wcard .head svg{width:16px;height:16px;flex:none;color:var(--muted);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 /* inset list rows: separators start after the icon, like iOS lists */
 .list{display:flex;flex-direction:column}
@@ -282,6 +285,9 @@ main#view{view-transition-name:view}
 .field{display:flex;flex-direction:column;gap:8px}
 .daychips .chip{min-width:44px;justify-content:center}
 .tagtxt{color:var(--accent)}
+.notice .steps{margin:2px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.notice .steps b{font:inherit;font-weight:600}
+a.btn{text-decoration:none}
 /* Amount field calculator */
 .amtf{display:flex;flex-direction:column;gap:6px}
 .amtrow{display:flex;gap:8px;align-items:stretch}
@@ -1008,8 +1014,9 @@ wallets(){const m=STATE.m,start=pS(m),end=pE(m),open=balances(start);const flows
   const close=balances(end),tot=sumBal(close);
   return`<h1 class="ltitle">Wallets</h1><section class="notice ${tot<0?'bad':'info'}"><span class="eyebrow">All wallets combined</span><span class="big ${tot<0?'neg':''}">${peso(tot)}</span><span class="sub">Opened at ${peso(sumBal(open))}, with ${peso(monthStats(m).in)} in and ${peso(monthStats(m).out)} out.</span></section>
   <div class="split"><h2 style="font:600 20px var(--font-display);letter-spacing:-.02em;margin:0">Wallets at month end</h2><button class="btn sm pri" data-act="form" data-t="xfer">Transfer</button></div>
+  <p class="sub" style="margin:-4px 0 0">Tap a wallet to see its transactions.</p>
   <div class="wgrid">${S.wallets.filter(w=>!w.hidden).map(w=>{const c=close[w.id]||0,f=flows[w.id];const st=c<-0.004?['neg','Overdrawn']:c>0.004?['pos','Positive']:['zero','Zero'];
-    return`<section class="card wcard"><div class="head"><span class="dot" style="background:var(--c${w.col})"></span>${wIc(w)}${esc(w.name)}<span class="pill ${st[0]}">${st[1]}</span></div>
+    return`<section class="card wcard tap" data-act="wallet" data-id="${w.id}" role="button" tabindex="0" aria-label="${esc(w.name)}: see its transactions"><div class="head"><span class="dot" style="background:var(--c${w.col})"></span>${wIc(w)}${esc(w.name)}<span class="pill ${st[0]}">${st[1]}</span>${CHEV}</div>
     <div class="big ${c<0?'neg':''}" style="margin-top:8px">${peso(c)}</div>
     ${!(open[w.id]||0)&&!f.in&&!f.out&&!f.xf?`<div class="sub" style="margin-top:6px">No activity this month.</div>`:
     `<div class="rows"><div><span>Opening</span><b>${peso(open[w.id]||0)}</b></div><div><span>Money in</span><b class="pos">+${peso(f.in)}</b></div><div><span>Money out</span><b class="neg">-${peso(f.out)}</b></div><div><span>Net transfers</span><b>${peso(f.xf)}</b></div></div>`}</section>`}).join('')}</div>
@@ -1088,6 +1095,28 @@ function planSheet(id){const it=planItems(id);if(!it.length){closeSheet();return
     <div class="m">${c.paid?`Paid ${dLabel(ccPaidDate(c))}${c.direct?' by '+esc(c.lo):''}`:c.due?`Charged ${dLabel(c.d)}`:`Charged ${dLabel(c.d)} · no due date`}</div>${c.due&&!c.paid?dueTag(c.due):''}</button>
     <div class="r stack"><b>${peso(c.a)}</b>${cardOwed(c)>0?`<button class="btn sm" data-act="ccback" data-id="${c.id}">Paid back</button>`:''}${c.paid?`<button class="btn sm" data-act="unpay" data-id="${c.id}" data-from="plan">Paid ✓</button>`:`<button class="btn sm" data-act="paycc" data-id="${c.id}" data-from="plan">Mark paid</button>`}</div></div>`).join('')}</div>
   <div class="btns" style="margin-top:12px"><button class="btn" data-act="editcc" data-id="${(open[0]||f).id}">Edit</button><button class="btn danger" data-act="plandel" data-id="${id}">Delete plan</button><button class="btn" data-act="close">Close</button></div>`)}
+/* One wallet's transactions (Wallets tab › tap a wallet): everything that moved money in or out of it, newest first,
+   with the balance after each entry, so it can be checked against the real account. Scope: the month shown, or all time. */
+const walletTx=id=>S.tx.filter(t=>t.w===id||(t.t==='xfer'&&t.to===id));
+const wDelta=(t,id)=>t.t==='xfer'?(t.to===id?t.a:-t.a):(t.t==='inc'||t.t==='repay')?t.a:-t.a;
+function wRow(t,id,bal){const d=wDelta(t,id),L={exp:[catCol(t.c),catIc(t.c),t.s,catName(t.c)],inc:['var(--pos)','+',t.s,t.k||'Income'],
+    xfer:['var(--muted)','⇄',t.to===id?'From '+W(t.w).name:'To '+W(t.to).name,t.s||'Transfer'],lend:['var(--owed)','↗','Lent to '+t.p,t.s||'Loan'],
+    repay:['var(--pos)','↙',t.p+' paid back','Repayment'],ccpay:['var(--warn)','▭',t.s||'Card payment','Card payment']}[t.t]||['var(--muted)','•',t.s||'Entry',''];
+  return`<button class="item" data-act="wedit" data-id="${t.id}"><div class="ic" style="--ic:${L[0]}" aria-hidden="true">${esc(L[1])}</div><div class="mid"><div class="t">${esc(L[2])}</div>
+    <div class="m">${esc(L[3])}${t.n?' · '+esc(t.n):''}${t.tags?' · <span class="tagtxt">'+esc(tagStr(t.tags))+'</span>':''}</div></div>
+    <div class="r"><b class="${d>0?'pos':''}">${d>0?'+':'-'}${peso(Math.abs(d))}</b><small>bal. ${peso(bal)}</small></div></button>`}
+function walletSheet(id,more){const w=W(id);if(!S.wallets.some(x=>x.id===id))return;STATE.wId=id;if(!more)STATE.wLimit=60;
+  // Running balance in date order (entries on the same day keep the order they were added).
+  let bal=+w.init||0;const all=walletTx(id).map((t,i)=>({t,i})).sort((a,b)=>a.t.d.localeCompare(b.t.d)||a.i-b.i).map(({t})=>({t,bal:bal+=wDelta(t,id)}));
+  const scoped=STATE.wAll?all:all.filter(r=>inP(r.t.d,STATE.m)),list=scoped.slice().reverse(),shown=list.slice(0,STATE.wLimit);
+  const inn=sum(scoped,r=>Math.max(0,wDelta(r.t,id))),out=sum(scoped,r=>Math.max(0,-wDelta(r.t,id)));
+  let h='',last='';for(const r of shown){if(r.t.d!==last){last=r.t.d;h+=`<div class="dayhead"><span>${dayName(r.t.d)}${r.t.d.slice(0,4)!==today().slice(0,4)?', '+r.t.d.slice(0,4):''}</span></div>`}h+=wRow(r.t,id,r.bal)}
+  sheet(`<h3><span class="dot" style="background:var(--c${w.col});margin-right:8px;vertical-align:2px"></span>${wIc(w)}${esc(w.name)}</h3>
+  <div class="plansum"><div><span>Balance now</span><b class="${(balances()[id]||0)<0?'neg':''}">${peso(balances()[id]||0)}</b></div><div><span>In / out · ${STATE.wAll?'all time':esc(pShort(STATE.m))}</span><b><span class="pos">+${pesoS(inn)}</span> <span class="muted" style="font-weight:400">/</span> -${pesoS(out)}</b></div></div>
+  <div class="chips" role="group" aria-label="Which transactions"><button class="chip${STATE.wAll?'':' on'}" data-act="wscope" data-v="m" aria-pressed="${!STATE.wAll}">${esc(pShort(STATE.m))}</button><button class="chip${STATE.wAll?' on':''}" data-act="wscope" data-v="all" aria-pressed="${!!STATE.wAll}">All time</button></div>
+  <div class="list" style="margin-top:6px">${h||`<div class="empty">${STATE.wAll?'Nothing has gone in or out of this wallet yet.':`No transactions in ${esc(pLabel(STATE.m))}.`}</div>`}</div>
+  ${list.length>shown.length?`<button class="btn" style="width:100%;margin-top:8px" data-act="wmore">Show ${Math.min(60,list.length-shown.length)} more</button>`:''}
+  <div class="btns" style="margin-top:12px"><button class="btn" data-act="wxfer" data-id="${id}">Transfer</button><button class="btn" data-act="close">Close</button></div>`,'wallet')}
 function summaryLine(){const st=monthStats(STATE.m);return`For ${pLabel(STATE.m)} you are at <b class="${st.net<0?'neg':'pos'}">${peso(st.net)}</b> net.`}
 function trendRows(){const cur=curP(),end=STATE.m>cur?STATE.m:cur;
   const ms=S.tx.map(t=>periodOf(t.d)).concat(S.cc.map(c=>periodOf(c.d))).sort();
@@ -1449,7 +1478,8 @@ load 99 gcash" data-nofocus>${esc(S.cfg.shortcuts.join('\n'))}</textarea></label
       <label>Or paste a backup here<textarea id="pastebk" rows="3" placeholder='{"v":1,...}' data-nofocus></textarea></label><button class="btn" data-act="pastebk">Restore pasted backup</button></div></div>`,
     bind:()=>{$('#imp').onclick=awayOnPurpose;$('#imp').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>restore(r.result);r.onerror=()=>toast('That file could not be opened. Try downloading it from Drive first.');r.readAsText(f)}}},
   version:{title:'App version',parent:'main',html:()=>`<div class="form"><span class="sub">${UP.cur?'Version '+esc(UP.cur.versionName):'Version unknown'}${UP.next?` · <b class="pos">${esc(UP.next.versionName)} available</b>`:''}</span>
-    <div class="btns">${UP.next?`<button class="btn pri" data-act="${UP.state==='ready'?'updinstall':'update'}"${UP.state==='dl'?' disabled':''}>${UP.state==='dl'?'Downloading…':UP.state==='ready'?'Install':'Update now'}</button>`:''}<button class="btn" data-act="updcheck"${UP.checking?' disabled':''}>Check for updates</button></div></div>`},
+    ${UP.key?`<div class="notice warn">${keySteps(UP.next)}</div>`:''}
+    <div class="btns">${UP.next&&!UP.key?`<button class="btn pri" data-act="${UP.state==='ready'?'updinstall':'update'}"${UP.state==='dl'?' disabled':''}>${UP.state==='dl'?'Downloading…':UP.state==='ready'?'Install':'Update now'}</button>`:''}<button class="btn" data-act="updcheck"${UP.checking?' disabled':''}>Check for updates</button></div></div>`},
   data:{title:'Data',parent:'main',html:()=>`<div class="form">
     ${prevSnap()?(p=>`<div class="field"><span class="flabel">Undo</span><span class="sub">Your records from just before ${REASON[p.reason]||'the last change'} (${dLabel(p.at.slice(0,10))}) are kept on this phone.</span><div class="btns"><button class="btn" data-act="undoask">Bring them back</button></div></div>`)(prevSnap()):''}
     <div class="field"><span class="flabel">Start over</span><div class="btns"><button class="btn danger" data-act="fresh">Erase everything</button><button class="btn" data-act="sample">Load sample data</button></div>
@@ -1502,13 +1532,16 @@ async function bootPhone(){
 // and records stay in place because the app keeps its storage across updates.
 const UPD=NATIVE&&Capacitor.Plugins.AppUpdate?Capacitor.Plugins.AppUpdate:null;
 const UPDATE_URL='https://github.com/yoshipaxti/pitaka/releases/latest/download/version.json';
-const UP={cur:null,next:null,state:'',pct:-1,later:false,checking:false};
+const UP={cur:null,next:null,state:'',pct:-1,later:false,checking:false,key:false};
 async function checkUpdate(manual){if(!UPD||UP.checking)return;UP.checking=true;
   try{if(!UP.cur)UP.cur=await UPD.info();
     const v=JSON.parse((await UPD.fetchText({url:UPDATE_URL})).text);
     if(!(v&&+v.versionCode>0&&typeof v.apk==='string'))throw new Error('Bad version file');
     UP.next=+v.versionCode>+UP.cur.versionCode?v:null;
-    if(manual)toast(UP.next?`Version ${v.versionName} is available`:'You have the latest version')}
+    // Android installs an update only when it is signed with the same key as this copy. When the keys differ, say how
+    // to switch over once (back up, reinstall, restore) instead of letting the installer fail with "package conflicts".
+    UP.key=!!(UP.next&&v.cert&&UP.cur.cert&&v.cert!==UP.cur.cert);
+    if(manual)toast(UP.key?`Version ${v.versionName} needs a one-time reinstall. See the steps on Overview.`:UP.next?`Version ${v.versionName} is available`:'You have the latest version')}
   catch(e){if(manual)toast('Could not check for updates. Check your internet connection.')}
   finally{UP.checking=false;render();if(manual)refreshSettings()}}
 async function startUpdate(){const v=UP.next;if(!v||UP.state==='dl')return;
@@ -1518,8 +1551,15 @@ async function startUpdate(){const v=UP.next;if(!v||UP.state==='dl')return;
   catch(e){UP.state='';render();toast('Download failed. Try again on Wi-Fi.')}
   finally{h.remove()}}
 async function installUpdate(){awayOnPurpose();try{await UPD.install()}
-  catch(e){toast(e&&e.code==='PERMISSION'?'Turn on “Allow from this source”, then come back and tap Install.':'Could not open the installer.')}}
+  catch(e){if(e&&e.code==='KEY'){UP.key=true;UP.state='';UP.later=false;render();refreshSettings();toast('This update needs a one-time reinstall. See the steps on Overview.');return}
+    toast(e&&e.code==='PERMISSION'?'Turn on “Allow from this source”, then come back and tap Install.':'Could not open the installer.')}}
+const APK_LATEST='https://github.com/yoshipaxti/pitaka/releases/latest/download/pitaka.apk';
+function keySteps(v){return`<span>This copy of Pitaka was signed with an older key, so Android won’t install the update over it. Do this once; after that, updates install normally.</span>
+  <ol class="steps"><li>Tap <b>Back up now</b> and save the file to Drive or Files.</li><li>Uninstall Pitaka (press and hold its icon, then Uninstall).</li>
+  <li>Download version ${esc(v.versionName)} with the button below, open <b>pitaka.apk</b> and install it.</li><li>Open Pitaka, go to <b>Settings › Backup &amp; restore › Restore</b> and pick your backup.</li></ol>
+  <div class="acts"><button class="btn sm pri" data-act="drive">Back up now</button><a class="btn sm" href="${APK_LATEST}">Download ${esc(v.versionName)}</a></div>`}
 function updateNotice(){const v=UP.next;if(!v||UP.later)return'';
+  if(UP.key)return`<div class="notice warn"><b>Version ${esc(v.versionName)} needs a one-time reinstall</b>${keySteps(v)}</div>`;
   const btn=UP.state==='dl'?`<button class="btn sm pri" disabled>Downloading <span id="updpct">${UP.pct>=0?UP.pct+'%':''}</span></button>`
     :UP.state==='ready'?`<button class="btn sm pri" data-act="updinstall">Install</button>`:`<button class="btn sm pri" data-act="update">Update now</button>`;
   return`<div class="notice info"><b>Update available · version ${esc(v.versionName)}</b>${v.notes?`<span>${esc(v.notes)}</span>`:''}<span class="sub">Your records stay on this phone.</span>
@@ -1641,6 +1681,11 @@ const ACT={
   paycc:d=>{const c=S.cc.find(x=>x.id===d.id);if(c)payCard(c,d.from==='plan')},
   unpay:d=>{const c=S.cc.find(x=>x.id===d.id);if(!c)return;askConfirm(c.direct?`Mark as unpaid? It was marked as paid by ${c.lo}.`:'Mark as unpaid? The payment record will be removed.',()=>{S.tx=S.tx.filter(t=>t.id!==c.pay);c.paid=false;delete c.pay;delete c.direct;delete c.paidOn;save();render();if(d.from==='plan')planSheet(c.plan)},'Mark unpaid')},
   plan:d=>planSheet(d.id),
+  wallet:d=>{STATE.wAll=false;walletSheet(d.id)},
+  wscope:d=>{STATE.wAll=d.v==='all';walletSheet(STATE.wId)},
+  wmore:()=>{STATE.wLimit+=60;walletSheet(STATE.wId,true)},
+  wedit:d=>ACT.edit(d),
+  wxfer:d=>openForm('xfer',{w:d.id}),
   plandel:d=>delPlan(d.id),
   ccback:d=>{const c=S.cc.find(x=>x.id===d.id);if(c)openForm('repay',{ref:c.id,p:c.lo})},
   calc:(d,b)=>{const f=b.closest('.amtf'),k=$('.calcpad',f),inp=$('.amtin',f),open=k.hidden;k.hidden=!open;b.setAttribute('aria-expanded',open);b.classList.toggle('on',open);
@@ -1698,7 +1743,8 @@ function fallbackCopy(txt){const ta=$('#pastebk');if(ta){ta.value=txt;ta.select(
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const f=ACT[b.dataset.act];if(f){e.preventDefault();f(b.dataset,b)}});
 let st_;document.addEventListener('input',e=>{if(e.target.classList.contains('amtin'))calcShow(e.target);if(e.target.id==='search'){clearTimeout(st_);st_=setTimeout(()=>{STATE.filter.q=e.target.value;STATE.filter.limit=40;const pos=e.target.selectionStart;render();const s=$('#search');s.focus();try{s.setSelectionRange(pos,pos)}catch(_){}},180)}});
 $('#aiform').onsubmit=e=>{e.preventDefault();const i=$('#aiinput');const v=i.value;i.value='';ask(v)};
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheetOpen())closeSheet()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheetOpen())closeSheet();
+  if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[role=button][data-act]')){e.preventDefault();e.target.click()}});
 
 if(lockCfg()){document.documentElement.classList.add('locked')}
 load();applyCfg();STATE.m=curP();if(S.cfg.start!=='last')STATE.tab=S.cfg.start;applyTheme(themePref());render();

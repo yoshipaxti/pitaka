@@ -2,6 +2,8 @@ package com.pitaka.tracker;
 
 import android.content.Intent;
 import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.Signature;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
@@ -20,6 +22,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.MessageDigest;
 
 /**
  * Lets the web app update itself: report the installed version, download a newer APK, and hand it to Android's installer.
@@ -36,13 +39,39 @@ public class AppUpdatePlugin extends Plugin {
         return new File(dir, "pitaka-update.apk");
     }
 
+    /**
+     * SHA-256 of the certificate an app or APK is signed with, as lowercase hex (the same value the build workflow prints
+     * and puts in version.json as "cert"), or null when Android does not say. Android installs an update only when this matches.
+     */
+    @SuppressWarnings("deprecation")
+    private static String certOf(PackageInfo p) {
+        try {
+            Signature[] sigs = null;
+            if (Build.VERSION.SDK_INT >= 28 && p.signingInfo != null) sigs = p.signingInfo.getApkContentsSigners();
+            if ((sigs == null || sigs.length == 0) && p.signatures != null) sigs = p.signatures;
+            if (sigs == null || sigs.length == 0) return null;
+            byte[] d = MessageDigest.getInstance("SHA-256").digest(sigs[0].toByteArray());
+            StringBuilder sb = new StringBuilder();
+            for (byte b : d) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static int certFlags() {
+        return Build.VERSION.SDK_INT >= 28 ? PackageManager.GET_SIGNING_CERTIFICATES : PackageManager.GET_SIGNATURES;
+    }
+
     @PluginMethod
     public void info(PluginCall call) {
         try {
-            PackageInfo p = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), 0);
+            PackageInfo p = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), certFlags());
             JSObject r = new JSObject();
             r.put("versionCode", Build.VERSION.SDK_INT >= 28 ? p.getLongVersionCode() : p.versionCode);
             r.put("versionName", p.versionName);
+            r.put("cert", certOf(p));
             call.resolve(r);
         } catch (Exception e) {
             call.reject("Could not read the app version", e);
@@ -159,6 +188,21 @@ public class AppUpdatePlugin extends Plugin {
             getContext().startActivity(s);
             call.reject("Allow Pitaka to install updates, then tap Install again", "PERMISSION");
             return;
+        }
+        // Android refuses an APK signed with a different key ("package conflicts with an existing package").
+        // Check first, so the app can explain what to do instead.
+        try {
+            PackageManager pm = getContext().getPackageManager();
+            String mine = certOf(pm.getPackageInfo(getContext().getPackageName(), certFlags()));
+            PackageInfo apk = pm.getPackageArchiveInfo(f.getAbsolutePath(), certFlags());
+            String theirs = apk != null ? certOf(apk) : null;
+            if (mine != null && theirs != null && !mine.equals(theirs)) {
+                f.delete();
+                call.reject("This update is signed with a different key than the Pitaka on this phone", "KEY");
+                return;
+            }
+        } catch (Exception ignored) {
+            // If Android cannot tell, let its installer decide.
         }
         Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", f);
         Intent i = new Intent(Intent.ACTION_VIEW);

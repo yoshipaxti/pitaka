@@ -17,7 +17,24 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Every published APK must be signed with the same key, or Android refuses to install it over the app already on
+    // the phone ("package conflicts with an existing package"). The build workflow decodes that key from the
+    // DEBUG_KEYSTORE_B64 secret and passes its path here. Without it (a build on your own PC) Android Studio's debug key is used.
+    def pitakaKeystore = System.getenv("PITAKA_KEYSTORE")
+    signingConfigs {
+        if (pitakaKeystore) {
+            pitaka {
+                storeFile file(pitakaKeystore)
+                storePassword System.getenv("PITAKA_STORE_PASS") ?: "android"
+                keyAlias System.getenv("PITAKA_KEY_ALIAS") ?: "androiddebugkey"
+                keyPassword System.getenv("PITAKA_KEY_PASS") ?: "android"
+            }
+        }
+    }
     buildTypes {
+        debug {
+            if (pitakaKeystore) signingConfig signingConfigs.pitaka
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
